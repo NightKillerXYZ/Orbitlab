@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orbitlab-physics-core"
+version = "1.0.0"
+description = "OrbitLab Physics Core: AST schemas, physical validation, and deterministic NASA GMAT script compiler"
+readme = "ARCHITECTURE.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "OrbitLab Team" }
+]
+dependencies = [
+    "pydantic>=2.5.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["orbitlab_core*"]
