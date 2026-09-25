@@ -1,0 +1,275 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrbitLabExperiment",
+  "type": "object",
+  "required": ["version", "experimentName", "spacecraft", "initialOrbit", "propagation"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Schema version"
+    },
+    "experimentName": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Human-readable label for the orbital experiment"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description or user prompt intent"
+    },
+    "spacecraft": {
+      "type": "object",
+      "required": ["name", "dryMassKg"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_]{1,30}$",
+          "description": "GMAT identifier-safe spacecraft name"
+        },
+        "dryMassKg": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 500000,
+          "description": "Dry mass of the spacecraft in kilograms"
+        },
+        "coefficientOfDrag": {
+          "type": "number",
+          "default": 2.2,
+          "minimum": 0.0,
+          "maximum": 5.0
+        },
+        "dragAreaM2": {
+          "type": "number",
+          "default": 1.0,
+          "minimum": 0.01,
+          "maximum": 1000.0
+        },
+        "coefficientOfReflectivity": {
+          "type": "number",
+          "default": 1.8,
+          "minimum": 0.0,
+          "maximum": 2.0
+        },
+        "srpAreaM2": {
+          "type": "number",
+          "default": 1.0,
+          "minimum": 0.01,
+          "maximum": 1000.0
+        }
+      }
+    },
+    "centralBody": {
+      "type": "string",
+      "enum": ["Earth", "Moon", "Mars"],
+      "default": "Earth"
+    },
+    "epoch": {
+      "type": "object",
+      "required": ["format", "value"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["UTCGregorian"],
+          "default": "UTCGregorian"
+        },
+        "value": {
+          "type": "string",
+          "default": "01 Jan 2026 12:00:00.000"
+        }
+      }
+    },
+    "initialOrbit": {
+      "type": "object",
+      "required": ["type", "coordinateSystem", "elements"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Keplerian", "Cartesian"]
+        },
+        "coordinateSystem": {
+          "type": "string",
+          "enum": ["EarthMJ2000Eq"],
+          "default": "EarthMJ2000Eq"
+        },
+        "elements": {
+          "type": "object",
+          "properties": {
+            "semiMajorAxisKm": {
+              "type": "number",
+              "minimum": 6478.137,
+              "description": "Semi-major axis in km (minimum Earth surface + 100km)"
+            },
+            "eccentricity": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 0.99
+            },
+            "inclinationDeg": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 180.0
+            },
+            "raanDeg": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 360.0
+            },
+            "argumentOfPeriapsisDeg": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 360.0
+            },
+            "trueAnomalyDeg": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 360.0
+            },
+            "xKm": { "type": "number" },
+            "yKm": { "type": "number" },
+            "zKm": { "type": "number" },
+            "vxKmS": { "type": "number" },
+            "vyKmS": { "type": "number" },
+            "vzKmS": { "type": "number" }
+          }
+        }
+      }
+    },
+    "forceModel": {
+      "type": "object",
+      "default": {},
+      "properties": {
+        "gravityDegree": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "default": 4
+        },
+        "gravityOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "default": 4
+        },
+        "pointMasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Luna", "Sun", "Jupiter"]
+          },
+          "default": ["Luna", "Sun"]
+        },
+        "atmosphericDrag": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "model": {
+              "type": "string",
+              "enum": ["JacchiaRoberts", "MSISE90"],
+              "default": "JacchiaRoberts"
+            }
+          }
+        },
+        "solarRadiationPressure": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "maneuvers": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "trigger"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_]{1,20}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ImpulsiveBurn", "TargetedHohmannTransfer"]
+          },
+          "trigger": {
+            "type": "object",
+            "required": ["condition"],
+            "properties": {
+              "condition": {
+                "type": "string",
+                "enum": ["AtPeriapsis", "AtApoapsis", "ElapsedTimeSecs"]
+              },
+              "elapsedSecs": {
+                "type": "number",
+                "minimum": 0.0
+              }
+            }
+          },
+          "burnVector": {
+            "type": "object",
+            "properties": {
+              "coordinateSystem": {
+                "type": "string",
+                "enum": ["LocalVNB"],
+                "default": "LocalVNB"
+              },
+              "deltaVVectorKmS": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3,
+                "description": "[V, N, B] in km/s"
+              }
+            }
+          },
+          "targetObjectives": {
+            "type": "object",
+            "properties": {
+              "targetOrbitRadiusKm": {
+                "type": "number",
+                "minimum": 6500.0
+              },
+              "targetEccentricity": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 0.99
+              }
+            }
+          }
+        }
+      }
+    },
+    "propagation": {
+      "type": "object",
+      "required": ["stopCondition"],
+      "properties": {
+        "integrator": {
+          "type": "string",
+          "enum": ["RungeKutta89", "PrinceDormand78"],
+          "default": "RungeKutta89"
+        },
+        "stopCondition": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ElapsedDays", "ElapsedHours", "ElapsedSeconds", "OrbitPeriods"]
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 365.0
+            }
+          }
+        },
+        "stepSizeSecs": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 3600.0,
+          "default": 60.0
+        }
+      }
+    }
+  }
+}
