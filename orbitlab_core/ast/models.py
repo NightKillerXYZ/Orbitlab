@@ -271,17 +271,40 @@ class ManeuverConfig(BaseModel):
 
 class StopCondition(BaseModel):
     """Propagation stop criterion."""
-    type: Literal["ElapsedDays", "ElapsedHours", "ElapsedSeconds", "OrbitPeriods"] = Field(
+
+    type: Literal[
+        "ElapsedDays",
+        "ElapsedHours",
+        "ElapsedSeconds",
+        "OrbitPeriods"
+    ] = Field(
         ...,
         description="Type of stop condition"
     )
+
     value: float = Field(
         ...,
         ge=0.001,
-        le=365.0,
         description="Numerical threshold value for stop condition"
     )
 
+    @model_validator(mode="after")
+    def validate_value_range(self) -> "StopCondition":
+        limits = {
+            "ElapsedDays": 365.0,
+            "ElapsedHours": 8760.0,
+            "ElapsedSeconds": 31536000.0,
+            "OrbitPeriods": 365.0,
+        }
+
+        maximum = limits[self.type]
+
+        if self.value > maximum:
+            raise ValueError(
+                f"{self.type} value must be between 0.001 and {maximum}"
+            )
+
+        return self
 
 class PropagationConfig(BaseModel):
     """Numerical propagation and integrator configuration."""

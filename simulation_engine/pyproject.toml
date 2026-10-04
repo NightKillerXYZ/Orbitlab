@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orbitlab-simulation-engine"
+version = "1.0.0"
+description = "OrbitLab GMAT execution, telemetry parsing, and trajectory downsampling engine"
+requires-python = ">=3.10"
+authors = [
+    { name = "OrbitLab Team" }
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["orbitlab_simulation_engine*"]

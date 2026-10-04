@@ -98,9 +98,21 @@ class TestGmatExecutionIntegration(unittest.TestCase):
         self.assertGreater(len(lines), 2, "Telemetry output should contain header and multiple data rows")
         # Verify columns in header
         header = lines[0]
-        self.assertIn("SatSmoke.ElapsedSecs", header)
-        self.assertIn("SatSmoke.EarthMJ2000Eq.X", header)
-        self.assertIn("SatSmoke.Earth.SMA", header)
+        required_columns = (
+            "SatSmoke.ElapsedSecs",
+            "SatSmoke.EarthMJ2000Eq.X",
+            "SatSmoke.EarthMJ2000Eq.Y",
+            "SatSmoke.EarthMJ2000Eq.Z",
+            "SatSmoke.EarthMJ2000Eq.VX",
+            "SatSmoke.EarthMJ2000Eq.VY",
+            "SatSmoke.EarthMJ2000Eq.VZ",
+            "SatSmoke.Earth.SMA",
+            "SatSmoke.Earth.ECC",
+            "SatSmoke.INC",
+            "SatSmoke.Earth.Altitude",
+        )
+        for column in required_columns:
+            self.assertIn(column, header)
 
     def test_gmat_run_cartesian_propagation(self):
         exp = OrbitLabExperiment(

@@ -2,11 +2,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OrbitLabExperiment",
   "type": "object",
-  "required": ["version", "experimentName", "spacecraft", "initialOrbit", "propagation"],
+  "required": [
+    "version",
+    "experimentName",
+    "spacecraft",
+    "initialOrbit",
+    "propagation"
+  ],
   "properties": {
     "version": {
       "type": "string",
-      "enum": ["1.0"],
+      "enum": [
+        "1.0"
+      ],
       "description": "Schema version"
     },
     "experimentName": {
@@ -20,7 +28,10 @@
     },
     "spacecraft": {
       "type": "object",
-      "required": ["name", "dryMassKg"],
+      "required": [
+        "name",
+        "dryMassKg"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -61,16 +72,25 @@
     },
     "centralBody": {
       "type": "string",
-      "enum": ["Earth", "Moon", "Mars"],
+      "enum": [
+        "Earth",
+        "Moon",
+        "Mars"
+      ],
       "default": "Earth"
     },
     "epoch": {
       "type": "object",
-      "required": ["format", "value"],
+      "required": [
+        "format",
+        "value"
+      ],
       "properties": {
         "format": {
           "type": "string",
-          "enum": ["UTCGregorian"],
+          "enum": [
+            "UTCGregorian"
+          ],
           "default": "UTCGregorian"
         },
         "value": {
@@ -81,15 +101,24 @@
     },
     "initialOrbit": {
       "type": "object",
-      "required": ["type", "coordinateSystem", "elements"],
+      "required": [
+        "type",
+        "coordinateSystem",
+        "elements"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["Keplerian", "Cartesian"]
+          "enum": [
+            "Keplerian",
+            "Cartesian"
+          ]
         },
         "coordinateSystem": {
           "type": "string",
-          "enum": ["EarthMJ2000Eq"],
+          "enum": [
+            "EarthMJ2000Eq"
+          ],
           "default": "EarthMJ2000Eq"
         },
         "elements": {
@@ -125,12 +154,24 @@
               "minimum": 0.0,
               "maximum": 360.0
             },
-            "xKm": { "type": "number" },
-            "yKm": { "type": "number" },
-            "zKm": { "type": "number" },
-            "vxKmS": { "type": "number" },
-            "vyKmS": { "type": "number" },
-            "vzKmS": { "type": "number" }
+            "xKm": {
+              "type": "number"
+            },
+            "yKm": {
+              "type": "number"
+            },
+            "zKm": {
+              "type": "number"
+            },
+            "vxKmS": {
+              "type": "number"
+            },
+            "vyKmS": {
+              "type": "number"
+            },
+            "vzKmS": {
+              "type": "number"
+            }
           }
         }
       }
@@ -155,17 +196,30 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["Luna", "Sun", "Jupiter"]
+            "enum": [
+              "Luna",
+              "Sun",
+              "Jupiter"
+            ]
           },
-          "default": ["Luna", "Sun"]
+          "default": [
+            "Luna",
+            "Sun"
+          ]
         },
         "atmosphericDrag": {
           "type": "object",
           "properties": {
-            "enabled": { "type": "boolean", "default": false },
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
             "model": {
               "type": "string",
-              "enum": ["JacchiaRoberts", "MSISE90"],
+              "enum": [
+                "JacchiaRoberts",
+                "MSISE90"
+              ],
               "default": "JacchiaRoberts"
             }
           }
@@ -181,7 +235,11 @@
       "default": [],
       "items": {
         "type": "object",
-        "required": ["id", "type", "trigger"],
+        "required": [
+          "id",
+          "type",
+          "trigger"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -189,15 +247,24 @@
           },
           "type": {
             "type": "string",
-            "enum": ["ImpulsiveBurn", "TargetedHohmannTransfer"]
+            "enum": [
+              "ImpulsiveBurn",
+              "TargetedHohmannTransfer"
+            ]
           },
           "trigger": {
             "type": "object",
-            "required": ["condition"],
+            "required": [
+              "condition"
+            ],
             "properties": {
               "condition": {
                 "type": "string",
-                "enum": ["AtPeriapsis", "AtApoapsis", "ElapsedTimeSecs"]
+                "enum": [
+                  "AtPeriapsis",
+                  "AtApoapsis",
+                  "ElapsedTimeSecs"
+                ]
               },
               "elapsedSecs": {
                 "type": "number",
@@ -210,12 +277,16 @@
             "properties": {
               "coordinateSystem": {
                 "type": "string",
-                "enum": ["LocalVNB"],
+                "enum": [
+                  "LocalVNB"
+                ],
                 "default": "LocalVNB"
               },
               "deltaVVectorKmS": {
                 "type": "array",
-                "items": { "type": "number" },
+                "items": {
+                  "type": "number"
+                },
                 "minItems": 3,
                 "maxItems": 3,
                 "description": "[V, N, B] in km/s"
@@ -241,29 +312,91 @@
     },
     "propagation": {
       "type": "object",
-      "required": ["stopCondition"],
+      "required": [
+        "stopCondition"
+      ],
       "properties": {
         "integrator": {
           "type": "string",
-          "enum": ["RungeKutta89", "PrinceDormand78"],
+          "enum": [
+            "RungeKutta89",
+            "PrinceDormand78"
+          ],
           "default": "RungeKutta89"
         },
         "stopCondition": {
-          "type": "object",
-          "required": ["type", "value"],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": ["ElapsedDays", "ElapsedHours", "ElapsedSeconds", "OrbitPeriods"]
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "const": "ElapsedDays"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 365.0
+                }
+              }
             },
-            "value": {
-              "type": "number",
-              "minimum": 0.001,
-              "maximum": 365.0
+            {
+              "type": "object",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "const": "ElapsedHours"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 8760.0
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "const": "ElapsedSeconds"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 31536000.0
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "const": "OrbitPeriods"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 365.0
+                }
+              }
             }
-          }
-        },
-        "stepSizeSecs": {
+          ]
+        }
+        ,"stepSizeSecs": {
           "type": "number",
           "minimum": 0.1,
           "maximum": 3600.0,
@@ -272,4 +405,4 @@
       }
     }
   }
-}
+} 

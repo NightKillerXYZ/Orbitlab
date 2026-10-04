@@ -11,12 +11,20 @@ dist/
 build/
 .eggs/
 *.egg
+
+# Environment / secrets
 .env
+.env.*
+!.env.example
+
+# Virtual environments
 .venv/
 venv/
-*.pyc
+env/
 
 # Test artifacts
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+phase3_ai_interpreter/datasets/orbitlab_interpreter_validation.jsonl

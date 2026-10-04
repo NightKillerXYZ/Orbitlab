@@ -80,6 +80,7 @@ class TestGmatScriptCompiler(unittest.TestCase):
         # Telemetry subscriber and path normalization
         self.assertIn("Create ReportFile OrbitLabReport;", script)
         self.assertIn("OrbitLabReport.Filename = 'C:/runs/sim1/telemetry.txt';", script)
+        self.assertIn("Sat1.Earth.ECC, Sat1.INC, Sat1.Earth.Altitude", script)
         self.assertNotIn("\\", script.split("OrbitLabReport.Filename")[1].split(";")[0])
 
         # Mission sequence

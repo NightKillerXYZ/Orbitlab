@@ -206,7 +206,7 @@ class GmatScriptCompiler:
             f"{sc_name}.ElapsedSecs, "
             f"{sc_name}.EarthMJ2000Eq.X, {sc_name}.EarthMJ2000Eq.Y, {sc_name}.EarthMJ2000Eq.Z, "
             f"{sc_name}.EarthMJ2000Eq.VX, {sc_name}.EarthMJ2000Eq.VY, {sc_name}.EarthMJ2000Eq.VZ, "
-            f"{sc_name}.Earth.SMA, {sc_name}.Earth.ECC, {sc_name}.Earth.Altitude"
+            f"{sc_name}.Earth.SMA, {sc_name}.Earth.ECC, {sc_name}.INC, {sc_name}.Earth.Altitude"
             f"}};"
         )
         lines.append("")

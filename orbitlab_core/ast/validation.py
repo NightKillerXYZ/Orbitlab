@@ -1,17 +1,17 @@
-"""Astrodynamic Sanity and Physical Boundary Validator for OrbitLab.
+"""Astrodynamic Sanity and Physical Boundary Validator for OrbitLab[cite: 7].
 
 Enforces orbital mechanics constraints:
-- Atmospheric boundary and impact prevention (periapsis altitude >= 100 km).
-- Orbit eccentricity bounds (0 <= e < 1 for bound missions).
-- Cartesian state physical sanity (energy, angular momentum, derived periapsis).
-- Maneuver delta-V feasibility.
+- Atmospheric boundary and impact prevention (periapsis altitude >= 100 km)[cite: 7].
+- Orbit eccentricity bounds (0 <= e < 1 for bound missions)[cite: 7].
+- Cartesian state physical sanity (energy, angular momentum, derived periapsis)[cite: 7].
+- Maneuver delta-V feasibility[cite: 7].
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple  # noqa: UP035
 
 from orbitlab_core.ast.models import (
     CartesianElements,
@@ -30,7 +30,7 @@ from orbitlab_core.constants import (
 
 @dataclass
 class AstrodynamicProperties:
-    """Calculated orbital characteristics for verification and reporting."""
+    """Calculated orbital characteristics for verification and reporting[cite: 7]."""
     semi_major_axis_km: float
     eccentricity: float
     periapsis_radius_km: float
@@ -44,7 +44,7 @@ class AstrodynamicProperties:
 
 @dataclass
 class ValidationResult:
-    """Result of astrodynamic and physical validation."""
+    """Result of astrodynamic and physical validation[cite: 7]."""
     is_valid: bool
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -52,7 +52,7 @@ class ValidationResult:
 
 
 def get_body_constants(central_body: str) -> Tuple[float, float]:
-    """Return (radius_km, mu_km3_s2) for the given central body."""
+    """Return (radius_km, mu_km3_s2) for the given central body[cite: 7]."""
     if central_body.lower() == "moon":
         return 1737.4, MOON_MU_KM3_S2
     elif central_body.lower() == "mars":
@@ -67,7 +67,7 @@ def compute_orbital_properties_from_keplerian(
     radius_body_km: float,
     mu_km3_s2: float
 ) -> AstrodynamicProperties:
-    """Compute physical orbital properties from Keplerian elements."""
+    """Compute physical orbital properties from Keplerian elements[cite: 7]."""
     a = elements.semiMajorAxisKm
     e = elements.eccentricity
     rp = a * (1.0 - e)
@@ -95,7 +95,7 @@ def compute_orbital_properties_from_cartesian(
     radius_body_km: float,
     mu_km3_s2: float
 ) -> AstrodynamicProperties:
-    """Compute physical orbital properties from Cartesian state vector."""
+    """Compute physical orbital properties from Cartesian state vector[cite: 7]."""
     r_vec = (elements.xKm, elements.yKm, elements.zKm)
     v_vec = (elements.vxKmS, elements.vyKmS, elements.vzKmS)
 
@@ -130,6 +130,7 @@ def compute_orbital_properties_from_cartesian(
         a = float("inf")
 
     p = h2 / mu_km3_s2
+
     if e < 1.0:
         rp = a * (1.0 - e)
         ra = a * (1.0 + e)
@@ -158,7 +159,7 @@ def compute_orbital_properties_from_cartesian(
 
 
 class AstrodynamicValidator:
-    """Validates OrbitLabExperiment AST against physical boundaries."""
+    """Validates OrbitLabExperiment AST against physical boundaries[cite: 7]."""
 
     @classmethod
     def validate(cls, experiment: OrbitLabExperiment) -> ValidationResult:
@@ -167,7 +168,12 @@ class AstrodynamicValidator:
         props_dict: Dict[str, Any] = {}
 
         radius_body, mu_body = get_body_constants(experiment.centralBody)
-        min_allowed_alt = MIN_PERIAPSIS_ALTITUDE_KM if experiment.centralBody == "Earth" else 20.0
+
+        min_allowed_alt = (
+            MIN_PERIAPSIS_ALTITUDE_KM
+            if experiment.centralBody == "Earth"
+            else 20.0
+        )
         min_allowed_radius = radius_body + min_allowed_alt
 
         # 1. Orbit state check
@@ -176,20 +182,91 @@ class AstrodynamicValidator:
 
         if orbit.type == "Keplerian":
             if not isinstance(orbit.elements, KeplerianElements):
-                errors.append(f"Expected KeplerianElements for orbit type 'Keplerian', got {type(orbit.elements)}")
-                return ValidationResult(is_valid=False, errors=errors)
+                errors.append(
+                    f"Expected KeplerianElements for orbit type 'Keplerian', "
+                    f"got {type(orbit.elements)}"
+                )
+                return ValidationResult(
+                    is_valid=False,
+                    errors=errors,
+                    warnings=warnings,
+                    properties=props_dict,
+                )
 
-            props = compute_orbital_properties_from_keplerian(orbit.elements, radius_body, mu_body)
+            # For a Keplerian state, the supplied semi-major axis and
+            # eccentricity are already the authoritative orbital elements.
+            a = orbit.elements.semiMajorAxisKm
+            e = orbit.elements.eccentricity
+
+            # Basic physical sanity checks.
+            if a <= 0:
+                errors.append(f"Semi-major axis must be positive, got {a:.6f} km.")
+                return ValidationResult(
+                    is_valid=False,
+                    errors=errors,
+                    warnings=warnings,
+                    properties=props_dict,
+                )
+
+            if e < 0.0 or e >= 1.0:
+                errors.append(
+                    f"Keplerian eccentricity must satisfy 0 <= e < 1 "
+                    f"for a bound elliptical orbit, got {e:.6f}."
+                )
+                return ValidationResult(
+                    is_valid=False,
+                    errors=errors,
+                    warnings=warnings,
+                    properties=props_dict,
+                )
+
+            # Classical Keplerian relationships.
+            rp = a * (1.0 - e)
+            ra = a * (1.0 + e)
+            orbital_period = 2.0 * math.pi * math.sqrt((a ** 3) / mu_body)
+            specific_energy = -mu_body / (2.0 * a)
+            periapsis_altitude = rp - radius_body
+            apoapsis_altitude = ra - radius_body
+
+            props = AstrodynamicProperties(
+                semi_major_axis_km=a,
+                eccentricity=e,
+                periapsis_radius_km=rp,
+                apoapsis_radius_km=ra,
+                periapsis_altitude_km=periapsis_altitude,
+                apoapsis_altitude_km=apoapsis_altitude,
+                orbital_period_secs=orbital_period,
+                specific_energy_km2_s2=specific_energy,
+                is_bound=True,
+            )
 
         elif orbit.type == "Cartesian":
             if not isinstance(orbit.elements, CartesianElements):
-                errors.append(f"Expected CartesianElements for orbit type 'Cartesian', got {type(orbit.elements)}")
-                return ValidationResult(is_valid=False, errors=errors)
+                errors.append(
+                    f"Expected CartesianElements for orbit type 'Cartesian', "
+                    f"got {type(orbit.elements)}"
+                )
+                return ValidationResult(
+                    is_valid=False,
+                    errors=errors,
+                    warnings=warnings,
+                    properties=props_dict,
+                )
 
-            props = compute_orbital_properties_from_cartesian(orbit.elements, radius_body, mu_body)
+            props = compute_orbital_properties_from_cartesian(
+                orbit.elements,
+                radius_body,
+                mu_body,
+            )
+
         else:
             errors.append(f"Unknown initial orbit type: '{orbit.type}'")
-            return ValidationResult(is_valid=False, errors=errors)
+            return ValidationResult(
+                is_valid=False,
+                errors=errors,
+                warnings=warnings,
+                properties=props_dict,
+            )
 
         # Store calculated properties
         props_dict = {
@@ -204,25 +281,29 @@ class AstrodynamicValidator:
             "isBound": props.is_bound,
         }
 
-        # 2. Check periapsis altitude (atmospheric re-entry / surface crash)
+        # 2. Check periapsis altitude
         if props.periapsis_altitude_km < min_allowed_alt:
             errors.append(
-                f"Trajectory violates safe periapsis threshold: periapsis altitude is {props.periapsis_altitude_km:.2f} km "
-                f"(radius: {props.periapsis_radius_km:.2f} km), which is below the minimum safe altitude of {min_allowed_alt:.1f} km "
-                f"for central body '{experiment.centralBody}'."
+                f"Trajectory violates safe periapsis threshold: "
+                f"periapsis altitude is {props.periapsis_altitude_km:.2f} km "
+                f"(radius: {props.periapsis_radius_km:.2f} km), "
+                f"which is below the minimum safe altitude of "
+                f"{min_allowed_alt:.1f} km for central body "
+                f"'{experiment.centralBody}'."
             )
 
         # 3. Check bound orbit condition
         if not props.is_bound:
             warnings.append(
-                f"Orbit has eccentricity e = {props.eccentricity:.4f} >= 1.0 (unbound hyperbolic/parabolic trajectory)."
+                f"Orbit has eccentricity e = {props.eccentricity:.4f} >= 1.0 "
+                f"(unbound hyperbolic/parabolic trajectory)."
             )
 
         # 4. Check maneuvers
-        for i, m in enumerate(experiment.maneuvers):
+        for m in experiment.maneuvers:
             if m.type == "ImpulsiveBurn" and m.burnVector:
                 dv_vec = m.burnVector.deltaVVectorKmS
-                dv_mag = math.sqrt(sum(v**2 for v in dv_vec))
+                dv_mag = math.sqrt(sum(v ** 2 for v in dv_vec))
                 props_dict[f"maneuver_{m.id}_deltaV_km_s"] = dv_mag
 
                 if dv_mag > 15.0:
@@ -230,6 +311,7 @@ class AstrodynamicValidator:
                         f"Maneuver '{m.id}' has exceptionally large Delta-V ({dv_mag:.2f} km/s). "
                         f"Exceeds typical orbital chemical propulsion budgets."
                     )
+
                 if dv_mag == 0.0:
                     warnings.append(f"Maneuver '{m.id}' has zero Delta-V.")
 
@@ -237,14 +319,15 @@ class AstrodynamicValidator:
                 tgt_r = m.targetObjectives.targetOrbitRadiusKm
                 if tgt_r and tgt_r < min_allowed_radius:
                     errors.append(
-                        f"TargetedHohmannTransfer '{m.id}' specifies target radius {tgt_r:.2f} km below "
-                        f"safe radius {min_allowed_radius:.2f} km."
+                        f"TargetedHohmannTransfer '{m.id}' specifies target radius {tgt_r:.2f} km "
+                        f"below safe radius {min_allowed_radius:.2f} km."
                     )
 
         # 5. Check propagation duration
         stop = experiment.propagation.stopCondition
         step = experiment.propagation.stepSizeSecs
         duration_secs = 0.0
+
         if stop.type == "ElapsedDays":
             duration_secs = stop.value * 86400.0
         elif stop.type == "ElapsedHours":
@@ -260,9 +343,10 @@ class AstrodynamicValidator:
             )
 
         is_valid = len(errors) == 0
+
         return ValidationResult(
             is_valid=is_valid,
             errors=errors,
             warnings=warnings,
-            properties=props_dict
+            properties=props_dict,
         )
