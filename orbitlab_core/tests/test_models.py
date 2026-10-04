@@ -114,9 +114,64 @@ class TestExperimentModels(unittest.TestCase):
     def test_invalid_semi_major_axis_bounds(self):
         with self.assertRaises(ValueError):
             KeplerianElements(
-                semiMajorAxisKm=5000.0,  # Below Earth surface + 100km (6478.137)
+                semiMajorAxisKm=0.0,
                 eccentricity=0.01,
                 inclinationDeg=28.5,
+            )
+
+    def test_central_body_coordinate_system_is_consistent(self):
+        with self.assertRaisesRegex(ValueError, "LunaMJ2000Eq"):
+            OrbitLabExperiment(
+                experimentName="MoonFrameMismatch",
+                centralBody="Moon",
+                spacecraft=SpacecraftConfig(name="MoonSat", dryMassKg=100.0),
+                initialOrbit=InitialOrbitConfig(
+                    type="Keplerian",
+                    coordinateSystem="MarsMJ2000Eq",
+                    elements=KeplerianElements(
+                        semiMajorAxisKm=2000.0,
+                        eccentricity=0.0,
+                        inclinationDeg=0.0,
+                    ),
+                ),
+                propagation=PropagationConfig(
+                    stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+                ),
+            )
+
+        experiment = OrbitLabExperiment(
+            experimentName="MoonFrameMismatch",
+            centralBody="Moon",
+            spacecraft=SpacecraftConfig(name="MoonSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=2000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+        self.assertEqual(experiment.initialOrbit.coordinateSystem, "LunaMJ2000Eq")
+
+    def test_hohmann_requires_target_radius(self):
+        with self.assertRaisesRegex(ValueError, "requires targetOrbitRadiusKm"):
+            ManeuverConfig(
+                id="Transfer",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtPeriapsis"),
+                targetObjectives=TargetObjectives(targetEccentricity=0.2),
+            )
+
+        with self.assertRaisesRegex(ValueError, "requires an apsis trigger"):
+            ManeuverConfig(
+                id="TimedTransfer",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="ElapsedTimeSecs", elapsedSecs=60.0),
+                targetObjectives=TargetObjectives(targetOrbitRadiusKm=10000.0),
             )
 
     def test_invalid_eccentricity_bounds(self):
@@ -126,6 +181,69 @@ class TestExperimentModels(unittest.TestCase):
                 eccentricity=1.05,  # Hyperbolic, max is 0.99
                 inclinationDeg=28.5,
             )
+
+    def test_non_finite_orbit_and_burn_values_are_rejected(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    OrbitLabExperiment(
+                        experimentName="NonFiniteKeplerian",
+                        spacecraft=SpacecraftConfig(name="FiniteSat", dryMassKg=100.0),
+                        initialOrbit=InitialOrbitConfig(
+                            type="Keplerian",
+                            elements=KeplerianElements(
+                                semiMajorAxisKm=value,
+                                eccentricity=0.01,
+                                inclinationDeg=28.5,
+                            ),
+                        ),
+                        propagation=PropagationConfig(
+                            stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+                        ),
+                    )
+
+                with self.assertRaises(ValueError):
+                    OrbitLabExperiment(
+                        experimentName="NonFiniteCartesian",
+                        spacecraft=SpacecraftConfig(name="FiniteSat", dryMassKg=100.0),
+                        initialOrbit=InitialOrbitConfig(
+                            type="Cartesian",
+                            elements=CartesianElements(
+                                xKm=value, yKm=0.0, zKm=0.0,
+                                vxKmS=0.0, vyKmS=7.5, vzKmS=0.0,
+                            ),
+                        ),
+                        propagation=PropagationConfig(
+                            stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+                        ),
+                    )
+
+                with self.assertRaises(ValueError):
+                    OrbitLabExperiment(
+                        experimentName="NonFiniteBurn",
+                        spacecraft=SpacecraftConfig(name="FiniteSat", dryMassKg=100.0),
+                        initialOrbit=InitialOrbitConfig(
+                            type="Keplerian",
+                            elements=KeplerianElements(
+                                semiMajorAxisKm=7000.0,
+                                eccentricity=0.01,
+                                inclinationDeg=28.5,
+                            ),
+                        ),
+                        maneuvers=[ManeuverConfig(
+                            id="NonFinite",
+                            type="ImpulsiveBurn",
+                            trigger=ManeuverTrigger(condition="AtPeriapsis"),
+                            burnVector=BurnVector(deltaVVectorKmS=[value, 0.0, 0.0]),
+                        )],
+                        propagation=PropagationConfig(
+                            stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+                        ),
+                    )
+
+    def test_non_finite_stop_condition_is_rejected(self):
+        with self.assertRaises(ValueError):
+            StopCondition(type="ElapsedSeconds", value=float("inf"))
 
     def test_impulsive_burn_validation(self):
         # Valid burn

@@ -111,6 +111,107 @@ class TestAstrodynamicValidation(unittest.TestCase):
         self.assertFalse(res.is_valid)
         self.assertTrue(any("periapsis threshold" in err for err in res.errors))
 
+    def test_zero_cartesian_position_is_rejected_without_exception(self):
+        exp = OrbitLabExperiment(
+            experimentName="ZeroPosition",
+            spacecraft=SpacecraftConfig(name="ZeroSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Cartesian",
+                elements=CartesianElements(
+                    xKm=0.0, yKm=0.0, zKm=0.0,
+                    vxKmS=0.0, vyKmS=0.0, vzKmS=0.0,
+                ),
+            ),
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+
+        result = AstrodynamicValidator.validate(exp)
+        self.assertFalse(result.is_valid)
+        self.assertTrue(any("non-zero magnitude" in error for error in result.errors))
+
+    def test_moon_orbit_uses_moon_safety_radius_and_mu(self):
+        exp = OrbitLabExperiment(
+            experimentName="MoonOrbit",
+            centralBody="Moon",
+            spacecraft=SpacecraftConfig(name="MoonSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                coordinateSystem="LunaMJ2000Eq",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=2000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="OrbitPeriods", value=1.0)
+            ),
+        )
+
+        result = AstrodynamicValidator.validate(exp)
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.properties["orbitalPeriodSecs"], 2 * 3.141592653589793 * (2000.0**3 / 4902.800066) ** 0.5)
+
+    def test_hohmann_outward_target_periapsis_must_remain_safe(self):
+        exp = OrbitLabExperiment(
+            experimentName="UnsafeEccentricTarget",
+            spacecraft=SpacecraftConfig(name="TargetSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=7000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="Raise",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtPeriapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=7500.0,
+                    targetEccentricity=0.2,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+        result = AstrodynamicValidator.validate(exp)
+        self.assertFalse(result.is_valid)
+        self.assertTrue(any("target periapsis" in error for error in result.errors))
+
+    def test_hohmann_outward_eccentric_target_at_apoapsis_is_valid(self):
+        exp = OrbitLabExperiment(
+            experimentName="SafeEccentricOutwardTarget",
+            spacecraft=SpacecraftConfig(name="TargetSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=8200.0,
+                    eccentricity=0.01,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="RaiseAtApoapsis",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtApoapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=18000.0,
+                    targetEccentricity=0.12,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+
+        result = AstrodynamicValidator.validate(exp)
+        self.assertTrue(result.is_valid, result.errors)
+
     def test_large_delta_v_warning(self):
         exp = OrbitLabExperiment(
             experimentName="SuperBurn_Mission",
@@ -141,9 +242,33 @@ class TestAstrodynamicValidation(unittest.TestCase):
         self.assertTrue(any("exceptionally large Delta-V" in warn for warn in res.warnings))
 
     def test_hohmann_target_below_earth_rejected(self):
-        # Target radius below 6500 km violates schema and physical safety
-        with self.assertRaises(ValueError):
-            TargetObjectives(targetOrbitRadiusKm=6400.0)
+        exp = OrbitLabExperiment(
+            experimentName="UnsafeInwardTarget",
+            spacecraft=SpacecraftConfig(name="TargetSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=7000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="Lower",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtApoapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=6400.0,
+                    targetEccentricity=0.2,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+        result = AstrodynamicValidator.validate(exp)
+        self.assertFalse(result.is_valid)
+        self.assertTrue(any("target periapsis" in error for error in result.errors))
 
 
 if __name__ == "__main__":

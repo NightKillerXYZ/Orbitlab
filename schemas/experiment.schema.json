@@ -47,26 +47,26 @@
         "coefficientOfDrag": {
           "type": "number",
           "default": 2.2,
-          "minimum": 0.0,
-          "maximum": 5.0
+          "minimum": 0,
+          "maximum": 5
         },
         "dragAreaM2": {
           "type": "number",
-          "default": 1.0,
+          "default": 1,
           "minimum": 0.01,
-          "maximum": 1000.0
+          "maximum": 1000
         },
         "coefficientOfReflectivity": {
           "type": "number",
           "default": 1.8,
-          "minimum": 0.0,
-          "maximum": 2.0
+          "minimum": 0,
+          "maximum": 2
         },
         "srpAreaM2": {
           "type": "number",
-          "default": 1.0,
+          "default": 1,
           "minimum": 0.01,
-          "maximum": 1000.0
+          "maximum": 1000
         }
       }
     },
@@ -103,7 +103,6 @@
       "type": "object",
       "required": [
         "type",
-        "coordinateSystem",
         "elements"
       ],
       "properties": {
@@ -117,7 +116,9 @@
         "coordinateSystem": {
           "type": "string",
           "enum": [
-            "EarthMJ2000Eq"
+            "EarthMJ2000Eq",
+            "LunaMJ2000Eq",
+            "MarsMJ2000Eq"
           ],
           "default": "EarthMJ2000Eq"
         },
@@ -126,33 +127,33 @@
           "properties": {
             "semiMajorAxisKm": {
               "type": "number",
-              "minimum": 6478.137,
-              "description": "Semi-major axis in km (minimum Earth surface + 100km)"
+              "exclusiveMinimum": 0,
+              "description": "Semi-major axis in km; periapsis safety is checked for the selected central body"
             },
             "eccentricity": {
               "type": "number",
-              "minimum": 0.0,
+              "minimum": 0,
               "maximum": 0.99
             },
             "inclinationDeg": {
               "type": "number",
-              "minimum": 0.0,
-              "maximum": 180.0
+              "minimum": 0,
+              "maximum": 180
             },
             "raanDeg": {
               "type": "number",
-              "minimum": 0.0,
-              "maximum": 360.0
+              "minimum": 0,
+              "maximum": 360
             },
             "argumentOfPeriapsisDeg": {
               "type": "number",
-              "minimum": 0.0,
-              "maximum": 360.0
+              "minimum": 0,
+              "maximum": 360
             },
             "trueAnomalyDeg": {
               "type": "number",
-              "minimum": 0.0,
-              "maximum": 360.0
+              "minimum": 0,
+              "maximum": 360
             },
             "xKm": {
               "type": "number"
@@ -268,7 +269,7 @@
               },
               "elapsedSecs": {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               }
             }
           },
@@ -298,11 +299,11 @@
             "properties": {
               "targetOrbitRadiusKm": {
                 "type": "number",
-                "minimum": 6500.0
+                "exclusiveMinimum": 0
               },
               "targetEccentricity": {
                 "type": "number",
-                "minimum": 0.0,
+                "minimum": 0,
                 "maximum": 0.99
               }
             }
@@ -339,7 +340,7 @@
                 "value": {
                   "type": "number",
                   "minimum": 0.001,
-                  "maximum": 365.0
+                  "maximum": 365
                 }
               }
             },
@@ -356,7 +357,7 @@
                 "value": {
                   "type": "number",
                   "minimum": 0.001,
-                  "maximum": 8760.0
+                  "maximum": 8760
                 }
               }
             },
@@ -373,7 +374,7 @@
                 "value": {
                   "type": "number",
                   "minimum": 0.001,
-                  "maximum": 31536000.0
+                  "maximum": 31536000
                 }
               }
             },
@@ -390,19 +391,130 @@
                 "value": {
                   "type": "number",
                   "minimum": 0.001,
-                  "maximum": 365.0
+                  "maximum": 365
                 }
               }
             }
           ]
-        }
-        ,"stepSizeSecs": {
+        },
+        "stepSizeSecs": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 3600.0,
-          "default": 60.0
+          "maximum": 3600,
+          "default": 60
         }
       }
     }
-  }
-} 
+  },
+  "allOf": [
+    {
+      "properties": {
+        "maneuvers": {
+          "items": {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "TargetedHohmannTransfer"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "targetObjectives": {
+                  "required": [
+                    "targetOrbitRadiusKm"
+                  ]
+                },
+                "trigger": {
+                  "properties": {
+                    "condition": {
+                      "enum": [
+                        "AtPeriapsis",
+                        "AtApoapsis"
+                      ]
+                    }
+                  }
+                }
+              },
+              "required": [
+                "targetObjectives"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "centralBody": {
+            "const": "Earth"
+          }
+        },
+        "required": [
+          "centralBody"
+        ]
+      },
+      "then": {
+        "properties": {
+          "initialOrbit": {
+            "properties": {
+              "coordinateSystem": {
+                "const": "EarthMJ2000Eq"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "centralBody": {
+            "const": "Moon"
+          }
+        },
+        "required": [
+          "centralBody"
+        ]
+      },
+      "then": {
+        "properties": {
+          "initialOrbit": {
+            "properties": {
+              "coordinateSystem": {
+                "const": "LunaMJ2000Eq"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "centralBody": {
+            "const": "Mars"
+          }
+        },
+        "required": [
+          "centralBody"
+        ]
+      },
+      "then": {
+        "properties": {
+          "initialOrbit": {
+            "properties": {
+              "coordinateSystem": {
+                "const": "MarsMJ2000Eq"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -19,12 +19,9 @@ from orbitlab_core.ast.models import (
     OrbitLabExperiment,
 )
 from orbitlab_core.constants import (
-    EARTH_MU_KM3_S2,
-    EARTH_RADIUS_KM,
-    MARS_MU_KM3_S2,
+    CENTRAL_BODY_PROPERTIES,
+    MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM,
     MIN_PERIAPSIS_ALTITUDE_KM,
-    MIN_PERIAPSIS_RADIUS_KM,
-    MOON_MU_KM3_S2,
 )
 
 
@@ -53,13 +50,11 @@ class ValidationResult:
 
 def get_body_constants(central_body: str) -> Tuple[float, float]:
     """Return (radius_km, mu_km3_s2) for the given central body[cite: 7]."""
-    if central_body.lower() == "moon":
-        return 1737.4, MOON_MU_KM3_S2
-    elif central_body.lower() == "mars":
-        return 3389.5, MARS_MU_KM3_S2
-    else:
-        # Default Earth
-        return EARTH_RADIUS_KM, EARTH_MU_KM3_S2
+    try:
+        radius, mu, _, _ = CENTRAL_BODY_PROPERTIES[central_body]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported central body: {central_body!r}") from exc
+    return radius, mu
 
 
 def compute_orbital_properties_from_keplerian(
@@ -100,6 +95,8 @@ def compute_orbital_properties_from_cartesian(
     v_vec = (elements.vxKmS, elements.vyKmS, elements.vzKmS)
 
     r = math.sqrt(r_vec[0]**2 + r_vec[1]**2 + r_vec[2]**2)
+    if r == 0.0:
+        raise ValueError("Cartesian position vector must have non-zero magnitude")
     v2 = v_vec[0]**2 + v_vec[1]**2 + v_vec[2]**2
     v = math.sqrt(v2)
 
@@ -172,10 +169,14 @@ class AstrodynamicValidator:
         min_allowed_alt = (
             MIN_PERIAPSIS_ALTITUDE_KM
             if experiment.centralBody == "Earth"
-            else 20.0
+            else MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM
         )
         min_allowed_radius = radius_body + min_allowed_alt
 
+        if experiment.centralBody != "Earth" and experiment.forceModel.atmosphericDrag.enabled:
+            errors.append(
+                f"Atmospheric drag is not supported for central body '{experiment.centralBody}'."
+            )
         # 1. Orbit state check
         orbit = experiment.initialOrbit
         props: AstrodynamicProperties
@@ -253,6 +254,15 @@ class AstrodynamicValidator:
                     properties=props_dict,
                 )
 
+            if not any((orbit.elements.xKm, orbit.elements.yKm, orbit.elements.zKm)):
+                errors.append("Cartesian position vector must have non-zero magnitude.")
+                return ValidationResult(
+                    is_valid=False,
+                    errors=errors,
+                    warnings=warnings,
+                    properties=props_dict,
+                )
+
             props = compute_orbital_properties_from_cartesian(
                 orbit.elements,
                 radius_body,
@@ -317,11 +327,37 @@ class AstrodynamicValidator:
 
             elif m.type == "TargetedHohmannTransfer" and m.targetObjectives:
                 tgt_r = m.targetObjectives.targetOrbitRadiusKm
-                if tgt_r and tgt_r < min_allowed_radius:
-                    errors.append(
-                        f"TargetedHohmannTransfer '{m.id}' specifies target radius {tgt_r:.2f} km "
-                        f"below safe radius {min_allowed_radius:.2f} km."
+                if tgt_r is not None and props.is_bound:
+                    current_radius = (
+                        props.periapsis_radius_km
+                        if m.trigger.condition == "AtPeriapsis"
+                        else props.apoapsis_radius_km
                     )
+                    target_eccentricity = (
+                        m.targetObjectives.targetEccentricity
+                        if m.targetObjectives.targetEccentricity is not None
+                        else 0.0
+                    )
+                    transfer_apsis = (
+                        "Apoapsis"
+                        if tgt_r > current_radius
+                        else "Periapsis"
+                    )
+                    target_periapsis = (
+                        tgt_r
+                        if transfer_apsis == "Periapsis"
+                        else tgt_r * (1.0 - target_eccentricity) / (1.0 + target_eccentricity)
+                    )
+                    if target_periapsis < min_allowed_radius:
+                        errors.append(
+                            f"TargetedHohmannTransfer '{m.id}' specifies a target periapsis "
+                            f"radius {target_periapsis:.2f} km below safe radius {min_allowed_radius:.2f} km."
+                        )
+                elif tgt_r is not None:
+                    errors.append(
+                        f"TargetedHohmannTransfer '{m.id}' requires a bound initial orbit."
+                    )
+
 
         # 5. Check propagation duration
         stop = experiment.propagation.stopCondition

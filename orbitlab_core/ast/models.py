@@ -6,6 +6,7 @@ and serialization for orbital experiments.
 
 from __future__ import annotations
 
+import math
 from typing import Annotated, Any, List, Literal, Optional, Union
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
@@ -75,37 +76,43 @@ class KeplerianElements(BaseModel):
     """Classical Keplerian orbital elements."""
     semiMajorAxisKm: float = Field(
         ...,
-        ge=6478.137,
-        description="Semi-major axis in km (minimum Earth surface + 100km)"
+        gt=0.0,
+        allow_inf_nan=False,
+        description="Semi-major axis in km; periapsis safety is checked for the selected central body"
     )
     eccentricity: float = Field(
         ...,
         ge=0.0,
         le=0.99,
+        allow_inf_nan=False,
         description="Orbital eccentricity (0 for circular, <1 for elliptical)"
     )
     inclinationDeg: float = Field(
         ...,
         ge=0.0,
         le=180.0,
+        allow_inf_nan=False,
         description="Orbital inclination in degrees"
     )
     raanDeg: float = Field(
         default=0.0,
         ge=0.0,
         le=360.0,
+        allow_inf_nan=False,
         description="Right ascension of the ascending node in degrees"
     )
     argumentOfPeriapsisDeg: float = Field(
         default=0.0,
         ge=0.0,
         le=360.0,
+        allow_inf_nan=False,
         description="Argument of periapsis in degrees"
     )
     trueAnomalyDeg: float = Field(
         default=0.0,
         ge=0.0,
         le=360.0,
+        allow_inf_nan=False,
         description="True anomaly in degrees"
     )
 
@@ -126,9 +133,9 @@ class InitialOrbitConfig(BaseModel):
         ...,
         description="Orbit state parameterization type"
     )
-    coordinateSystem: Literal["EarthMJ2000Eq"] = Field(
-        default="EarthMJ2000Eq",
-        description="Inertial coordinate reference system"
+    coordinateSystem: Optional[Literal["EarthMJ2000Eq", "LunaMJ2000Eq", "MarsMJ2000Eq"]] = Field(
+        default=None,
+        description="Body-centered inertial coordinate reference system"
     )
     elements: Union[KeplerianElements, CartesianElements] = Field(
         ...,
@@ -138,14 +145,16 @@ class InitialOrbitConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def parse_elements(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            orbit_type = data.get("type")
-            elements_data = data.get("elements")
-            if isinstance(elements_data, dict):
-                if orbit_type == "Keplerian" and not isinstance(elements_data, KeplerianElements):
-                    data["elements"] = KeplerianElements(**elements_data)
-                elif orbit_type == "Cartesian" and not isinstance(elements_data, CartesianElements):
-                    data["elements"] = CartesianElements(**elements_data)
+        if not isinstance(data, dict):
+            return data
+        data = data.copy()
+        orbit_type = data.get("type")
+        elements_data = data.get("elements")
+        if isinstance(elements_data, dict):
+            if orbit_type == "Keplerian" and not isinstance(elements_data, KeplerianElements):
+                data["elements"] = KeplerianElements(**elements_data)
+            elif orbit_type == "Cartesian" and not isinstance(elements_data, CartesianElements):
+                data["elements"] = CartesianElements(**elements_data)
         return data
 
 
@@ -188,6 +197,11 @@ class ForceModelConfig(BaseModel):
         description="Whether solar radiation pressure perturbation is active"
     )
 
+    @model_validator(mode="after")
+    def validate_gravity_order(self) -> ForceModelConfig:
+        if self.gravityOrder > self.gravityDegree:
+            raise ValueError("gravityOrder must not exceed gravityDegree")
+        return self
 
 class ManeuverTrigger(BaseModel):
     """Execution trigger condition for a maneuver."""
@@ -221,13 +235,19 @@ class BurnVector(BaseModel):
         description="[V_velocity, N_normal, B_binormal] components in km/s"
     )
 
+    @model_validator(mode="after")
+    def validate_finite_components(self) -> BurnVector:
+        if any(not math.isfinite(component) for component in self.deltaVVectorKmS):
+            raise ValueError("Delta-V vector components must be finite")
+        return self
+
 
 class TargetObjectives(BaseModel):
     """Target orbital parameters for automated differential correction transfers."""
     targetOrbitRadiusKm: Optional[float] = Field(
         default=None,
-        ge=6500.0,
-        description="Desired target circular or apoapsis orbit radius in km"
+        gt=0.0,
+        description="Target orbit apsis radius in km; it is apoapsis for outward transfers and periapsis for inward transfers"
     )
     targetEccentricity: Optional[float] = Field(
         default=None,
@@ -266,6 +286,15 @@ class ManeuverConfig(BaseModel):
             raise ValueError(f"Maneuver '{self.id}' of type ImpulsiveBurn requires burnVector")
         if self.type == "TargetedHohmannTransfer" and self.targetObjectives is None:
             raise ValueError(f"Maneuver '{self.id}' of type TargetedHohmannTransfer requires targetObjectives")
+        if self.type == "TargetedHohmannTransfer":
+            if self.targetObjectives.targetOrbitRadiusKm is None:
+                raise ValueError(
+                    f"Maneuver '{self.id}' of type TargetedHohmannTransfer requires targetOrbitRadiusKm"
+                )
+            if self.trigger.condition == "ElapsedTimeSecs":
+                raise ValueError(
+                    f"Maneuver '{self.id}' of type TargetedHohmannTransfer requires an apsis trigger"
+                )
         return self
 
 
@@ -367,3 +396,57 @@ class OrbitLabExperiment(BaseModel):
         ...,
         description="Numerical integrator and propagation duration"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_central_body_coordinate_system(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = data.copy()
+        body = data.get("centralBody", "Earth")
+        expected = {
+            "Earth": "EarthMJ2000Eq",
+            "Moon": "LunaMJ2000Eq",
+            "Mars": "MarsMJ2000Eq",
+        }.get(body)
+        orbit = data.get("initialOrbit")
+        if expected is None:
+            return data
+        if isinstance(orbit, InitialOrbitConfig):
+            coordinate_system = orbit.coordinateSystem
+            if coordinate_system is None:
+                data["initialOrbit"] = orbit.model_copy(
+                    update={"coordinateSystem": expected}
+                )
+            elif coordinate_system != expected:
+                raise ValueError(
+                    f"initialOrbit.coordinateSystem must be {expected!r} for centralBody {body!r}"
+                )
+            return data
+        if not isinstance(orbit, dict):
+            return data
+        orbit = orbit.copy()
+        coordinate_system = orbit.get("coordinateSystem")
+        if coordinate_system is None:
+            orbit["coordinateSystem"] = expected
+        elif coordinate_system != expected:
+            raise ValueError(
+                f"initialOrbit.coordinateSystem must be {expected!r} for centralBody {body!r}"
+            )
+        data["initialOrbit"] = orbit
+        return data
+
+    @model_validator(mode="after")
+    def validate_finite_physics_values(self) -> OrbitLabExperiment:
+        def check(value: Any, path: str) -> None:
+            if isinstance(value, dict):
+                for key, nested_value in value.items():
+                    check(nested_value, f"{path}.{key}")
+            elif isinstance(value, (list, tuple)):
+                for index, nested_value in enumerate(value):
+                    check(nested_value, f"{path}[{index}]")
+            elif isinstance(value, float) and not math.isfinite(value):
+                raise ValueError(f"{path} must be finite")
+
+        check(self.model_dump(mode="python"), "experiment")
+        return self

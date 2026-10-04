@@ -25,7 +25,11 @@ from orbitlab_core.compiler.templates import (
     compute_keplerian_period_seconds,
     normalize_gmat_path,
 )
-from orbitlab_core.constants import EARTH_MU_KM3_S2
+from orbitlab_core.ast.validation import (
+    compute_orbital_properties_from_cartesian,
+    get_body_constants,
+)
+from orbitlab_core.constants import CENTRAL_BODY_PROPERTIES
 
 
 class GmatScriptCompiler:
@@ -65,16 +69,26 @@ class GmatScriptCompiler:
 
         sc_name = experiment.spacecraft.name
         central_body = experiment.centralBody
+        body_radius_km, body_mu_km3_s2 = get_body_constants(central_body)
+        gmat_body, _ = CENTRAL_BODY_PROPERTIES[central_body][2:]
+        coordinate_system = experiment.initialOrbit.coordinateSystem
 
         # 2. Spacecraft Definition
         lines.append("%" + "-" * 40)
         lines.append("%---------- Spacecraft Configuration")
         lines.append("%" + "-" * 40)
+        if central_body != "Earth":
+            lines.append(f"Create CoordinateSystem {coordinate_system};")
+            lines.append(f"{coordinate_system}.Origin = {gmat_body};")
+            lines.append(f"{coordinate_system}.Axes = MJ2000Eq;")
+            lines.append("")
+
         lines.append(f"Create Spacecraft {sc_name};")
         lines.append("")
+
         lines.append(f"{sc_name}.DateFormat = {experiment.epoch.format};")
         lines.append(f"{sc_name}.Epoch = '{experiment.epoch.value}';")
-        lines.append(f"{sc_name}.CoordinateSystem = {experiment.initialOrbit.coordinateSystem};")
+        lines.append(f"{sc_name}.CoordinateSystem = {coordinate_system};")
 
         orbit = experiment.initialOrbit
         if orbit.type == "Keplerian":
@@ -113,18 +127,21 @@ class GmatScriptCompiler:
         lines.append("%" + "-" * 40)
         lines.append(f"Create ForceModel {fm_name};")
         lines.append("")
-        lines.append(f"{fm_name}.CentralBody = {central_body};")
-        lines.append(f"{fm_name}.PrimaryBodies = {{{central_body}}};")
+        lines.append(f"{fm_name}.CentralBody = {gmat_body};")
+        lines.append(f"{fm_name}.PrimaryBodies = {{{gmat_body}}};")
+        if central_body == "Mars":
+            lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = Mars50c.cof;")
+        elif central_body == "Moon":
+            lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = LP165P.cof;")
+        lines.append(f"{fm_name}.GravityField.{gmat_body}.Degree = {fm.gravityDegree};")
+        lines.append(f"{fm_name}.GravityField.{gmat_body}.Order = {fm.gravityOrder};")
 
-        if central_body == "Earth":
-            lines.append(f"{fm_name}.GravityField.Earth.Degree = {fm.gravityDegree};")
-            lines.append(f"{fm_name}.GravityField.Earth.Order = {fm.gravityOrder};")
-
-        if fm.pointMasses:
-            pm_str = ", ".join(fm.pointMasses)
+        point_masses = [body for body in fm.pointMasses if body != gmat_body]
+        if point_masses:
+            pm_str = ", ".join(point_masses)
             lines.append(f"{fm_name}.PointMasses = {{{pm_str}}};")
 
-        if fm.atmosphericDrag.enabled and central_body == "Earth":
+        if fm.atmosphericDrag.enabled:
             lines.append(f"{fm_name}.Drag.AtmosphereModel = {fm.atmosphericDrag.model};")
 
         srp_val = "On" if fm.solarRadiationPressure else "Off"
@@ -148,14 +165,14 @@ class GmatScriptCompiler:
         lines.append("%" + "-" * 40)
         lines.append("%---------- Maneuvers & Impulsive Burns")
         lines.append("%" + "-" * 40)
-        hohmann_transfers = []
+        hohmann_transfers = {}
         for m in experiment.maneuvers:
             if m.type == "ImpulsiveBurn" and m.burnVector:
                 burn_name = f"Burn_{m.id}"
                 bv = m.burnVector.deltaVVectorKmS
                 lines.append(f"Create ImpulsiveBurn {burn_name};")
                 lines.append(f"{burn_name}.CoordinateSystem = Local;")
-                lines.append(f"{burn_name}.Origin = {central_body};")
+                lines.append(f"{burn_name}.Origin = {gmat_body};")
                 lines.append(f"{burn_name}.Axes = VNB;")
                 lines.append(f"{burn_name}.Element1 = {bv[0]:.6f};")
                 lines.append(f"{burn_name}.Element2 = {bv[1]:.6f};")
@@ -163,18 +180,56 @@ class GmatScriptCompiler:
                 lines.append(f"{burn_name}.DecrementMass = false;")
                 lines.append("")
             elif m.type == "TargetedHohmannTransfer" and m.targetObjectives:
-                hohmann_transfers.append(m)
                 # Compute analytical Delta-Vs
-                r1 = orbit.elements.semiMajorAxisKm if orbit.type == "Keplerian" else math.sqrt(orbit.elements.xKm**2 + orbit.elements.yKm**2 + orbit.elements.zKm**2)  # type: ignore
-                r2 = m.targetObjectives.targetOrbitRadiusKm or (r1 + 1000.0)
-                dv1, dv2 = compute_hohmann_delta_v(r1, r2, EARTH_MU_KM3_S2)
+                if m.targetObjectives.targetOrbitRadiusKm is None:
+                    raise ValueError(f"TargetedHohmannTransfer '{m.id}' requires targetOrbitRadiusKm")
+                if orbit.type == "Keplerian":
+                    elements: KeplerianElements = orbit.elements  # type: ignore
+                    r1 = (
+                        elements.semiMajorAxisKm * (1.0 - elements.eccentricity)
+                        if m.trigger.condition == "AtPeriapsis"
+                        else elements.semiMajorAxisKm * (1.0 + elements.eccentricity)
+                    )
+                    source_semi_major_axis = elements.semiMajorAxisKm
+                else:
+                    cartesian: CartesianElements = orbit.elements  # type: ignore
+                    properties = compute_orbital_properties_from_cartesian(
+                        cartesian,
+                        body_radius_km,
+                        body_mu_km3_s2,
+                    )
+                    if not properties.is_bound:
+                        raise ValueError("TargetedHohmannTransfer requires a bound initial orbit")
+                    source_semi_major_axis = properties.semi_major_axis_km
+                    r1 = (
+                        properties.periapsis_radius_km
+                        if m.trigger.condition == "AtPeriapsis"
+                        else properties.apoapsis_radius_km
+                    )
+                r2 = m.targetObjectives.targetOrbitRadiusKm
+                if r2 is None:
+                    raise ValueError(f"TargetedHohmannTransfer '{m.id}' requires targetOrbitRadiusKm")
+                if math.isclose(r1, r2, rel_tol=1e-12):
+                    raise ValueError(
+                        f"TargetedHohmannTransfer '{m.id}' target radius must differ from the burn radius"
+                    )
+                initial_velocity = math.sqrt(body_mu_km3_s2 * (2.0 / r1 - 1.0 / source_semi_major_axis))
+                target_eccentricity = m.targetObjectives.targetEccentricity or 0.0
+                dv1, dv2 = compute_hohmann_delta_v(
+                    r1,
+                    r2,
+                    body_mu_km3_s2,
+                    initial_velocity_km_s=initial_velocity,
+                    target_eccentricity=target_eccentricity,
+                )
+                hohmann_transfers[m.id] = "Apoapsis" if r2 > r1 else "Periapsis"
 
                 burn1_name = f"Burn_{m.id}_Insertion"
-                burn2_name = f"Burn_{m.id}_Circularize"
+                burn2_name = f"Burn_{m.id}_TargetInsertion"
 
                 lines.append(f"Create ImpulsiveBurn {burn1_name};")
                 lines.append(f"{burn1_name}.CoordinateSystem = Local;")
-                lines.append(f"{burn1_name}.Origin = {central_body};")
+                lines.append(f"{burn1_name}.Origin = {gmat_body};")
                 lines.append(f"{burn1_name}.Axes = VNB;")
                 lines.append(f"{burn1_name}.Element1 = {dv1:.6f};")
                 lines.append(f"{burn1_name}.Element2 = 0.0;")
@@ -184,7 +239,7 @@ class GmatScriptCompiler:
 
                 lines.append(f"Create ImpulsiveBurn {burn2_name};")
                 lines.append(f"{burn2_name}.CoordinateSystem = Local;")
-                lines.append(f"{burn2_name}.Origin = {central_body};")
+                lines.append(f"{burn2_name}.Origin = {gmat_body};")
                 lines.append(f"{burn2_name}.Axes = VNB;")
                 lines.append(f"{burn2_name}.Element1 = {dv2:.6f};")
                 lines.append(f"{burn2_name}.Element2 = 0.0;")
@@ -204,9 +259,9 @@ class GmatScriptCompiler:
         lines.append(
             f"{report_name}.Add = {{"
             f"{sc_name}.ElapsedSecs, "
-            f"{sc_name}.EarthMJ2000Eq.X, {sc_name}.EarthMJ2000Eq.Y, {sc_name}.EarthMJ2000Eq.Z, "
-            f"{sc_name}.EarthMJ2000Eq.VX, {sc_name}.EarthMJ2000Eq.VY, {sc_name}.EarthMJ2000Eq.VZ, "
-            f"{sc_name}.Earth.SMA, {sc_name}.Earth.ECC, {sc_name}.INC, {sc_name}.Earth.Altitude"
+            f"{sc_name}.{coordinate_system}.X, {sc_name}.{coordinate_system}.Y, {sc_name}.{coordinate_system}.Z, "
+            f"{sc_name}.{coordinate_system}.VX, {sc_name}.{coordinate_system}.VY, {sc_name}.{coordinate_system}.VZ, "
+            f"{sc_name}.{gmat_body}.SMA, {sc_name}.{gmat_body}.ECC, {sc_name}.INC, {sc_name}.{gmat_body}.Altitude"
             f"}};"
         )
         lines.append("")
@@ -224,9 +279,9 @@ class GmatScriptCompiler:
                 burn_name = f"Burn_{m.id}"
                 # Trigger propagation
                 if m.trigger.condition == "AtPeriapsis":
-                    lines.append(f"Propagate 'Prop to Periapsis' {prop_name}({sc_name}) {{{sc_name}.Earth.Periapsis}};")
+                    lines.append(f"Propagate 'Prop to Periapsis' {prop_name}({sc_name}) {{{sc_name}.{gmat_body}.Periapsis}};")
                 elif m.trigger.condition == "AtApoapsis":
-                    lines.append(f"Propagate 'Prop to Apoapsis' {prop_name}({sc_name}) {{{sc_name}.Earth.Apoapsis}};")
+                    lines.append(f"Propagate 'Prop to Apoapsis' {prop_name}({sc_name}) {{{sc_name}.{gmat_body}.Apoapsis}};")
                 elif m.trigger.condition == "ElapsedTimeSecs":
                     el_s = m.trigger.elapsedSecs or 0.0
                     lines.append(f"Propagate 'Prop to Maneuver Epoch' {prop_name}({sc_name}) {{{sc_name}.ElapsedSecs = {el_s:.2f}}};")
@@ -237,18 +292,22 @@ class GmatScriptCompiler:
 
             elif m.type == "TargetedHohmannTransfer":
                 burn1_name = f"Burn_{m.id}_Insertion"
-                burn2_name = f"Burn_{m.id}_Circularize"
+                burn2_name = f"Burn_{m.id}_TargetInsertion"
 
                 # Hohmann step 1: Propagate to insertion point (periapsis)
                 if m.trigger.condition == "AtApoapsis":
-                    lines.append(f"Propagate 'Prop to Apoapsis' {prop_name}({sc_name}) {{{sc_name}.Earth.Apoapsis}};")
+                    lines.append(f"Propagate 'Prop to Apoapsis' {prop_name}({sc_name}) {{{sc_name}.{gmat_body}.Apoapsis}};")
                 else:
-                    lines.append(f"Propagate 'Prop to Periapsis' {prop_name}({sc_name}) {{{sc_name}.Earth.Periapsis}};")
+                    lines.append(f"Propagate 'Prop to Periapsis' {prop_name}({sc_name}) {{{sc_name}.{gmat_body}.Periapsis}};")
 
                 lines.append(f"Maneuver 'Hohmann Insertion Burn' {burn1_name}({sc_name});")
-                # Hohmann step 2: Propagate transfer ellipse to Apoapsis
-                lines.append(f"Propagate 'Prop to Hohmann Apoapsis' {prop_name}({sc_name}) {{{sc_name}.Earth.Apoapsis}};")
-                lines.append(f"Maneuver 'Hohmann Circularize Burn' {burn2_name}({sc_name});")
+                # Propagate to the transfer ellipse's opposite apsis.
+                transfer_apsis = hohmann_transfers[m.id]
+                lines.append(
+                    f"Propagate 'Prop to Hohmann {transfer_apsis}' "
+                    f"{prop_name}({sc_name}) {{{sc_name}.{gmat_body}.{transfer_apsis}}};"
+                )
+                lines.append(f"Maneuver 'Hohmann Target Insertion Burn' {burn2_name}({sc_name});")
                 lines.append("")
 
         # Final mission propagation stop condition
@@ -267,10 +326,12 @@ class GmatScriptCompiler:
             else:
                 r_mag = math.sqrt(orbit.elements.xKm**2 + orbit.elements.yKm**2 + orbit.elements.zKm**2)  # type: ignore
                 v_mag2 = orbit.elements.vxKmS**2 + orbit.elements.vyKmS**2 + orbit.elements.vzKmS**2  # type: ignore
-                energy = (v_mag2 / 2.0) - (EARTH_MU_KM3_S2 / r_mag)
-                a_km = -EARTH_MU_KM3_S2 / (2.0 * energy) if abs(energy) > 1e-12 else r_mag
+                energy = (v_mag2 / 2.0) - (body_mu_km3_s2 / r_mag)
+                if energy >= 0.0:
+                    raise ValueError("OrbitPeriods propagation requires a bound initial orbit")
+                a_km = -body_mu_km3_s2 / (2.0 * energy)
 
-            period_s = compute_keplerian_period_seconds(a_km, EARTH_MU_KM3_S2)
+            period_s = compute_keplerian_period_seconds(a_km, body_mu_km3_s2)
             total_duration_s = stop.value * period_s
             lines.append(f"Propagate 'Mission Propagation' {prop_name}({sc_name}) {{{sc_name}.ElapsedSecs = {total_duration_s:.2f}}};")
 

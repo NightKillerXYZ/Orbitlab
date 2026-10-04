@@ -28,3 +28,6 @@ htmlcov/
 .coverage
 .coverage.*
 phase3_ai_interpreter/datasets/orbitlab_interpreter_validation.jsonl
+.devswarm-temp/
+.backboard/
+.vscode/

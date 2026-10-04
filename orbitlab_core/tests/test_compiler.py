@@ -173,9 +173,165 @@ class TestGmatScriptCompiler(unittest.TestCase):
 
         script = self.compiler.compile_to_string(exp)
         self.assertIn("Create ImpulsiveBurn Burn_HohmannMEO_Insertion;", script)
-        self.assertIn("Create ImpulsiveBurn Burn_HohmannMEO_Circularize;", script)
+        self.assertIn("Create ImpulsiveBurn Burn_HohmannMEO_TargetInsertion;", script)
         self.assertIn("Maneuver 'Hohmann Insertion Burn' Burn_HohmannMEO_Insertion(TransferSat);", script)
-        self.assertIn("Maneuver 'Hohmann Circularize Burn' Burn_HohmannMEO_Circularize(TransferSat);", script)
+        self.assertIn("Maneuver 'Hohmann Target Insertion Burn' Burn_HohmannMEO_TargetInsertion(TransferSat);", script)
+
+    def test_non_earth_script_uses_body_frame_mu_and_body_parameters(self):
+        exp = OrbitLabExperiment(
+            experimentName="Moon_Transfer",
+            centralBody="Moon",
+            spacecraft=SpacecraftConfig(name="MoonSat", dryMassKg=300.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                coordinateSystem="LunaMJ2000Eq",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=2000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="Raise",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtPeriapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=3000.0,
+                    targetEccentricity=0.2,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="OrbitPeriods", value=2.0)
+            ),
+        )
+
+        script = self.compiler.compile_to_string(exp)
+        self.assertIn("Create CoordinateSystem LunaMJ2000Eq;", script)
+        self.assertIn("LunaMJ2000Eq.Origin = Luna;", script)
+        self.assertIn("OrbitLabForceModel.CentralBody = Luna;", script)
+        self.assertIn("OrbitLabForceModel.GravityField.Luna.Degree = 4;", script)
+        self.assertIn("MoonSat.LunaMJ2000Eq.X", script)
+        self.assertIn("MoonSat.Luna.SMA", script)
+        self.assertIn("MoonSat.Luna.Periapsis", script)
+        self.assertIn("MoonSat.Luna.Apoapsis", script)
+        self.assertIn("Propagate 'Mission Propagation' OrbitLabPropagator(MoonSat) {MoonSat.ElapsedSecs = 16052.13};", script)
+        self.assertIn("Burn_Raise_Insertion.Element1 = 0.149438;", script)
+        self.assertIn("Burn_Raise_TargetInsertion.Element1 = 0.000000;", script)
+        self.assertNotIn("EarthMJ2000Eq", script)
+        self.assertNotIn("GravityField.Earth", script)
+
+    def test_nonzero_eccentric_hohmann_target_is_compiled(self):
+        exp = OrbitLabExperiment(
+            experimentName="Apoapsis_Elliptic_Target",
+            spacecraft=SpacecraftConfig(name="TargetSat", dryMassKg=300.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=8200.0,
+                    eccentricity=0.01,
+                    inclinationDeg=56.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="EllipticTarget",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtApoapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=18000.0,
+                    targetEccentricity=0.12,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=100.0)
+            ),
+        )
+
+        script = self.compiler.compile_to_string(exp)
+        self.assertIn("Burn_EllipticTarget_TargetInsertion.Element1 =", script)
+        self.assertIn("Propagate 'Prop to Hohmann Apoapsis'", script)
+        self.assertIn("Burn_EllipticTarget_Insertion.Element1 = 1.216690;", script)
+        self.assertIn("Burn_EllipticTarget_TargetInsertion.Element1 = 0.678602;", script)
+
+    def test_nonzero_eccentric_inward_hohmann_target_is_compiled(self):
+        experiment = OrbitLabExperiment(
+            experimentName="Circular_to_Elliptic_Inward",
+            spacecraft=SpacecraftConfig(name="InwardSat", dryMassKg=300.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=10000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="LowerAtApoapsis",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtApoapsis"),
+                targetObjectives=TargetObjectives(
+                    targetOrbitRadiusKm=7000.0,
+                    targetEccentricity=0.1,
+                ),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=100.0)
+            ),
+        )
+
+        script = self.compiler.compile_to_string(experiment)
+        self.assertIn("Burn_LowerAtApoapsis_Insertion.Element1 = -0.584090;", script)
+        self.assertIn("Burn_LowerAtApoapsis_TargetInsertion.Element1 = -0.270477;", script)
+        self.assertIn("Propagate 'Prop to Hohmann Periapsis'", script)
+
+    def test_hohmann_target_equal_to_burn_radius_is_rejected(self):
+        experiment = OrbitLabExperiment(
+            experimentName="ZeroTransfer",
+            spacecraft=SpacecraftConfig(name="ZeroSat", dryMassKg=100.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=8000.0,
+                    eccentricity=0.1,
+                    inclinationDeg=10.0,
+                ),
+            ),
+            maneuvers=[ManeuverConfig(
+                id="NoOpTransfer",
+                type="TargetedHohmannTransfer",
+                trigger=ManeuverTrigger(condition="AtPeriapsis"),
+                targetObjectives=TargetObjectives(targetOrbitRadiusKm=7200.0),
+            )],
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=10.0)
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "target radius must differ from the burn radius"):
+            self.compiler.compile_to_string(experiment)
+
+    def test_mars_gravity_model_uses_available_potential(self):
+        exp = OrbitLabExperiment(
+            experimentName="MarsOrbit",
+            centralBody="Mars",
+            spacecraft=SpacecraftConfig(name="MarsSat", dryMassKg=300.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Keplerian",
+                coordinateSystem="MarsMJ2000Eq",
+                elements=KeplerianElements(
+                    semiMajorAxisKm=4000.0,
+                    eccentricity=0.0,
+                    inclinationDeg=0.0,
+                ),
+            ),
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="ElapsedSeconds", value=120.0)
+            ),
+        )
+
+        script = self.compiler.compile_to_string(exp)
+        self.assertIn("MarsMJ2000Eq.Origin = Mars;", script)
+        self.assertIn("OrbitLabForceModel.GravityField.Mars.PotentialFile = Mars50c.cof;", script)
+        self.assertIn("OrbitLabForceModel.GravityField.Mars.Degree = 4;", script)
 
     def test_orbit_periods_stop_condition(self):
         exp = OrbitLabExperiment(
@@ -197,6 +353,29 @@ class TestGmatScriptCompiler(unittest.TestCase):
         script = self.compiler.compile_to_string(exp)
         # Period for 7000 km is ~5828.516s * 5 = 29142.58s
         self.assertIn("Propagate 'Mission Propagation' OrbitLabPropagator(SatPeriod) {SatPeriod.ElapsedSecs = 29142.58};", script)
+
+    def test_cartesian_orbit_periods_use_specific_central_body_mu(self):
+        import math
+
+        experiment = OrbitLabExperiment(
+            experimentName="MoonCartesianPeriods",
+            centralBody="Moon",
+            spacecraft=SpacecraftConfig(name="MoonCart", dryMassKg=250.0),
+            initialOrbit=InitialOrbitConfig(
+                type="Cartesian",
+                coordinateSystem="LunaMJ2000Eq",
+                elements=CartesianElements(
+                    xKm=2000.0, yKm=0.0, zKm=0.0,
+                    vxKmS=0.0, vyKmS=math.sqrt(4902.800066 / 2000.0), vzKmS=0.0,
+                ),
+            ),
+            propagation=PropagationConfig(
+                stopCondition=StopCondition(type="OrbitPeriods", value=1.0)
+            ),
+        )
+
+        script = self.compiler.compile_to_string(experiment)
+        self.assertIn("{MoonCart.ElapsedSecs = 8026.07};", script)
 
     def test_compile_to_file(self):
         import tempfile

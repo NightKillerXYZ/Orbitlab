@@ -159,6 +159,14 @@ def validate() -> int:
                     )
                 schema_valid += 1
                 experiment = OrbitLabExperiment.model_validate(experiment_data)
+                if experiment.centralBody != "Earth":
+                    serialized = experiment.model_dump(mode="json", exclude_none=True)
+                    schema_errors = list(schema_validator.iter_errors(serialized))
+                    if schema_errors:
+                        raise ValueError(
+                            f"{label}: normalized JSON Schema validation failed: "
+                            + "; ".join(error.message for error in schema_errors)
+                        )
                 result = AstrodynamicValidator.validate(experiment)
                 if not result.is_valid:
                     raise ValueError(

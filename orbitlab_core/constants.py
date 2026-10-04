@@ -13,12 +13,18 @@ MOON_MU_KM3_S2: float = 4902.800066
 # Mars gravitational parameter in km^3 / s^2
 MARS_MU_KM3_S2: float = 42828.375214
 
+CENTRAL_BODY_PROPERTIES = {
+    "Earth": (EARTH_RADIUS_KM, EARTH_MU_KM3_S2, "Earth", "EarthMJ2000Eq"),
+    "Moon": (1737.4, MOON_MU_KM3_S2, "Luna", "LunaMJ2000Eq"),
+    "Mars": (3389.5, MARS_MU_KM3_S2, "Mars", "MarsMJ2000Eq"),
+}
+
 # Minimum allowable periapsis altitude above Earth surface in kilometers
 # (Karman line / dense thermosphere entry limit)
 MIN_PERIAPSIS_ALTITUDE_KM: float = 100.0
 
-# Minimum allowable periapsis radius from Earth center (Earth radius + 100 km)
-MIN_PERIAPSIS_RADIUS_KM: float = EARTH_RADIUS_KM + MIN_PERIAPSIS_ALTITUDE_KM  # 6478.1363 km
+# Minimum allowable periapsis altitude above the Moon or Mars surface.
+MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM: float = 20.0
 
 # Maximum eccentricity for bound closed orbits
 MAX_BOUND_ECCENTRICITY: float = 0.999

@@ -348,13 +348,19 @@ def validate_v3_rules(
         else:
             orbit_data = {}
 
-        coordinate_system = orbit_data.get("coordinateSystem")
-
-        if coordinate_system != "EarthMJ2000Eq":
-            failures.append(
-                "V3: initialOrbit.coordinateSystem must be "
-                "'EarthMJ2000Eq'"
-            )
+        central_body = experiment.get("centralBody", "Earth")
+        expected_frame = {
+            "Earth": "EarthMJ2000Eq",
+            "Moon": "LunaMJ2000Eq",
+            "Mars": "MarsMJ2000Eq",
+        }.get(central_body)
+        if expected_frame is not None:
+            coordinate_system = orbit_data.get("coordinateSystem")
+            if coordinate_system not in (None, expected_frame):
+                failures.append(
+                    f"V3: initialOrbit.coordinateSystem must be {expected_frame!r} "
+                    f"for centralBody {central_body!r}"
+                )
 
         orbit_type = orbit_data.get("type")
 
