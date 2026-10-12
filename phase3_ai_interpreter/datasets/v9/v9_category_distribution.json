@@ -1,0 +1,22 @@
+{
+ "target": {
+  "moon-low-orbit": 175,
+  "mars-low-orbit": 175,
+  "earth-drag": 150
+ },
+ "actual": {
+  "moon-low-orbit": 175,
+  "mars-low-orbit": 175,
+  "earth-drag": 150
+ },
+ "blind": {
+  "moon-low-orbit": 18,
+  "mars-low-orbit": 17,
+  "earth-drag": 18,
+  "schema-and-defaults": 12,
+  "maneuvers": 12,
+  "force-model": 10,
+  "integrator-stop": 7,
+  "Moon-Luna-frame": 6
+ }
+}

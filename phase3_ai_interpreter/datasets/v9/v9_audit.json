@@ -1,0 +1,53 @@
+{
+  "v8_master_rows": 3300,
+  "v9_new_rows": 500,
+  "v9_master_rows": 3800,
+  "v9_audit": {
+    "json_valid": 500,
+    "json_schema_valid": 500,
+    "pydantic_valid": 500,
+    "physical_valid": 500,
+    "compiler_valid": 500,
+    "semantic_issue_records": 0,
+    "semantic_issue_count_by_type": {},
+    "schema_drift_fields": 0,
+    "raw_gmat_leakage": 0,
+    "python_code_leakage": 0,
+    "central_bodies": {
+      "Moon": 175,
+      "Mars": 175,
+      "Earth": 150
+    },
+    "drag_enabled_rows": 150,
+    "drag_models": {
+      "JacchiaRoberts": 78,
+      "MSISE90": 72
+    },
+    "distinct_coefficient_of_drag": 109,
+    "distinct_drag_area": 145,
+    "low_band_rows_below_340km": 353,
+    "moon_low_altitude_rows": 175,
+    "mars_low_altitude_rows": 175,
+    "moon_periapsis_km": {
+      "min": 25.000095999999985,
+      "max": 334.99991
+    },
+    "mars_periapsis_km": {
+      "min": 31.00005199999987,
+      "max": 333.99980000000005
+    },
+    "earth_drag_periapsis_km": {
+      "min": 322.00016499999947,
+      "max": 1483.9997399999993
+    },
+    "exact_duplicate_counts": {
+      "within_v9_prompt": 0,
+      "within_v9_answer": 0,
+      "v8_prompt_overlap": 0,
+      "master_prompt_duplicates": 0
+    },
+    "numeric_masked_prompt_collisions": 0,
+    "unique_numeric_masked_templates": 500,
+    "repeated_experiment_names": 0
+  }
+}

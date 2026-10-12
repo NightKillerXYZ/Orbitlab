@@ -23,9 +23,10 @@ from orbitlab_core.ast.validation import AstrodynamicValidator  # noqa: E402
 
 FILES = {
     "train": DATASET_DIR / "v3" / "orbitlab_interpreter_train_v3.jsonl",
+    "train_v4": DATASET_DIR / "v4" / "orbitlab_interpreter_train_v4.jsonl",
     "validation": DATASET_DIR / "orbitlab_interpreter_validation.jsonl",
 }
-EXPECTED_COUNTS = {"train": 302, "validation": 56}
+EXPECTED_COUNTS = {"train": 302, "train_v4": 100, "validation": 56}
 EXPECTED_CATEGORIES = {
     "train": {
         "Basic": 35,
@@ -44,6 +45,15 @@ EXPECTED_CATEGORIES = {
         "ManId": 4,
         "ExactMan": 5,
         "Combo": 9,
+        "V4Body": 16,
+        "V4Force": 12,
+        "V4Cartesian": 12,
+        "V4Hohmann": 14,
+        "V4Multi": 10,
+        "V4Cross": 12,
+        "V4Propagation": 8,
+        "V4Language": 10,
+        "V4Robustness": 6,
     },
     "validation": {
         "Basic": 8,
@@ -62,6 +72,9 @@ STANDARD_CATEGORY_PATTERN = re.compile(
 CORRECTION_V2_PATTERN = re.compile(r"^CorrectionV2_\d{3}$")
 V3_CORRECTION_PATTERN = re.compile(
     r"^(VersionFix|CoordFix|DefForce|MinTest|ManId|ExactMan|Combo)\d{2}$"
+)
+V4_CATEGORY_PATTERN = re.compile(
+    r"^(V4Body|V4Force|V4Cartesian|V4Hohmann|V4Multi|V4Cross|V4Propagation|V4Language|V4Robustness)\d{3}$"
 )
 WORD_PATTERN = re.compile(r"[a-z]+")
 RAW_GMAT_MARKERS = (
@@ -133,14 +146,15 @@ def validate() -> int:
             failures.append(
                 f"{split}: expected {EXPECTED_COUNTS[split]} records, found {len(lines)}"
             )
+        category_split = "validation" if split == "validation" else "train"
         for line_number, line in enumerate(lines, 1):
             label = f"{split}:{line_number}"
             try:
                 outer = json.loads(line)
                 system, user_text, model_text = extract_text(outer, split, line_number)
                 systems.add(system)
-                users.append((split, line_number, user_text))
-                responses.append((split, line_number, model_text))
+                users.append((category_split, line_number, user_text))
+                responses.append((category_split, line_number, model_text))
                 if not user_text.strip():
                     raise ValueError(f"{label}: user request is empty")
                 if any(marker in model_text for marker in RAW_GMAT_MARKERS):
@@ -175,15 +189,18 @@ def validate() -> int:
                 physically_valid += 1
                 name = experiment.experimentName
                 match = STANDARD_CATEGORY_PATTERN.fullmatch(name)
-                if match:
-                    category_counts[split][match.group(1)] += 1
-                elif split == "train":
+                v4_category = V4_CATEGORY_PATTERN.fullmatch(name)
+                if v4_category and split == "train_v4":
+                    category_counts["train"][v4_category.group(1)] += 1
+                elif match:
+                    category_counts[category_split][match.group(1)] += 1
+                elif category_split == "train":
                     correction_v2 = CORRECTION_V2_PATTERN.fullmatch(name)
                     v3_correction = V3_CORRECTION_PATTERN.fullmatch(name)
                     if correction_v2:
-                        category_counts[split]["CorrectionV2"] += 1
+                        category_counts[category_split]["CorrectionV2"] += 1
                     elif v3_correction:
-                        category_counts[split][v3_correction.group(1)] += 1
+                        category_counts[category_split][v3_correction.group(1)] += 1
                     else:
                         raise ValueError(
                             f"{label}: experimentName does not encode a recognized V3 training category"
@@ -204,10 +221,35 @@ def validate() -> int:
         failures.append(
             f"system instruction variants: expected 1, found {len(systems)}"
         )
+    v4_counts = Counter()
+    for line_number, line in enumerate(
+        FILES["train_v4"].read_text(encoding="utf-8-sig").splitlines(), 1
+    ):
+        try:
+            record = json.loads(line)
+            _, _, response = extract_text(record, "train_v4", line_number)
+            experiment = json.loads(response)
+            match = V4_CATEGORY_PATTERN.fullmatch(experiment.get("experimentName", ""))
+            if not match:
+                raise ValueError("V4 experimentName missing V4 category prefix")
+            v4_counts[match.group(1)] += 1
+        except (json.JSONDecodeError, ValueError, KeyError) as exc:
+            failures.append(f"train_v4:{line_number}: {exc}")
+    expected_v4 = {
+        "V4Body": 16, "V4Force": 12, "V4Cartesian": 12, "V4Hohmann": 14,
+        "V4Multi": 10, "V4Cross": 12, "V4Propagation": 8,
+        "V4Language": 10, "V4Robustness": 6,
+    }
+    if dict(v4_counts) != expected_v4:
+        failures.append(f"V4 category distribution {dict(v4_counts)}, expected {expected_v4}")
+
     for split, expected in EXPECTED_CATEGORIES.items():
-        if dict(category_counts[split]) != expected:
+        expected_counts = dict(expected)
+        if split == "train":
+            expected_counts.update(expected_v4)
+        if dict(category_counts[split]) != expected_counts:
             failures.append(
-                f"{split}: category distribution {dict(category_counts[split])}, expected {expected}"
+                f"{split}: category distribution {dict(category_counts[split])}, expected {expected_counts}"
             )
 
     user_counter = Counter(text for _, _, text in users)
@@ -244,7 +286,9 @@ def validate() -> int:
         failures.append("near-duplicate user requests: " + ", ".join(near_duplicates))
 
     total = len(users)
-    print(f"Training examples: {sum(1 for split, _, _ in users if split == 'train')}")
+    print(f"Training examples: {sum(1 for split, _, _ in users if split in ('train', 'train_v4'))}")
+    print(f"V3 training examples: {len(FILES['train'].read_text(encoding='utf-8-sig').splitlines())}")
+    print(f"V4 training examples: {len(FILES['train_v4'].read_text(encoding='utf-8-sig').splitlines())}")
     print(
         f"Validation examples: {sum(1 for split, _, _ in users if split == 'validation')}"
     )

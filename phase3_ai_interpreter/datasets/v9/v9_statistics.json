@@ -1,0 +1,50 @@
+{
+  "source_counts": {
+    "v8_master": 3300,
+    "v9_new": 500,
+    "v9_master": 3800
+  },
+  "v9_validation": {
+    "new": {
+      "examples": 500,
+      "json": 500,
+      "schema": 500,
+      "pydantic": 500,
+      "physical": 500,
+      "compiler": 500
+    },
+    "master": {
+      "examples": 3800,
+      "json": 3800,
+      "schema": 3800,
+      "pydantic": 3800,
+      "physical": 3800,
+      "compiler": 3800
+    },
+    "new_problem_count": 0,
+    "master_problem_count": 1422,
+    "v9_segment_problem_count": 0,
+    "inherited_v8_rows_without_force_model": 883,
+    "unsupported_fields": 0,
+    "raw_gmat": 0,
+    "python_leakage": 0
+  },
+  "coverage": {
+    "bodies_new": {
+      "Moon": 175,
+      "Mars": 175,
+      "Earth": 150
+    },
+    "bodies_master": {
+      "Earth": 1469,
+      "Moon": 1174,
+      "Mars": 1134
+    },
+    "drag_enabled_new": 150,
+    "low_band_new": 353,
+    "drag_models_new": {
+      "JacchiaRoberts": 78,
+      "MSISE90": 72
+    }
+  }
+}

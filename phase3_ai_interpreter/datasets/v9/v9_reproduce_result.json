@@ -1,0 +1,12 @@
+{
+  "steps": [
+    "build_v9.py",
+    "validate_v9.py",
+    "audit_v9.py",
+    "build_v9_blind.py"
+  ],
+  "manifest_matched": 12,
+  "manifest_total": 12,
+  "failures": [],
+  "reproducible": true
+}
