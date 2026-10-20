@@ -1,0 +1,102 @@
+# OrbitLab v9 close-out — Stage 4 prompt 1: full run
+
+prompt 1 = test_frontstep.py:138-155: gravity 65%, inclination 12pi/8(= 270 deg), dry mass 192 t, run time 2 days.
+
+## Stage 1 — front step (build_prompt)
+
+extraction:
+{
+  "status": "ok",
+  "extracted": {
+    "centralBody": "Earth",
+    "orbitSize": {
+      "kind": "gravityFraction",
+      "value": 0.65
+    },
+    "inclination": {
+      "value": "12pi/8",
+      "unit": "rad"
+    },
+    "dryMass": {
+      "value": 192,
+      "unit": "t"
+    },
+    "runTime": {
+      "value": 2,
+      "unit": "days"
+    }
+  },
+  "missing": [],
+  "unsupported": [],
+  "quotedUserNumbers": []
+}
+
+frontstep status: ok
+
+frontstep prompt:
+I'd like an experiment call the run "DefaultRun001" with spacecraft "DefaultSat001"; use 192000 kg for the dry mass; around Earth a circular orbit at an altitude of 1532.968 km, inclination 270 degrees, RAAN 0 degrees, argument of periapsis 0 degrees, true anomaly 0 degrees; propagate for 2 days; integrate with RungeKutta89; use the model's default force settings; I'm not asking for extra options.
+
+frontstep: inclination 270 passes through as text (frontstep works on the
+extraction, not the AST) — confirmed.
+
+## Stage 2-4 — interpreter (Pydantic AST) -> validator -> compiler
+
+payload (inclinationDeg = 12pi/8 rad = 270 deg):
+{
+  "version": "1.0",
+  "experimentName": "Prom1",
+  "spacecraft": {
+    "name": "SC",
+    "dryMassKg": 192000.0
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "2026-01-01T12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 7000.0,
+      "eccentricity": 0.01,
+      "inclinationDeg": 270.0,
+      "raanDeg": 0.0,
+      "argumentOfPeriapsisDeg": 0.0,
+      "trueAnomalyDeg": 0.0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 8,
+    "gravityOrder": 8
+  },
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedSeconds",
+      "value": 172800.0
+    },
+    "stepSizeSecs": 30.0
+  }
+}
+
+interpret success: False
+errors (1):
+  pydantic: 1 validation error for OrbitLabExperiment
+  initialOrbit.inclinationDeg
+    Input should be less than or equal to 180 [type=less_than_equal, input_value=270.0, input_type=float]
+      For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal
+warnings (0):
+
+## Answer — is 270 deg rejected, and with what reason text?
+
+YES — rejected at the Pydantic AST load (interpreter stage), reason text:
+  pydantic: 1 validation error for OrbitLabExperiment
+initialOrbit.inclinationDeg
+  Input should be less than or equal to 180 [type=less_than_equal, input_value=270.0, input_type=float]
+    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal
+
+Stage 4 set: no dedicated Stage 4 test-set artifact exists under Phase3
+(searched .md/.json/.jsonl/.py; only TASKING.md mentions 'Stage 4') ->
+"spec not found" for the set; prompt-1 run recorded here verbatim.
+

@@ -1,0 +1,44 @@
+{
+  "artifact": "golden_after",
+  "note": "Captured AFTER the body-expansion close-out code edits. Dataset success/errors/warnings + Earth/Moon/Mars compiled-script SHA-256 are the item 6 ZERO-diff gate vs golden_before.json.",
+  "python": "3.13.14",
+  "suites": {
+    "interpreter": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "ok": true,
+      "skipped": 0
+    },
+    "frontstep": {
+      "ok": true,
+      "has_11_assertions": true,
+      "has_pi_parsing": true,
+      "stdout": "ALL 11 ASSERTIONS PASSED.\nPI PARSING TESTS PASSED.\n"
+    },
+    "orbitlab_core": {
+      "tests": 33,
+      "failures": 0,
+      "errors": 0,
+      "ok": true,
+      "skipped": 0
+    }
+  },
+  "dataset": {
+    "rows": 4300,
+    "parse_ok": 4300,
+    "parse_err": 0,
+    "validate_pass": {
+      "Earth": 1492,
+      "Moon": 1424,
+      "Mars": 1384
+    },
+    "validate_reject": {},
+    "compile_ok": {
+      "Earth": 1492,
+      "Moon": 1424,
+      "Mars": 1384
+    },
+    "compile_err": 0
+  }
+}

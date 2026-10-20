@@ -29,7 +29,10 @@ from orbitlab_core.ast.validation import (
     compute_orbital_properties_from_cartesian,
     get_body_constants,
 )
-from orbitlab_core.constants import CENTRAL_BODY_PROPERTIES
+from orbitlab_core.constants import (
+    CENTRAL_BODY_PROPERTIES,
+    POINT_MASS_ONLY_BODIES,
+)
 
 
 class GmatScriptCompiler:
@@ -128,18 +131,29 @@ class GmatScriptCompiler:
         lines.append(f"Create ForceModel {fm_name};")
         lines.append("")
         lines.append(f"{fm_name}.CentralBody = {gmat_body};")
-        lines.append(f"{fm_name}.PrimaryBodies = {{{gmat_body}}};")
-        if central_body == "Mars":
-            lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = Mars50c.cof;")
-        elif central_body == "Moon":
-            lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = LP165P.cof;")
-        lines.append(f"{fm_name}.GravityField.{gmat_body}.Degree = {fm.gravityDegree};")
-        lines.append(f"{fm_name}.GravityField.{gmat_body}.Order = {fm.gravityOrder};")
-
         point_masses = [body for body in fm.pointMasses if body != gmat_body]
-        if point_masses:
-            pm_str = ", ".join(point_masses)
+
+        if central_body in POINT_MASS_ONLY_BODIES:
+            # Point-mass-only central body (Sun/Mercury/Jupiter): GMAT ships no
+            # harmonic potential file for these, so they can only be modelled as
+            # a point mass. Emit PrimaryBodies={} (no harmonic primary), add the
+            # central body to PointMasses, and emit no GravityField.Degree/Order.
+            primary_masses = [gmat_body] + point_masses
+            lines.append(f"{fm_name}.PrimaryBodies = {{}};")
+            pm_str = ", ".join(dict.fromkeys(primary_masses))
             lines.append(f"{fm_name}.PointMasses = {{{pm_str}}};")
+        else:
+            lines.append(f"{fm_name}.PrimaryBodies = {{{gmat_body}}};")
+            if central_body == "Mars":
+                lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = Mars50c.cof;")
+            elif central_body == "Moon":
+                lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = LP165P.cof;")
+            lines.append(f"{fm_name}.GravityField.{gmat_body}.Degree = {fm.gravityDegree};")
+            lines.append(f"{fm_name}.GravityField.{gmat_body}.Order = {fm.gravityOrder};")
+
+            if point_masses:
+                pm_str = ", ".join(point_masses)
+                lines.append(f"{fm_name}.PointMasses = {{{pm_str}}};")
 
         if fm.atmosphericDrag.enabled:
             lines.append(f"{fm_name}.Drag.AtmosphereModel = {fm.atmosphericDrag.model};")

@@ -10,6 +10,8 @@ import math
 from typing import Annotated, Any, List, Literal, Optional, Union
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
+from orbitlab_core.constants import CENTRAL_BODY_PROPERTIES
+
 
 IdentifierString = Annotated[
     str,
@@ -133,7 +135,7 @@ class InitialOrbitConfig(BaseModel):
         ...,
         description="Orbit state parameterization type"
     )
-    coordinateSystem: Optional[Literal["EarthMJ2000Eq", "LunaMJ2000Eq", "MarsMJ2000Eq"]] = Field(
+    coordinateSystem: Optional[Literal["EarthMJ2000Eq", "LunaMJ2000Eq", "MarsMJ2000Eq", "MercuryMJ2000Eq", "VenusMJ2000Eq", "JupiterMJ2000Eq", "SunMJ2000Eq"]] = Field(
         default=None,
         description="Body-centered inertial coordinate reference system"
     )
@@ -184,9 +186,9 @@ class ForceModelConfig(BaseModel):
         le=20,
         description="Primary body spherical harmonic gravity order"
     )
-    pointMasses: List[Literal["Luna", "Sun", "Jupiter"]] = Field(
+    pointMasses: List[Literal["Luna", "Sun", "Jupiter", "Mars", "Mercury", "Venus", "Earth"]] = Field(
         default_factory=lambda: ["Luna", "Sun"],
-        description="Third-body celestial point masses"
+        description="Third-body celestial point masses (GMAT body names: Luna for the Moon)"
     )
     atmosphericDrag: AtmosphericDragConfig = Field(
         default_factory=AtmosphericDragConfig,
@@ -372,7 +374,7 @@ class OrbitLabExperiment(BaseModel):
         ...,
         description="Spacecraft physical configuration"
     )
-    centralBody: Literal["Earth", "Moon", "Mars"] = Field(
+    centralBody: Literal["Earth", "Moon", "Mars", "Mercury", "Venus", "Jupiter", "Sun"] = Field(
         default="Earth",
         description="Primary gravitational central body"
     )
@@ -404,11 +406,10 @@ class OrbitLabExperiment(BaseModel):
             return data
         data = data.copy()
         body = data.get("centralBody", "Earth")
-        expected = {
-            "Earth": "EarthMJ2000Eq",
-            "Moon": "LunaMJ2000Eq",
-            "Mars": "MarsMJ2000Eq",
-        }.get(body)
+        # Table-driven: derive the expected body-centered coordinate system from
+        # the CENTRAL_BODY_PROPERTIES table (index 3 is the coordinate system).
+        info = CENTRAL_BODY_PROPERTIES.get(body)
+        expected = info[3] if info is not None else None
         orbit = data.get("initialOrbit")
         if expected is None:
             return data

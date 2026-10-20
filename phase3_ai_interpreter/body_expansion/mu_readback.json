@@ -1,0 +1,72 @@
+{
+  "task": "B",
+  "status": "done",
+  "date": "2026-10-19",
+  "gmat_install": "C:\\Users\\canit\\XY\\Downloads\\gmat-win-R2026a",
+  "headline": "GMAT CelestialBody.Mu is SET-ONLY (docs CelestialBody.html Access: set); direct script read-back is impossible. mu verified via GMAT-installed data files + empirical point-mass circular-orbit read-back (mu = R*|v(0)|^2).",
+  "au_km": 149597870.691,
+  "au_source": "DE405 readme l.377 1.495978706910000E+08",
+  "bodies": {
+    "Mercury": {
+      "adopted_mu_km3_s2": 22032.080486,
+      "probe_R_km": 3600.0,
+      "mu_readback_km3_s2": 22032.080486,
+      "relative_diff_pct": 0.0,
+      "source": "GMAT read-back, task B (GMAT internal Mercury parameter); NOT present in GMAT install (no gravity .cof, no DE405 entry); CelestialBody.Mu set-only -> not script-readable"
+    },
+    "Venus": {
+      "adopted_mu_km3_s2": 324858.598827,
+      "probe_R_km": 7000.0,
+      "mu_readback_km3_s2": 324858.598827,
+      "relative_diff_pct": 0.0,
+      "source": "GMAT read-back, task B (reference: GMAT data\\gravity\\venus\\MGNP180U.cof l.7 POTFIELD ... 3.24858592079000e+14 m3/s2)"
+    },
+    "Earth": {
+      "adopted_mu_km3_s2": 398600.4415,
+      "probe_R_km": 7073.0,
+      "mu_readback_km3_s2": 398600.4415,
+      "relative_diff_pct": -0.0000001,
+      "source": "GMAT data\\gravity\\earth\\EGM96.cof l.7 3.98600441500000E+14 (== legacy; no change)"
+    },
+    "Luna": {
+      "adopted_mu_km3_s2": 4902.800066,
+      "probe_R_km": 2000.0,
+      "mu_readback_km3_s2": 4902.800582,
+      "relative_diff_pct": 0.0000105,
+      "source": "GMAT data\\gravity\\luna\\LP165P.cof l.7 4.90280105600000e+12 m3/s2; legacy 4902.800066 KEPT per requirement"
+    },
+    "Mars": {
+      "adopted_mu_km3_s2": 42828.375214,
+      "probe_R_km": 3789.5,
+      "mu_readback_km3_s2": 42828.314258,
+      "relative_diff_pct": -0.0001423,
+      "source": "GMAT data\\gravity\\mars\\Mars50c.cof l.7 GM=42828.370371; legacy 42828.375214 KEPT per requirement"
+    },
+    "Jupiter": {
+      "adopted_mu_km3_s2": 126712767.857614,
+      "probe_R_km": 74000.0,
+      "mu_readback_km3_s2": 126712767.857614,
+      "relative_diff_pct": 0.0,
+      "source": "GMAT read-back, task B (reference: DE405 readme jup230 l.373 System 1.267127648382719E+08 km3/s2)"
+    },
+    "Sun": {
+      "adopted_mu_km3_s2": 132712440017.746521,
+      "probe_R_km": 149597870.7,
+      "mu_readback_km3_s2": 132712440017.746521,
+      "relative_diff_pct": 0.0,
+      "source": "GMAT read-back, task B (reference: DE405 readme sat132 l.460 GM10 1.327124400179870E+11 km3/s2; NOT the jup230 l.385 constant)"
+    }
+  },
+  "gmat_propagation_demos": {
+    "all_7_bodies_run_ok": true,
+    "new_body_point_mass": ["Mercury", "Jupiter", "Sun"],
+    "no_gravity_file_verified_absent": ["Mercury", "Sun"],
+    "built_in_coordsys_earth_not_creatable_warning": "EarthMJ2000Eq is built-in; do NOT Create it"
+  },
+  "legacy_values_frozen": {
+    "Earth_mu": 398600.4415,
+    "Moon_mu": 4902.800066,
+    "Mars_mu": 42828.375214
+  },
+  "note": "Adopted model/validator mu constants are used for derived astrodynamics/validation only; GMAT uses its own force-model mu during propagation."
+}

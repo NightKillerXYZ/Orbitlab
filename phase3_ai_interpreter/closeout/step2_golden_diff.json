@@ -1,0 +1,73 @@
+{
+  "row_count": [
+    4300,
+    4300
+  ],
+  "mismatches": 0,
+  "examples": [],
+  "per_body": {
+    "Earth": {
+      "same": 1492,
+      "diff": 0,
+      "examples": []
+    },
+    "Moon": {
+      "same": 1424,
+      "diff": 0,
+      "examples": []
+    },
+    "Mars": {
+      "same": 1384,
+      "diff": 0,
+      "examples": []
+    }
+  },
+  "errors_before": {},
+  "errors_after": {},
+  "summary_diff": {
+    "rows": [
+      4300,
+      4300
+    ],
+    "parse_ok": [
+      4300,
+      4300
+    ],
+    "parse_err": [
+      0,
+      0
+    ],
+    "compile_err": [
+      0,
+      0
+    ],
+    "validate_pass": [
+      {
+        "Earth": 1492,
+        "Moon": 1424,
+        "Mars": 1384
+      },
+      {
+        "Earth": 1492,
+        "Moon": 1424,
+        "Mars": 1384
+      }
+    ],
+    "validate_reject": [
+      {},
+      {}
+    ],
+    "compile_ok": [
+      {
+        "Earth": 1492,
+        "Moon": 1424,
+        "Mars": 1384
+      },
+      {
+        "Earth": 1492,
+        "Moon": 1424,
+        "Mars": 1384
+      }
+    ]
+  }
+}

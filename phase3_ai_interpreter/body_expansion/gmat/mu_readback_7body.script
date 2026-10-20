@@ -1,0 +1,204 @@
+%===============================================
+% OrbitLab Body-Expansion Discovery - Task B
+% GMAT mu read-back for all 7 central bodies.
+%
+% GMAT's CelestialBody.Mu is SET-ONLY (cannot be
+% scripted-read). Instead, we read mu back
+% EMPIRICALLY: a circular orbit at radius R is
+% initialized with speed v = sqrt(mu/R), so
+% mu_readback = R * |v(0)|^2 from GMAT's internal
+% mu constant. Each spacecraft is driven by a pure
+% two-body (point-mass) force model so the read is
+% not perturbed by harmonic coefficients, and we
+% propagate a short arc to confirm stability.
+%
+% Source radii (SMA guess) chosen above surfaces.
+%===============================================
+
+% ---- Mercury (point mass) ----
+Create CoordinateSystem MercuryMJ2000Eq;
+MercuryMJ2000Eq.Origin = Mercury;
+MercuryMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatMercury;
+SatMercury.DateFormat = UTCGregorian;
+SatMercury.Epoch = '01 Jan 2026 00:00:00.000';
+SatMercury.CoordinateSystem = MercuryMJ2000Eq;
+SatMercury.DisplayStateType = Keplerian;
+SatMercury.SMA = 3600.000000;
+SatMercury.ECC = 0.000000;
+SatMercury.INC = 0.100000;
+SatMercury.RAAN = 0.000000;
+SatMercury.AOP = 0.000000;
+SatMercury.TA = 0.000000;
+SatMercury.DryMass = 450.00;
+Create ForceModel FMMercury;
+FMMercury.CentralBody = Mercury;
+FMMercury.PrimaryBodies = {};
+FMMercury.PointMasses = {Mercury};
+Create Propagator PropMercury;
+PropMercury.FM = FMMercury;
+PropMercury.Type = RungeKutta89;
+PropMercury.InitialStepSize = 60.00;
+
+% ---- Venus ----
+Create CoordinateSystem VenusMJ2000Eq;
+VenusMJ2000Eq.Origin = Venus;
+VenusMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatVenus;
+SatVenus.DateFormat = UTCGregorian;
+SatVenus.Epoch = '01 Jan 2026 00:00:00.000';
+SatVenus.CoordinateSystem = VenusMJ2000Eq;
+SatVenus.DisplayStateType = Keplerian;
+SatVenus.SMA = 7000.000000;
+SatVenus.ECC = 0.000000;
+SatVenus.INC = 0.100000;
+SatVenus.RAAN = 0.000000;
+SatVenus.AOP = 0.000000;
+SatVenus.TA = 0.000000;
+SatVenus.DryMass = 450.00;
+Create ForceModel FMVenus;
+FMVenus.CentralBody = Venus;
+FMVenus.PrimaryBodies = {};
+FMVenus.PointMasses = {Venus};
+Create Propagator PropVenus;
+PropVenus.FM = FMVenus;
+PropVenus.Type = RungeKutta89;
+PropVenus.InitialStepSize = 60.00;
+
+% ---- Earth (uses GMAT built-in EarthMJ2000Eq coordinate system) ----
+Create Spacecraft SatEarth;
+SatEarth.DateFormat = UTCGregorian;
+SatEarth.Epoch = '01 Jan 2026 00:00:00.000';
+SatEarth.CoordinateSystem = EarthMJ2000Eq;
+SatEarth.DisplayStateType = Keplerian;
+SatEarth.SMA = 7073.000000;
+SatEarth.ECC = 0.000000;
+SatEarth.INC = 0.100000;
+SatEarth.RAAN = 0.000000;
+SatEarth.AOP = 0.000000;
+SatEarth.TA = 0.000000;
+SatEarth.DryMass = 450.00;
+Create ForceModel FMEarth;
+FMEarth.CentralBody = Earth;
+FMEarth.PrimaryBodies = {};
+FMEarth.PointMasses = {Earth};
+Create Propagator PropEarth;
+PropEarth.FM = FMEarth;
+PropEarth.Type = RungeKutta89;
+PropEarth.InitialStepSize = 60.00;
+
+% ---- Luna ----
+Create CoordinateSystem LunaMJ2000Eq;
+LunaMJ2000Eq.Origin = Luna;
+LunaMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatLuna;
+SatLuna.DateFormat = UTCGregorian;
+SatLuna.Epoch = '01 Jan 2026 00:00:00.000';
+SatLuna.CoordinateSystem = LunaMJ2000Eq;
+SatLuna.DisplayStateType = Keplerian;
+SatLuna.SMA = 2000.000000;
+SatLuna.ECC = 0.000000;
+SatLuna.INC = 0.100000;
+SatLuna.RAAN = 0.000000;
+SatLuna.AOP = 0.000000;
+SatLuna.TA = 0.000000;
+SatLuna.DryMass = 450.00;
+Create ForceModel FMLuna;
+FMLuna.CentralBody = Luna;
+FMLuna.PrimaryBodies = {};
+FMLuna.PointMasses = {Luna};
+Create Propagator PropLuna;
+PropLuna.FM = FMLuna;
+PropLuna.Type = RungeKutta89;
+PropLuna.InitialStepSize = 60.00;
+
+% ---- Mars ----
+Create CoordinateSystem MarsMJ2000Eq;
+MarsMJ2000Eq.Origin = Mars;
+MarsMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatMars;
+SatMars.DateFormat = UTCGregorian;
+SatMars.Epoch = '01 Jan 2026 00:00:00.000';
+SatMars.CoordinateSystem = MarsMJ2000Eq;
+SatMars.DisplayStateType = Keplerian;
+SatMars.SMA = 3789.500000;
+SatMars.ECC = 0.000000;
+SatMars.INC = 0.100000;
+SatMars.RAAN = 0.000000;
+SatMars.AOP = 0.000000;
+SatMars.TA = 0.000000;
+SatMars.DryMass = 450.00;
+Create ForceModel FMMars;
+FMMars.CentralBody = Mars;
+FMMars.PrimaryBodies = {};
+FMMars.PointMasses = {Mars};
+Create Propagator PropMars;
+PropMars.FM = FMMars;
+PropMars.Type = RungeKutta89;
+PropMars.InitialStepSize = 60.00;
+
+% ---- Jupiter (point mass) ----
+Create CoordinateSystem JupiterMJ2000Eq;
+JupiterMJ2000Eq.Origin = Jupiter;
+JupiterMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatJupiter;
+SatJupiter.DateFormat = UTCGregorian;
+SatJupiter.Epoch = '01 Jan 2026 00:00:00.000';
+SatJupiter.CoordinateSystem = JupiterMJ2000Eq;
+SatJupiter.DisplayStateType = Keplerian;
+SatJupiter.SMA = 74000.000000;
+SatJupiter.ECC = 0.000000;
+SatJupiter.INC = 0.100000;
+SatJupiter.RAAN = 0.000000;
+SatJupiter.AOP = 0.000000;
+SatJupiter.TA = 0.000000;
+SatJupiter.DryMass = 450.00;
+Create ForceModel FMJupiter;
+FMJupiter.CentralBody = Jupiter;
+FMJupiter.PrimaryBodies = {};
+FMJupiter.PointMasses = {Jupiter};
+Create Propagator PropJupiter;
+PropJupiter.FM = FMJupiter;
+PropJupiter.Type = RungeKutta89;
+PropJupiter.InitialStepSize = 60.00;
+
+% ---- Sun (point mass) ----
+Create CoordinateSystem SunMJ2000Eq;
+SunMJ2000Eq.Origin = Sun;
+SunMJ2000Eq.Axes = MJ2000Eq;
+Create Spacecraft SatSun;
+SatSun.DateFormat = UTCGregorian;
+SatSun.Epoch = '01 Jan 2026 00:00:00.000';
+SatSun.CoordinateSystem = SunMJ2000Eq;
+SatSun.DisplayStateType = Keplerian;
+SatSun.SMA = 149597870.700000;
+SatSun.ECC = 0.000000;
+SatSun.INC = 0.100000;
+SatSun.RAAN = 0.000000;
+SatSun.AOP = 0.000000;
+SatSun.TA = 0.000000;
+SatSun.DryMass = 450.00;
+Create ForceModel FMSun;
+FMSun.CentralBody = Sun;
+FMSun.PrimaryBodies = {};
+FMSun.PointMasses = {Sun};
+FMSun.SRP = false;
+Create Propagator PropSun;
+PropSun.FM = FMSun;
+PropSun.Type = RungeKutta89;
+PropSun.InitialStepSize = 60.00;
+
+Create ReportFile TeleMu;
+TeleMu.Filename = 'C:\Users\canit\AppData\Local\Temp\opencode\body_exp_gmat\mu_readback_7body.txt';
+TeleMu.Precision = 12;
+TeleMu.WriteHeaders = true;
+TeleMu.Add = {SatMercury.ElapsedSecs, SatMercury.MercuryMJ2000Eq.VX, SatMercury.MercuryMJ2000Eq.VY, SatMercury.MercuryMJ2000Eq.VZ, SatVenus.ElapsedSecs, SatVenus.VenusMJ2000Eq.VX, SatVenus.VenusMJ2000Eq.VY, SatVenus.VenusMJ2000Eq.VZ, SatEarth.ElapsedSecs, SatEarth.EarthMJ2000Eq.VX, SatEarth.EarthMJ2000Eq.VY, SatEarth.EarthMJ2000Eq.VZ, SatLuna.ElapsedSecs, SatLuna.LunaMJ2000Eq.VX, SatLuna.LunaMJ2000Eq.VY, SatLuna.LunaMJ2000Eq.VZ, SatMars.ElapsedSecs, SatMars.MarsMJ2000Eq.VX, SatMars.MarsMJ2000Eq.VY, SatMars.MarsMJ2000Eq.VZ, SatJupiter.ElapsedSecs, SatJupiter.JupiterMJ2000Eq.VX, SatJupiter.JupiterMJ2000Eq.VY, SatJupiter.JupiterMJ2000Eq.VZ, SatSun.ElapsedSecs, SatSun.SunMJ2000Eq.VX, SatSun.SunMJ2000Eq.VY, SatSun.SunMJ2000Eq.VZ};
+
+BeginMissionSequence;
+Propagate 'Mu probe 1s' PropMercury(SatMercury) {SatMercury.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropVenus(SatVenus) {SatVenus.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropEarth(SatEarth) {SatEarth.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropLuna(SatLuna) {SatLuna.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropMars(SatMars) {SatMars.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropJupiter(SatJupiter) {SatJupiter.ElapsedSecs = 1.00};
+Propagate 'Mu probe 1s' PropSun(SatSun) {SatSun.ElapsedSecs = 1.00};

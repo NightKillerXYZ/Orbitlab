@@ -19,9 +19,13 @@ from orbitlab_core.ast.models import (
     OrbitLabExperiment,
 )
 from orbitlab_core.constants import (
+    BODY_ALLOWS_DRAG,
+    BODY_SOI_RADIUS_KM,
     CENTRAL_BODY_PROPERTIES,
+    POINT_MASS_ONLY_BODIES,
     MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM,
     MIN_PERIAPSIS_ALTITUDE_KM,
+    MIN_PERIAPSIS_ALTITUDE_KM_BY_BODY,
 )
 
 
@@ -166,16 +170,26 @@ class AstrodynamicValidator:
 
         radius_body, mu_body = get_body_constants(experiment.centralBody)
 
-        min_allowed_alt = (
-            MIN_PERIAPSIS_ALTITUDE_KM
-            if experiment.centralBody == "Earth"
-            else MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM
-        )
+        min_allowed_alt = MIN_PERIAPSIS_ALTITUDE_KM_BY_BODY[experiment.centralBody]
         min_allowed_radius = radius_body + min_allowed_alt
 
-        if experiment.centralBody != "Earth" and experiment.forceModel.atmosphericDrag.enabled:
+        if (
+            not BODY_ALLOWS_DRAG[experiment.centralBody]
+            and experiment.forceModel.atmosphericDrag.enabled
+        ):
             errors.append(
                 f"Atmospheric drag is not supported for central body '{experiment.centralBody}'."
+            )
+        if (
+            experiment.centralBody in POINT_MASS_ONLY_BODIES
+            and (experiment.forceModel.gravityDegree > 0
+                 or experiment.forceModel.gravityOrder > 0)
+        ):
+            warnings.append(
+                f"Central body '{experiment.centralBody}' is modelled as a point "
+                f"mass, so the specified gravity field degree/order "
+                f"({experiment.forceModel.gravityDegree}/{experiment.forceModel.gravityOrder}) "
+                "is ignored."
             )
         # 1. Orbit state check
         orbit = experiment.initialOrbit
@@ -302,14 +316,27 @@ class AstrodynamicValidator:
                 f"'{experiment.centralBody}'."
             )
 
-        # 3. Check bound orbit condition
+        # 3. Check sphere-of-influence containment (excluding the Sun, the
+        # heliocentric reference body, which has no enclosing parent).
+        soi_km = BODY_SOI_RADIUS_KM.get(experiment.centralBody)
+        if soi_km:
+            if props.apoapsis_radius_km > soi_km:
+                errors.append(
+                    f"Orbit escapes the sphere of influence of central body "
+                    f"'{experiment.centralBody}': apoapsis radius is "
+                    f"{props.apoapsis_radius_km:.2f} km, exceeding the SOI radius "
+                    f"of {soi_km:.2f} km. An orbit beyond the body's sphere of "
+                    f"influence is dominated by the parent body and is not modelled."
+                )
+
+        # 4. Check bound orbit condition
         if not props.is_bound:
             warnings.append(
                 f"Orbit has eccentricity e = {props.eccentricity:.4f} >= 1.0 "
                 f"(unbound hyperbolic/parabolic trajectory)."
             )
 
-        # 4. Check maneuvers
+        # 5. Check maneuvers
         for m in experiment.maneuvers:
             if m.type == "ImpulsiveBurn" and m.burnVector:
                 dv_vec = m.burnVector.deltaVVectorKmS
@@ -359,7 +386,7 @@ class AstrodynamicValidator:
                     )
 
 
-        # 5. Check propagation duration
+        # 6. Check propagation duration
         stop = experiment.propagation.stopCondition
         step = experiment.propagation.stepSizeSecs
         duration_secs = 0.0

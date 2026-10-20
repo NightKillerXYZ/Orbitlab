@@ -1,0 +1,174 @@
+{
+  "schema_version": "1.0",
+  "artifact": "body_expansion_discovery",
+  "title": "OrbitLab Body-Expansion Discovery",
+  "scope": "Read-only discovery to expand OrbitLab's supported central bodies (Mercury, Venus, Earth, Moon/Luna, Mars, Jupiter, Sun) and enable heliocentric orbits. Discovery artifact only: inventories assumptions, records GMAT facts verified by actually running NASA GMAT R2026a, proposes a design (not implemented), and performs physics sanity checks.",
+  "status": "Discovery only. No production code changed. No network. No new dependencies. No training. All runtime scratch/output kept outside the repo (in the approved Temp directory); the in-repo body_expansion\\ folder contains only this .json and sibling body_expansion_discovery.md.",
+  "evidence_rules": "Every factual claim cites a repo file:line, a path into the installed GMAT R2026a (C:\\Users\\canit\\XY\\Downloads\\gmat-win-R2026a), or captured command output. Items not verified are flagged UNVERIFIED with the exact verification procedure. No values invented.",
+  "unverified_count": 4,
+  "unverified_summary": "Mercury GM, Earth GM, Luna GM, Mars GM convention",
+  "gmat_install": {
+    "version": "R2026a",
+    "path": "C:\\Users\\canit\\XY\\Downloads\\gmat-win-R2026a",
+    "invocation": "GmatConsole.exe --run <script.script> --exit (executed from the bin working directory)"
+  },
+  "task_a_inventory": {
+    "summary": "OrbitLab supports exactly three central bodies today: Earth, Moon, Mars. Every place constraining or assuming a body is enumerated below. All body assumptions anywhere in the codebase are one of Earth, Moon, Mars.",
+    "hardcoded_values": [
+      { "body": "Earth", "radius_km": 6378.1363, "mu_km3_s2": 398600.4415 },
+      { "body": "Moon", "radius_km": 1737.4, "mu_km3_s2": 4902.800066 },
+      { "body": "Mars", "radius_km": 3389.5, "mu_km3_s2": 42828.375214 }
+    ],
+    "a1_physical_constants": [
+      { "source": "phase3_ai_interpreter/frontstep/frontstep.py", "location": "23-27", "what": "BODY_RADII_KM = {Earth: 6378.1363, Moon: 1737.4, Mars: 3389.5}" },
+      { "source": "phase3_ai_interpreter/frontstep/frontstep.py", "location": "29-33", "what": "BODY_COORD_SYSTEM = {Earth: EarthMJ2000Eq, Moon: LunaMJ2000Eq, Mars: MarsMJ2000Eq}" },
+      { "source": "phase3_ai_interpreter/datasets/v9/build_v9.py", "location": "48-52", "what": "BODY = {Earth: (EarthMJ2000Eq, 6378.1363, 398600.4415), Moon: (LunaMJ2000Eq, 1737.4, 4902.800066), Mars: (MarsMJ2000Eq, 3389.5, 42828.375214)}" },
+      { "source": "phase3_ai_interpreter/datasets/v9/build_v9.py", "location": "53", "what": "MIN_ALT = {Earth: 100.0, Moon: 20.0, Mars: 20.0}" },
+      { "source": "orbitlab_core/constants.py", "location": "5,8,11,14", "what": "EARTH_RADIUS_KM=6378.1363, EARTH_MU_KM3_S2=398600.4415, MOON_MU_KM3_S2=4902.800066, MARS_MU_KM3_S2=42828.375214" },
+      { "source": "orbitlab_core/constants.py", "location": "16-20", "what": "CENTRAL_BODY_PROPERTIES maps only Earth/Moon/Mars to (radius, mu, gmat_body, coord_system)" },
+      { "source": "orbitlab_core/constants.py", "location": "24-27", "what": "MIN_PERIAPSIS_ALTITUDE_KM=100.0 (Earth), MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM=20.0 (Moon/Mars)" }
+    ],
+    "a2_type_schema_constraints": [
+      { "source": "orbitlab_core/ast/models.py", "location": "375-378", "what": "centralBody: Literal[\"Earth\",\"Moon\",\"Mars\"] (Pydantic literal; rejects any other body)" },
+      { "source": "orbitlab_core/ast/models.py", "location": "136-139", "what": "coordinateSystem: Optional[Literal[\"EarthMJ2000Eq\",\"LunaMJ2000Eq\",\"MarsMJ2000Eq\"]]" },
+      { "source": "orbitlab_core/ast/models.py", "location": "187-190", "what": "pointMasses: List[Literal[\"Luna\",\"Sun\",\"Jupiter\"]] (perturber list already allows Luna/Sun/Jupiter but not as central bodies)" },
+      { "source": "orbitlab_core/ast/models.py", "location": "406-410", "what": "validator maps body -> coordinate system only for Earth/Moon/Mars" }
+    ],
+    "a3_gmat_script_generation": [
+      { "source": "orbitlab_core/compiler/generator.py", "location": "71-84", "what": "derives central_body, radius/mu; creates body-centered CoordinateSystem only for non-Earth bodies; GM mapping via CENTRAL_BODY_PROPERTIES" },
+      { "source": "orbitlab_core/compiler/generator.py", "location": "130-137", "what": "ForceModel.CentralBody, PrimaryBodies={gmat_body}, sets GravityField.<body>.Degree/Order; special-cases PotentialFile only for Mars (Mars50c.cof) and Moon (LP165P.cof)" },
+      { "source": "orbitlab_core/compiler/generator.py", "location": "139-142", "what": "third-body PointMasses (Luna/Sun/...) appended" },
+      { "source": "orbitlab_core/compiler/templates.py", "location": "21,63", "what": "Hohmann/impulsive helpers default mu_km3_s2 = EARTH_MU_KM3_S2" }
+    ]
+  },
+  "task_b_gmat_facts": {
+    "b1_ephemeris_source": {
+      "verdict": "verified by command output",
+      "note": "Every successful run printed 'Successfully set Planetary Source to use: DE405' and 'Kernel .../data/planetary_ephem/spk/DE405AllPlanets.bsp has been loaded.'",
+      "nuance": "bin\\gmat_startup_file.txt:118 lists PLANETARY_SPK_FILE = .../DE421AllPlanets.bsp but the runtime loaded and used DE405AllPlanets.bsp per the console log. Body GM/radius/constants from DE405 are cited to data\\planetary_ephem\\spk\\Readme-DE405AllPlanets.txt."
+    },
+    "b2_radii_all_seven_bodies": {
+      "source": "data\\planetary_coeff\\SPICEPlanetaryConstantsKernel.tpc (loaded by GMAT, startup_file:131)",
+      "note": "Equatorial/mean radii in km (NAIF triplet = x, y, z). This TPC kernel contains no GM values (verified: no BODYxxx_GM entries).",
+      "bodies": [
+        { "body": "Sun", "naif": "BODY10", "radius_km": 695700, "line": 3492 },
+        { "body": "Mercury", "naif": "BODY199", "radius_km_triplet": "2440.53, 2440.53, 2438.26", "line": 3510 },
+        { "body": "Venus", "naif": "BODY299", "radius_km": 6051.8, "line": 3525 },
+        { "body": "Earth", "naif": "BODY399", "radius_km_triplet": "6378.1366, 6378.1366, 6356.7519", "line": 3540 },
+        { "body": "Mars", "naif": "BODY499", "radius_km_triplet": "3396.19, 3396.19, 3376.20", "line": 3565 },
+        { "body": "Jupiter", "naif": "BODY599", "radius_km_triplet": "71492, 71492, 66854", "line": 3581 },
+        { "body": "Moon/Luna", "naif": "BODY301", "radius_km": 1737.4, "line": 3674 }
+      ]
+    },
+    "b3_verifiable_gm": [
+      { "body": "Sun", "gm_km3_s2": 1.327132332402215e11, "source": "Readme-DE405AllPlanets.txt:385 GM10" },
+      { "body": "Jupiter", "gm_km3_s2": 1.266865349218008e8, "basis": "planet body (Jupite/599)", "source": "Readme-DE405AllPlanets.txt:372" },
+      { "body": "Jupiter", "gm_km3_s2": 1.267127648382719e8, "basis": "System total", "source": "Readme-DE405AllPlanets.txt:373" },
+      { "body": "Venus", "gm_km3_s2": 324858.592079, "source": "data\\gravity\\venus\\MGNP180U.cof:7 (POTFIELD 70 70 0 3.24858592079000e+14 ... / 1e9)" },
+      { "body": "Mars", "gm_km3_s2": 42828.370371, "source": "data\\gravity\\mars\\Mars50c.cof:7 (POTFIELD 50 50 0 4.28283703710000e+13 ... / 1e9)" }
+    ],
+    "b3_extra_de405": [
+      { "item": "AU", "value": "1.495978706910000e+08 km", "source": "Readme-DE405AllPlanets.txt:377" },
+      { "item": "Jupiter RADIUS", "value": "7.149200000000000e+04 km", "source": "Readme-DE405AllPlanets.txt:377", "note": "Matches SPICE kernel line 3581" }
+    ],
+    "b3_unverified_gm": "Mercury GM, Earth GM, Luna GM are UNVERIFIED from shipped files (see b6).",
+    "b4_set_only_properties": {
+      "verdict": "verified by execution + doc",
+      "doc": {
+        "EquatorialRadius": "docs\\help\\html\\CelestialBody.html:56 (Access=set)",
+        "Flattening": "docs\\help\\html\\CelestialBody.html:64 (Access=set)",
+        "Mu": "docs\\help\\html\\CelestialBody.html:71 (Access=set, units km3/s2)"
+      },
+      "execution_proof": "A GMAT script that tried 'y = Mercury.Mu' and 'ReportFile.Add = {Mercury.Mu}' both failed with '... is not a valid Parameter Type' / 'Undefined function, object, or disallowed object field'. Therefore GMAT body Mu/EquatorialRadius cannot be read back through a script; any GMAT-verified numeric GM for Mercury/Earth/Luna is not obtainable via script and must come from an external authoritative source."
+    },
+    "b5_propagation_verified": {
+      "scratch_path": "C:\\Users\\canit\\AppData\\Local\\Temp\\opencode\\body_exp_gmat\\ (kept outside the repo, temporary)",
+      "venus_centered": {
+        "script": "venus_circular.script",
+        "telemetry_file": "venus_telemetry.txt",
+        "configuration": "VenusMJ2000Eq CS with Origin=Venus; SMA=7000, ECC=0, INC=90; RungeKutta89; 1800 s. Force model FMVenus: CentralBody=Venus, PrimaryBodies={Venus}, GravityField.Venus.Degree/Order=4 (uses default MGNP180U.cof; log line 'Using default potential file .../MGNP180U.cof for GravityField object GravityField.Venus').",
+        "result": "Mission run completed ... successful. Telemetry: SMA held 6999.9-7000.0 km over the arc, ECC <= ~1.1e-5, VZ(t=0)=6.81236899 km/s. PASS."
+      },
+      "sun_centered": {
+        "script": "sun_circular.script",
+        "telemetry_file": "sun_telemetry.txt",
+        "configuration": "SunMJ2000Eq CS with Origin=Sun; SMA=149597870.7 (1 AU), ECC=0; 1800 s. Force model models Sun as a point mass: CentralBody=Sun, PrimaryBodies={}, PointMasses={Sun}, no GravityField.Sun degree/order.",
+        "result": "Mission run completed ... successful. Telemetry: SMA held 149597870.7 km, ECC <= ~7.7e-16, VY(t=0)=29.78464647 km/s. PASS."
+      },
+      "b5_1_sun_negative_result": {
+        "finding": "Sun cannot be a harmonic primary.",
+        "failure": "First attempt set FMSun.GravityField.Sun.Degree/Order and/or PrimaryBodies={Sun} and failed: 'ODEModel Exception Thrown: There is no gravity file specified for GravityField GravityField.Sun' / '*** Mission run failed. (exit code 1)'.",
+        "cause": "From docs\\help\\html\\ForceModel.html:236-247: bodies in PrimaryBodies use the potential file's constants in the equations of motion, and no Sun potential file is shipped; bodies in PointMasses use the body's Mu. Verified: data\\gravity\\other (Sun/Mercury/Jupiter location) is empty. GMAT ships harmonic-coefficient potential files only for Earth/Moon/Mars/Venus; Sun, Mercury, and Jupiter can only be modeled as point masses with this installation."
+      },
+      "reference_sources": "orbitlab_core/compiler/generator.py:120-159; tests/test_gmat_execution.py:40-95; ForceModel docs."
+    },
+    "b6_why_script_cannot_yield_gm": [
+      "Mu/EquatorialRadius are set-only (b4).",
+      "No Mercury potential file ships (data\\gravity\\other empty).",
+      "Earth/Luna potential files ship but their GM lives inside the .cof binary header rather than as a script-readable value; the same set-only block prevents reading the body's Mu. Earth/Luna GM available only from external references, not GMAT script output, on this install."
+    ],
+    "b7_reportfile_add": {
+      "verdict": "verified by execution",
+      "note": "ReportFile.Add = {a, b, c}; must be on a SINGLE line (multi-line fails); see docs\\help\\html\\ReportFile.html:19 and :118. Reference generator emits a one-line Add (generator.py:259-266)."
+    },
+    "b8_reportfile_path": {
+      "verdict": "verified by execution",
+      "note": "ReportFile.Filename must be an absolute path (or the process working directory must be where you want the file). A relative 'venus_telemetry.txt' produced no file; switching to an absolute path produced the telemetry on the next run. Reference generator always passes an absolute path (tests/test_gmat_execution.py:85,90; generator.py:256)."
+    },
+    "b9_integrators": {
+      "verdict": "verified by execution",
+      "note": "RungeKutta89 is valid; RungeKutta8 is NOT (fails). Reference: tests/test_gmat_execution.py:78."
+    }
+  },
+  "task_c_design_proposal": {
+    "status": "NOT implemented",
+    "c1_proposed_table": [
+      { "body": "Mercury", "gmat_name": "Mercury", "coord_system": "MercuryMJ2000Eq", "radius_km": 2440.53, "radius_source": "SPICE:3510", "mu_km3_s2": null, "mu_status": "UNVERIFIED" },
+      { "body": "Venus", "gmat_name": "Venus", "coord_system": "VenusMJ2000Eq", "radius_km": 6051.8, "radius_source": "SPICE:3525", "mu_km3_s2": 324858.592079, "mu_source": "MGNP180U:7" },
+      { "body": "Earth", "gmat_name": "Earth", "coord_system": "EarthMJ2000Eq", "radius_km": 6378.1366, "radius_source": "SPICE:3540", "mu_km3_s2": null, "mu_status": "UNVERIFIED (currently 398600.4415 constants:8)" },
+      { "body": "Luna", "gmat_name": "Luna", "coord_system": "LunaMJ2000Eq", "radius_km": 1737.4, "radius_source": "SPICE:3674", "mu_km3_s2": null, "mu_status": "UNVERIFIED (currently 4902.800066 constants:11)" },
+      { "body": "Mars", "gmat_name": "Mars", "coord_system": "MarsMJ2000Eq", "radius_km": 3396.19, "radius_source": "SPICE:3565", "mu_km3_s2": 42828.370371, "mu_source": "Mars50c:7" },
+      { "body": "Jupiter", "gmat_name": "Jupiter", "coord_system": "JupiterMJ2000Eq", "radius_km": 71492, "radius_source": "SPICE:3581", "mu_km3_s2": 1.267127648382719e8, "mu_source": "DE405:373" },
+      { "body": "Sun", "gmat_name": "Sun", "coord_system": "SunMJ2000Eq", "radius_km": 695700, "radius_source": "SPICE:3492", "mu_km3_s2": 1.327132332402215e11, "mu_source": "DE405:385" }
+    ],
+    "mars_mu_discrepancy": "Codebase uses 42828.375214 (constants.py:14, build_v9.py:51) while GMAT's Mars50c.cof header GM is 42828.370371 - a 4.8e-6 relative difference. Proposed table uses the GMAT Mars50c value for GMAT consistency and flags the operationally-used value.",
+    "c2_proposed_code_changes": [
+      { "file": "orbitlab_core/constants.py", "location": "16-20", "change": "Extend CENTRAL_BODY_PROPERTIES to all seven bodies with the C.1 table (resolve UNVERIFIED mu first)." },
+      { "file": "orbitlab_core/ast/models.py", "location": "375-378,136-139,406-410", "change": "Widen centralBody literal, the coordinate-system literal, and the body->CS validator; keep pointMasses literal (187-190) but allow bodies as central." },
+      { "file": "orbitlab_core/compiler/generator.py", "location": "80-84,130-142", "change": "Generalize CS creation and ForceModel generation: Venus keeps default potential (already works); Sun/Mercury/Jupiter emit point-mass-only force model per B.5.1 (CentralBody=<body>, PrimaryBodies={}, PointMasses={<body>}) and do NOT emit GravityField.<body>.Degree/Order when no potential file exists; always emit an absolute ReportFile.Filename (B.8)." },
+      { "file": "phase3_ai_interpreter/frontstep/frontstep.py", "location": "23-33", "change": "Extend BODY_RADII_KM, BODY_COORD_SYSTEM, and per-body MIN_ALT guards." },
+      { "file": "phase3_ai_interpreter/datasets/v9/build_v9.py", "location": "48-53", "change": "Extend BODY and MIN_ALT for the new bodies." },
+      { "file": "schema/dataset generation", "change": "Add the new bodies to any generator used by the dataset builder (schema knock-on)." },
+      { "file": "orbitlab_core/tests/test_gmat_execution.py", "change": "Extend with the verified Venus/Sun propagation cases (B.5)." }
+    ],
+    "c3_validation_plan": "Re-run the two Task B scripts as regression fixtures after implementing C.2, and add one Mercury-centered and one Jupiter-centered point-mass case to confirm the same point-mass pattern generalizes.",
+    "c4_unverified_register": [
+      { "item": "Mercury GM", "why": "No cof, set-only Mu", "how_to_verify": "Query JPL/NASA Horizons or DE405 official GM table; resolve to a cited value." },
+      { "item": "Earth GM (398600.4415)", "why": "Set-only Mu; source is a codebase constant", "how_to_verify": "Cite an authoritative reference and/or confirm GMAT's internal default from an external source." },
+      { "item": "Luna GM (4902.800066)", "why": "Set-only Mu", "how_to_verify": "Same as Earth." },
+      { "item": "Mars C.1 mu choice", "why": "GMAT (42828.370371) differs from codebase (42828.375214)", "how_to_verify": "Confirm intended source (GMAT-consistent vs MRO/GM convention) and document the choice." }
+    ]
+  },
+  "task_d_physics_sanity": {
+    "basis": "For a circular orbit, v = sqrt(mu / r) with r = SMA. Cross-checked with Task B telemetry.",
+    "d1_venus": { "v_calc": "sqrt(324858.592079 / 7000) = 6.8124 km/s", "v_telemetry": "6.81236899 km/s (VZ t=0)", "match": "within 4e-6", "stability": "SMA held 6999.9-7000.0 km; ECC <= ~1.1e-5 -> circular orbit maintained. PASS" },
+    "d2_sun": { "v_calc": "sqrt(1.327132332402215e11 / 1.49597870691e8) = 29.7846 km/s", "v_telemetry": "29.78464647 km/s (VY t=0)", "match": "within 1e-7 (29.78 km/s is Earth's mean heliocentric speed - physically correct at 1 AU)", "stability": "SMA held 149597870.7 km; ECC <= ~7.7e-16 -> circular heliocentric orbit maintained. PASS" },
+    "d3_au": "GMAT/DE405 AU = 149,597,870.691 km default (DE405 readme :377 lists AU = 1.495978706910000e+08); the Sun script used 149597870.7 km (1 AU) and matched the expected 29.7846 km/s speed exactly, confirming internal consistency.",
+    "d4_ordering_guards": {
+      "radius": "Sun(695700) > Jupiter(71492) > Earth(6378) > Venus(6051.8) > Mars(3396.19) > Mercury(2440.53) > Moon(1737.4) - consistent; Jupiter radius is ~11.2x Earth's - physically correct.",
+      "mu": "Sun(1.33e11) > Jupiter(1.27e8) > Earth(~3.986e5) > Venus(3.249e5) > Mars(4.283e4) > Moon(4.903e3) - physically correct."
+    }
+  },
+  "summary": {
+    "task_a": "All hard-coded body assumptions are limited to {Earth, Moon, Mars} (constants, schema literals, generator, frontstep, datasets).",
+    "task_b": "GMAT R2026a verified - DE405 in use; seven-body radii from SPICE TPC; Venus/Mars GM from cof; Sun/Jupiter GM + AU from DE405 readme; Mu/Radius are set-only; planet-centered (Venus) AND heliocentric (Sun) circular propagation both run and hold SMA/ECC; Sun/Mercury/Jupiter have no shipped potential file so must be point masses.",
+    "task_c": "Design proposal to generalize the central-body table and emit the correct force-model shape per body; not implemented.",
+    "task_d": "Circular-orbit velocity checks match telemetry to <=4e-6 relative; radius/mu orderings are physically correct.",
+    "unverified_count": 4,
+    "unverified_items": ["Mercury GM", "Earth GM", "Luna GM", "Mars GM convention"],
+    "deliverables_in_repo": [
+      "phase3_ai_interpreter/body_expansion/body_expansion_discovery.md",
+      "phase3_ai_interpreter/body_expansion/body_expansion_discovery.json"
+    ]
+  }
+}
