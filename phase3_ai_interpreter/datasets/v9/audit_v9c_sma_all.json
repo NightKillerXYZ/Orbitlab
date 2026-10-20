@@ -1,0 +1,51 @@
+{
+  "file": "C:\\Users\\canit\\.devswarm\\repos\\0\\c799e6d2\\feature-physics-core\\phase3_ai_interpreter\\datasets\\v9\\orbitlab_interpreter_train_v9b_master.jsonl",
+  "rows_total": 4300,
+  "tolerance_km": 0.01,
+  "radii_km": {
+    "Earth": 6378.1363,
+    "Moon": 1737.4,
+    "Mars": 3389.5,
+    "Mercury": 2440.53,
+    "Venus": 6051.8,
+    "Jupiter": 71492.0,
+    "Sun": 695700.0
+  },
+  "extended_from": "audit_v9c_sma.py",
+  "audited_pass": 3687,
+  "audited_fail": 0,
+  "not_auditable_report_only": 613,
+  "categories": {
+    "direct-sma": {
+      "rows": 2659,
+      "pass": 2659,
+      "fail": 0,
+      "na": 0
+    },
+    "periapsis": {
+      "rows": 1008,
+      "pass": 1008,
+      "fail": 0,
+      "na": 0
+    },
+    "output-Cartesian": {
+      "rows": 612,
+      "pass": 0,
+      "fail": 0,
+      "na": 612
+    },
+    "not-derivable": {
+      "rows": 1,
+      "pass": 0,
+      "fail": 0,
+      "na": 1
+    },
+    "circular-alt": {
+      "rows": 20,
+      "pass": 20,
+      "fail": 0,
+      "na": 0
+    }
+  },
+  "failures": []
+}

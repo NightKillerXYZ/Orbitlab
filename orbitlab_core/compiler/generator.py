@@ -30,6 +30,7 @@ from orbitlab_core.ast.validation import (
     get_body_constants,
 )
 from orbitlab_core.constants import (
+    BODY_POTENTIAL_FILES,
     CENTRAL_BODY_PROPERTIES,
     POINT_MASS_ONLY_BODIES,
 )
@@ -144,10 +145,13 @@ class GmatScriptCompiler:
             lines.append(f"{fm_name}.PointMasses = {{{pm_str}}};")
         else:
             lines.append(f"{fm_name}.PrimaryBodies = {{{gmat_body}}};")
-            if central_body == "Mars":
-                lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = Mars50c.cof;")
-            elif central_body == "Moon":
-                lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = LP165P.cof;")
+            # Optional GMAT gravity-field potential-file name comes from
+            # bodies.json (BODY_POTENTIAL_FILES), so per-body gravity files
+            # (Mars50c.cof, LP165P.cof, MGNP180U.cof, ...) are never hardcoded
+            # by body name in the generator.
+            potential_file = BODY_POTENTIAL_FILES[central_body]
+            if potential_file:
+                lines.append(f"{fm_name}.GravityField.{gmat_body}.PotentialFile = {potential_file};")
             lines.append(f"{fm_name}.GravityField.{gmat_body}.Degree = {fm.gravityDegree};")
             lines.append(f"{fm_name}.GravityField.{gmat_body}.Order = {fm.gravityOrder};")
 

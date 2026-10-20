@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for OrbitLab central-body physical constants and GMAT mapping. Keys are the API centralBody names. Earth/Moon/Mars values are the frozen legacy constants and MUST NOT change. New-body radii are SPICE 2015 IAU. mu from GMAT-installed files / IAU-JPL standard (see phase3_ai_interpreter/body_expansion/mu_readback.*). soiRadiusKm = sphere-of-influence radius (km); null for the Sun (heliocentric reference, no enclosing parent, no SOI restriction).",
+  "_comment": "Single source of truth for OrbitLab central-body physical constants and GMAT mapping. Keys are the API centralBody names. Earth/Moon/Mars values are the frozen legacy constants and MUST NOT change. New-body radii are SPICE 2015 IAU. mu from GMAT-installed files / IAU-JPL standard (see phase3_ai_interpreter/body_expansion/mu_readback.*). soiRadiusKm = sphere-of-influence radius (km) recomputed on 2026-01-01 12:00 UTCGregorian from GMAT epoch distance d * (mu_body/mu_parent)^(2/5), see phase3_ai_interpreter/closeout2/soi_check.md; null for the Sun (heliocentric reference, no enclosing parent, no SOI restriction).",
   "bodies": {
     "Earth": {
       "radiusKm": 6378.1363,
@@ -13,7 +13,7 @@
       "radiusConvention": "Earth: legacy equatorial radius (WGS-84 / GMAT EGM-96 reference ellipsoid)",
       "muSource": "GMAT data\\gravity\\earth\\EGM96.cof l.7 POTFIELD 3.98600441500E+14 m3/s2 (== frozen legacy value)",
       "muNotes": "Read-back probe R=7073 km -> mu=398600.4415 (rel. -1.17e-10%, machine-exact). Legacy Earth mu 398600.4415 KEPT.",
-      "soiRadiusKm": 925000
+      "soiRadiusKm": 909222.284
     },
     "Moon": {
       "radiusKm": 1737.4,
@@ -27,7 +27,7 @@
       "radiusConvention": "Moon: legacy mean radius",
       "muSource": "Frozen legacy value; GMAT data\\gravity\\luna\\LP165P.cof l.7 POTFIELD 4.90280105600e+12 m3/s2 (=4902.801056) differs by +2e-5%",
       "muNotes": "Read-back probe R=2000 km -> mu=4902.800582. Legacy Moon mu 4902.800066 KEPT per requirement.",
-      "soiRadiusKm": 66200
+      "soiRadiusKm": 62065.619
     },
     "Mars": {
       "radiusKm": 3389.5,
@@ -41,7 +41,7 @@
       "radiusConvention": "Mars: legacy mean radius",
       "muSource": "Frozen legacy value; GMAT data\\gravity\\mars\\Mars50c.cof l.7 POTFIELD 4.28283703710e+13 m3/s2 (=42828.370371) differs by -1.1e-5%",
       "muNotes": "Read-back probe R=3789.5 km -> mu=42828.314258. Legacy Mars mu 42828.375214 KEPT per requirement.",
-      "soiRadiusKm": 577000
+      "soiRadiusKm": 541047.733
     },
     "Mercury": {
       "radiusKm": 2440.53,
@@ -55,7 +55,7 @@
       "radiusConvention": "Mercury: SPICE 2015 IAU mean radius (2440.53 km)",
       "muSource": "GMAT read-back, task B",
       "muNotes": "GMAT point-mass circular-orbit probe R=3600 km read back mu=22032.080486 (GMAT's internal Mercury parameter; no gravity .cof in GMAT install, no DE405 entry, CelestialBody.Mu set-only).",
-      "soiRadiusKm": 112000
+      "soiRadiusKm": 134530.210
     },
     "Venus": {
       "radiusKm": 6051.8,
@@ -69,7 +69,7 @@
       "radiusConvention": "Venus: SPICE 2015 IAU mean radius (6051.8 km)",
       "muSource": "GMAT read-back, task B",
       "muNotes": "GMAT point-mass circular-orbit probe R=7000 km read back mu=324858.598827 (GMAT MGNP180U.cof l.7 POTFIELD 3.24858592079000e+14 m3/s2).",
-      "soiRadiusKm": 616000
+      "soiRadiusKm": 619750.031
     },
     "Jupiter": {
       "radiusKm": 71492,
@@ -83,7 +83,7 @@
       "radiusConvention": "Jupiter: 1-bar equatorial level (71492 km, DE405/SPICE)",
       "muSource": "GMAT read-back, task B",
       "muNotes": "GMAT point-mass circular-orbit probe R=74000 km read back mu=126712767.857614 (point-mass only, no gravity file).",
-      "soiRadiusKm": 48200000
+      "soiRadiusKm": 48294715.423
     },
     "Sun": {
       "radiusKm": 695700,
