@@ -293,6 +293,7 @@ def score_case(interpreter, case: dict, output: str) -> dict:
     # 2. schema + physics + compile via the shared interpreter
     it = interpreter.interpret(output)
     errors = list(it.errors)
+    res["_errors_full"] = " | ".join(str(e) for e in errors)
     # schema_valid: parsed into AST with no schema/parse errors (physical-only
     # failures are reported separately and drive the accept/reject verdict).
     res["schema_valid"] = all(str(e).startswith("physical:") for e in errors)
@@ -461,6 +462,9 @@ def main() -> int:
             })
             continue
         results.append(score_case(interpreter, case, output))
+        if case["expect"] == "reject" or results[-1]["verdict"] == "reject":
+            _full = results[-1].get("_errors_full")
+            print(f"       reject detail: {_full if _full is not None else 'n/a'}", flush=True)
 
     summ = summarize(results, cases)
     endpoint_desc = f"mock={args.mock}" if args.mock else \

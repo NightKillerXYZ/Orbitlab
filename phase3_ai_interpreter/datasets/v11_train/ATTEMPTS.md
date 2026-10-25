@@ -33,5 +33,5 @@ the current MANIFEST hash in the table.
 | # | date | base model | LoRA rank | learning rate | epochs | data version hash | blind acc | realistic acc | notes |
 |---|------|-----------|-----------|---------------|--------|-------------------|-----------|---------------|-------|
 | 1 |        |            |           |               |        |                   |           |               |       |
-| 2 |        |            |           |               |        |                   |           |               |       |
+| 2 |        |            |           |               |        | a0c20c4f8e106b3eb632dbaca913134a187474375594d574b44a01443b9e45f1 |           |               | v12-train dataset (MANIFEST_v12.json): v11 train/val unchanged + v12_gen 473 split 90/10 stratified seed 42; train 4839, val 302 |       |
 | 3 |        |            |           |               |        |                   |           |               |       |
