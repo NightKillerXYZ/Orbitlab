@@ -32,6 +32,6 @@ the current MANIFEST hash in the table.
 
 | # | date | base model | LoRA rank | learning rate | epochs | data version hash | blind acc | realistic acc | notes |
 |---|------|-----------|-----------|---------------|--------|-------------------|-----------|---------------|-------|
-| 1 |        |            |           |               |        |                   |           |               |       |
-| 2 |        |            |           |               |        | a0c20c4f8e106b3eb632dbaca913134a187474375594d574b44a01443b9e45f1 |           |               | v12-train dataset (MANIFEST_v12.json): v11 train/val unchanged + v12_gen 473 split 90/10 stratified seed 42; train 4839, val 302 |       |
+| 1 |        |            |           |               |        |                   |           |               | attempt 1 pasted-output field score 137/168 (81.5%), 0 fully correct (blind/realistic not run for A1) |       |
+| 2 | 2026-10-26 | deepseek-v4-flash (0731) |  |  |  | a0c20c4f8e106b3eb632dbaca913134a187474375594d574b44a01443b9e45f1 | 0/32 (0%) | 0/30 (0%) | v12-train dataset (MANIFEST_v12.json): v11 train/val unchanged + v12_gen 473 split 90/10 stratified seed 42; train 4839, val 302 · A2 pasted-output field score 133/168 (79.2%), 0 fully correct; all 14 verdicts reject (wrong-schema drag keys + top-level frame + stale epoch 2023/2024); see training/realtime/report_A2.md |       |
 | 3 |        |            |           |               |        |                   |           |               |       |

@@ -1,0 +1,540 @@
+{
+  "timestamp": "20261025T184647Z",
+  "cases": "..\\..\\cases_realistic.jsonl",
+  "endpoint": "model=deepseek-ai/DeepSeek-V4-Flash-0731:deepinfra url=https://router.huggingface.co/v1",
+  "summary": {
+    "total": 30,
+    "passed": 0,
+    "accuracy": 0.0,
+    "per_body": {
+      "Earth": {
+        "n": 13,
+        "acc": 0.0
+      },
+      "Jupiter": {
+        "n": 3,
+        "acc": 0.0
+      },
+      "Mars": {
+        "n": 3,
+        "acc": 0.0
+      },
+      "Mercury": {
+        "n": 2,
+        "acc": 0.0
+      },
+      "Moon": {
+        "n": 4,
+        "acc": 0.0
+      },
+      "Sun": {
+        "n": 3,
+        "acc": 0.0
+      },
+      "Venus": {
+        "n": 2,
+        "acc": 0.0
+      }
+    },
+    "per_category": {
+      "Keplerian": {
+        "n": 30,
+        "acc": 0.0
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "R01_ISS",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R01_ISS\",\n    \"spacecraft\": {\n      \"name\": \"SC_R01_ISS\",\n      \"dryMass\": 419725.0,\n      \"centralBody\": \"Earth\",\n      \"orbit\": {\n        \"type\": \"circular\",\n        \"altitude\": 420.0,\n        \"inclination\": 51.64,\n        \"raan\": 120.0,\n        \"argPeriapsis\": 0.0,\n        \"trueAnomaly\": 0.0\n      }\n    },\n    \"propagation\": {\n      \"duration\": 86400.0,\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R02_SSO",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R02_SSO\",\n  \"spacecraft\": {\n    \"name\": \"SC_R02_SSO\",\n    \"dry_mass_kg\": 950.0\n  },\n  \"orbit\": {\n    \"central_body\": \"Earth\",\n    \"type\": \"circular\",\n    \"altitude_km\": 700.0,\n    \"inclination_deg\": 98.2,\n    \"raan_deg\": 30.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 90.0\n  },\n  \"propagation\": {\n    \"duration_hours\": 12.0,\n    \"integrator\": \"RungeKutta89\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.orbit | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hours | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.orbit | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R03_GEO",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R03_GEO\",\n    \"spacecraft\": {\n      \"name\": \"SC_R03_GEO\",\n      \"dryMass\": 3200,\n      \"initialState\": {\n        \"frame\": \"EarthMJ2000Eq\",\n        \"orbit\": {\n          \"type\": \"Circular\",\n          \"altitude\": 35786,\n          \"inclination\": 0.05,\n          \"raan\": 75,\n          \"argOfPeriapsis\": 0,\n          \"trueAnomaly\": 100\n        }\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"stepSize\": null,\n      \"duration\": {\n        \"value\": 2,\n        \"units\": \"days\"\n      }\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R04_Molniya",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment_name\": \"R04_Molniya\",\n  \"spacecraft\": {\n    \"name\": \"SC_R04_Molniya\",\n    \"dry_mass\": 1600.0,\n    \"initial_state\": {\n      \"central_body\": \"Earth\",\n      \"periapsis_altitude_km\": 500.0,\n      \"eccentricity\": 0.74,\n      \"inclination_deg\": 63.4,\n      \"raan_deg\": 45.0,\n      \"arg_periapsis_deg\": 270.0,\n      \"true_anomaly_deg\": 0.0\n    }\n  },\n  \"propagation\": {\n    \"duration_hours\": 24.0,\n    \"integrator\": \"PrinceDormand78\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R05_GTO",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R05_GTO\",\n    \"spacecraft\": {\n      \"name\": \"SC_R05_GTO\",\n      \"dryMass\": 2500.0,\n      \"initialState\": {\n        \"centralBody\": \"Earth\",\n        \"frame\": \"EarthMJ2000Eq\",\n        \"elements\": {\n          \"periapsisAltitude\": 250.0,\n          \"eccentricity\": 0.73,\n          \"inclination\": 28.5,\n          \"raan\": 0.0,\n          \"argPeriapsis\": 180.0,\n          \"trueAnomaly\": 0.0\n        }\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"stepSize\": null,\n      \"duration\": 36000.0,\n      \"forceModel\": \"Default\"\n    },\n    \"output\": {\n      \"options\": []\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R06_GPS",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R06_GPS\",\n    \"spacecraft\": {\n      \"name\": \"SC_R06_GPS\",\n      \"dryMass\": 2000.0,\n      \"initialState\": {\n        \"frame\": \"EarthMJ2000Eq\",\n        \"orbit\": {\n          \"type\": \"CIRCULAR\",\n          \"altitude\": 20180.0,\n          \"inclination\": 55.0,\n          \"raan\": 60.0,\n          \"argOfPeriapsis\": 0.0,\n          \"trueAnomaly\": 45.0\n        }\n      }\n    },\n    \"propagation\": {\n      \"duration\": 86400.0,\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"DEFAULT\"\n    },\n    \"output\": {\n      \"options\": \"NONE\"\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R07_Polar",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R07_Polar\",\n  \"spacecraft\": {\n    \"name\": \"SC_R07_Polar\",\n    \"dry_mass_kg\": 480.0\n  },\n  \"central_body\": \"Earth\",\n  \"initial_state\": {\n    \"sma_km\": 7178.0,\n    \"eccentricity\": 0.001,\n    \"inclination_deg\": 90.0,\n    \"raan_deg\": 200.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 0.0\n  },\n  \"propagation\": {\n    \"duration_hours\": 6.0,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": false\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model | unsupported:$.extra_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hours",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R08_HEO",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R08_HEO\",\n  \"spacecraft\": {\n    \"name\": \"SC_R08_HEO\",\n    \"dry_mass_kg\": 5200.0\n  },\n  \"central_body\": \"Earth\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 1000.0,\n    \"eccentricity\": 0.5,\n    \"inclination_deg\": 63.4,\n    \"raan_deg\": 10.0,\n    \"arg_periapsis_deg\": 270.0,\n    \"true_anomaly_deg\": 20.0\n  },\n  \"propagation\": {\n    \"duration_days\": 3.0,\n    \"integrator\": \"PrinceDormand78\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.options"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R09_Gravity",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"R09_Gravity\",\n  \"spacecraft\": {\n    \"name\": \"SC_R09_Gravity\",\n    \"dryMass\": 650.0,\n    \"initialState\": {\n      \"coordinateSystem\": \"EarthFixed\",\n      \"epoch\": \"2025-01-01T00:00:00.000\",\n      \"stateType\": \"Keplerian\",\n      \"sma\": 6928.14,\n      \"ecc\": 0.0,\n      \"inc\": 97.6,\n      \"raan\": 15.0,\n      \"argPer\": 0.0,\n      \"trueAnomaly\": 0.0\n    }\n  },\n  \"propagator\": {\n    \"type\": \"PrinceDormand78\",\n    \"stepSize\": 60.0,\n    \"duration\": 43200.0\n  },\n  \"forces\": {\n    \"gravity\": {\n      \"earth\": {\n        \"degree\": 8,\n        \"order\": 8\n      },\n      \"pointMasses\": [\"Luna\", \"Sun\"]\n    },\n    \"solarRadiationPressure\": true\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.forces | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.forces | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R10_NoSRP",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"R10_NoSRP\",\n    \"spacecraft\": {\n      \"name\": \"SC_R10_NoSRP\",\n      \"dryMass\": 1850.0,\n      \"centralBody\": \"Earth\",\n      \"initialState\": {\n        \"sma\": 7500.0,\n        \"ecc\": 0.02,\n        \"inc\": 45.0,\n        \"raan\": 100.0,\n        \"argp\": 30.0,\n        \"trueAnomaly\": 60.0\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"stepSize\": 60.0,\n      \"duration\": 86400.0\n    },\n    \"forceModel\": {\n      \"gravity\": {\n        \"degree\": 4,\n        \"order\": 4\n      },\n      \"pointMasses\": [\"Sun\"],\n      \"solarRadiationPressure\": false\n    }\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R11_LunarPolar",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R11_LunarPolar\",\n  \"spacecraft\": {\n    \"name\": \"SC_R11_LunarPolar\",\n    \"dry_mass_kg\": 2200.0\n  },\n  \"central_body\": \"Moon\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 100.0,\n    \"inclination_deg\": 90.0,\n    \"raan_deg\": 0.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 0.0\n  },\n  \"propagation\": {\n    \"duration_hours\": 8.0,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": false\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model | unsupported:$.extra_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hours",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R12_LunarFrozen",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"R12_LunarFrozen\",\n    \"spacecraft\": {\n      \"name\": \"SC_R12_LunarFrozen\",\n      \"dryMass\": 1200,\n      \"centralBody\": \"Moon\",\n      \"initialState\": {\n        \"sma\": 1838,\n        \"ecc\": 0.01,\n        \"inc\": 86,\n        \"raan\": 120,\n        \"argp\": 90,\n        \"ta\": 0\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"duration\": 43200,\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R13_MarsSSO",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R13_MarsSSO\",\n  \"spacecraft\": {\n    \"name\": \"SC_R13_MarsSSO\",\n    \"dry_mass_kg\": 1031.0\n  },\n  \"central_body\": \"Mars\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 400.0,\n    \"inclination_deg\": 93.1,\n    \"raan_deg\": 50.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 30.0\n  },\n  \"propagation\": {\n    \"duration_hrs\": 12.0,\n    \"integrator\": \"RungeKutta89\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hrs | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.options"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R14_MarsElliptic",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment_name\": \"R14_MarsElliptic\",\n  \"spacecraft\": {\n    \"name\": \"SC_R14_MarsElliptic\",\n    \"dry_mass_kg\": 2180\n  },\n  \"central_body\": \"Mars\",\n  \"orbit\": {\n    \"periapsis_altitude_km\": 255,\n    \"eccentricity\": 0.0089,\n    \"inclination_deg\": 92.9,\n    \"raan_deg\": 150,\n    \"arg_periapsis_deg\": 270,\n    \"true_anomaly_deg\": 0\n  },\n  \"propagation\": {\n    \"duration_hours\": 24,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"options\": {}\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R15_MercuryPolar",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"R15_MercuryPolar\",\n    \"spacecraft\": {\n      \"name\": \"SC_R15_MercuryPolar\",\n      \"dryMass\": 507,\n      \"initialState\": {\n        \"centralBody\": \"Mercury\",\n        \"periapsisAltitude\": 200,\n        \"eccentricity\": 0.74,\n        \"inclination\": 80,\n        \"raan\": 60,\n        \"argOfPeriapsis\": 120,\n        \"trueAnomaly\": 0\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"duration\": 24,\n      \"durationUnits\": \"hours\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R16_VenusPolar",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R16_VenusPolar\",\n    \"spacecraft\": {\n      \"name\": \"SC_R16_VenusPolar\",\n      \"dryMass\": 1035.0,\n      \"centralBody\": \"Venus\",\n      \"initialState\": {\n        \"periapsisAltitude\": 250.0,\n        \"eccentricity\": 0.39,\n        \"inclination\": 85.5,\n        \"raan\": 100.0,\n        \"argOfPeriapsis\": 0.0,\n        \"trueAnomaly\": 0.0\n      }\n    },\n    \"propagator\": {\n      \"type\": \"RungeKutta89\",\n      \"stepSize\": null,\n      \"duration\": {\n        \"value\": 2.0,\n        \"unit\": \"days\"\n      }\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R17_JupiterHigh",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"R17_JupiterHigh\",\n  \"spacecraft\": {\n    \"name\": \"SC_R17_JupiterHigh\",\n    \"dry_mass_kg\": 4800\n  },\n  \"central_body\": \"Jupiter\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 1000000,\n    \"inclination_deg\": 5,\n    \"raan_deg\": 20,\n    \"arg_periapsis_deg\": 0,\n    \"true_anomaly_deg\": 0\n  },\n  \"propagation\": {\n    \"duration_days\": 5,\n    \"integrator\": \"PrinceDormand78\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": false\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model | unsupported:$.extra_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R18_JupiterElliptic",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"R18_JupiterElliptic\",\n    \"spacecraft\": {\n      \"name\": \"SC_R18_JupiterElliptic\",\n      \"dryMass\": 3600.0,\n      \"centralBody\": \"Jupiter\",\n      \"orbit\": {\n        \"periapsisAltitude\": 150000.0,\n        \"eccentricity\": 0.3,\n        \"inclination\": 25.0,\n        \"raan\": 80.0,\n        \"argOfPeriapsis\": 45.0,\n        \"trueAnomaly\": 0.0\n      }\n    },\n    \"propagation\": {\n      \"duration\": 10.0,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R19_Mercurylike",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"R19_Mercurylike\",\n    \"spacecraft\": {\n      \"name\": \"SC_R19_Mercurylike\",\n      \"dryMass\": 600.0\n    },\n    \"centralBody\": \"Sun\",\n    \"initialState\": {\n      \"sma\": 57894375.957,\n      \"eccentricity\": 0.2056,\n      \"inclination\": 7.0,\n      \"raan\": 48.0,\n      \"argPeriapsis\": 29.0,\n      \"trueAnomaly\": 0.0\n    },\n    \"propagation\": {\n      \"duration\": 120.0,\n      \"integrator\": \"RungeKutta89\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "R20_EarthLike",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"R20_EarthLike\",\n    \"spacecraft\": {\n      \"name\": \"SC_R20_EarthLike\",\n      \"dryMass\": 900.0,\n      \"wetMass\": 900.0\n    },\n    \"centralBody\": \"Sun\",\n    \"initialState\": {\n      \"sma\": 149597870.691,\n      \"ecc\": 0.0167,\n      \"inc\": 0.1,\n      \"raan\": 0.0,\n      \"argp\": 100.0,\n      \"ta\": 0.0\n    },\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"stepSize\": null,\n      \"epoch\": null\n    },\n    \"propagationDuration\": {\n      \"value\": 180.0,\n      \"units\": \"days\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"variables\": []\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X01_Incl270",
+      "expect": "reject",
+      "expect_reason": "less than or equal to 180",
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"X01_Incl270\",\n    \"spacecraft\": {\n      \"name\": \"SC_X01_Incl270\",\n      \"dryMass\": 420.0,\n      \"initialState\": {\n        \"frame\": \"EarthMJ2000Eq\",\n        \"coordinateSystem\": \"Keplerian\",\n        \"epoch\": \"2024-01-01T00:00:00.000\",\n        \"sma\": 6928.137,\n        \"ecc\": 0.0,\n        \"inc\": 270.0,\n        \"raan\": 40.0,\n        \"aop\": 0.0,\n        \"ta\": 0.0\n      }\n    },\n    \"propagator\": {\n      \"type\": \"RungeKutta89\",\n      \"stepSize\": 60.0,\n      \"duration\": 43200.0\n    },\n    \"forceModel\": \"Default\",\n    \"output\": {\n      \"variables\": [\n        \"SC_X01_Incl270.EarthMJ2000Eq.X\",\n        \"SC_X01_Incl270.EarthMJ2000Eq.Y\",\n        \"SC_X01_Incl270.EarthMJ2000Eq.Z\",\n        \"SC_X01_Incl270.EarthMJ2000Eq.VX\",\n        \"SC_X01_Incl270.EarthMJ2000Eq.VY\",\n        \"SC_X01_Incl270.EarthMJ2000Eq.VZ\"\n      ]\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing 'less than or equal to 180'; got errors: ['unsupported:$.experiment']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X02_EarthLow",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 100.0 km for central body 'Earth'",
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"X02_EarthLow\",\n    \"spacecraft\": {\n      \"name\": \"SC_X02_EarthLow\",\n      \"dryMass\": 300.0,\n      \"initialState\": {\n        \"frame\": \"EarthMJ2000Eq\",\n        \"epoch\": \"2025-01-01T00:00:00.000\",\n        \"elements\": {\n          \"type\": \"KEPLERIAN\",\n          \"sma\": 6438.137,\n          \"ecc\": 0.0,\n          \"inc\": 51.6,\n          \"raan\": 0.0,\n          \"argp\": 0.0,\n          \"ta\": 0.0\n        }\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"stepSize\": 60.0,\n      \"duration\": 21600.0\n    },\n    \"forceModel\": {\n      \"useDefault\": true\n    },\n    \"output\": {\n      \"type\": \"default\"\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"below the minimum safe altitude of 100.0 km for central body 'Earth'\"; got errors: ['unsupported:$.experiment']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X03_MoonLow",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 20.0 km for central body 'Moon'",
+      "raw_output": "{\n  \"experiment_name\": \"X03_MoonLow\",\n  \"spacecraft\": {\n    \"name\": \"SC_X03_MoonLow\",\n    \"dry_mass_kg\": 500.0\n  },\n  \"central_body\": \"Moon\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 10.0,\n    \"inclination_deg\": 90.0,\n    \"raan_deg\": 0.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 0.0\n  },\n  \"propagation\": {\n    \"duration_hr\": 6.0,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": \"none\"\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model | unsupported:$.extra_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hr",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"below the minimum safe altitude of 20.0 km for central body 'Moon'\"; got errors: ['unsupported:$.experiment_name', 'unsupported:$.central_body', 'unsupported:$.orbit', 'unsupported:$.force_model']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X04_MarsLow",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 20.0 km for central body 'Mars'",
+      "raw_output": "```json\n{\n  \"experiment_name\": \"X04_MarsLow\",\n  \"spacecraft\": {\n    \"name\": \"SC_X04_MarsLow\",\n    \"dry_mass_kg\": 700.0\n  },\n  \"central_body\": \"Mars\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 5.0,\n    \"eccentricity\": 0.1,\n    \"inclination_deg\": 60.0,\n    \"raan_deg\": 0.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 0.0\n  },\n  \"propagation\": {\n    \"duration_hours\": 6.0,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"options\": {}\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X05_VenusLow",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 100.0 km for central body 'Venus'",
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"X05_VenusLow\",\n    \"spacecraft\": {\n      \"name\": \"SC_X05_VenusLow\",\n      \"dryMass\": 800.0,\n      \"initialState\": {\n        \"centralBody\": \"Venus\",\n        \"frame\": \"Inertial\",\n        \"elements\": {\n          \"type\": \"Classical\",\n          \"sma\": 6351.8,\n          \"ecc\": 0.0,\n          \"inc\": 80.0,\n          \"raan\": 0.0,\n          \"argp\": 0.0,\n          \"nu\": 0.0\n        }\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"stepSize\": 60.0,\n      \"duration\": 21600.0\n    },\n    \"forceModel\": \"Default\",\n    \"output\": {\n      \"variables\": [\"Epoch\", \"SC_X05_VenusLow.EarthMJ2000Eq.X\", \"SC_X05_VenusLow.EarthMJ2000Eq.Y\", \"SC_X05_VenusLow.EarthMJ2000Eq.Z\", \"SC_X05_VenusLow.VenusMJ2000Eq.VX\", \"SC_X05_VenusLow.VenusMJ2000Eq.VY\", \"SC_X05_VenusLow.VenusMJ2000Eq.VZ\"]\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"below the minimum safe altitude of 100.0 km for central body 'Venus'\"; got errors: ['unsupported:$.experiment']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X06_JupiterLow",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 1000.0 km for central body 'Jupiter'",
+      "raw_output": "{\n  \"experiment_name\": \"X06_JupiterLow\",\n  \"spacecraft\": {\n    \"name\": \"SC_X06_JupiterLow\",\n    \"dry_mass_kg\": 3000\n  },\n  \"central_body\": \"Jupiter\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 500,\n    \"inclination_deg\": 10,\n    \"raan_deg\": 0,\n    \"arg_periapsis_deg\": 0,\n    \"true_anomaly_deg\": 0\n  },\n  \"propagation\": {\n    \"duration_hours\": 6,\n    \"integrator\": \"PrinceDormand78\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hours | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"below the minimum safe altitude of 1000.0 km for central body 'Jupiter'\"; got errors: ['unsupported:$.experiment_name', 'unsupported:$.central_body', 'unsupported:$.orbit', 'unsupported:$.options']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X07_MoonSOI",
+      "expect": "reject",
+      "expect_reason": "escapes the sphere of influence of central body 'Moon'",
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"X07_MoonSOI\",\n    \"spacecraft\": {\n      \"name\": \"SC_X07_MoonSOI\",\n      \"dryMass\": 500.0,\n      \"initialState\": {\n        \"centralBody\": \"Moon\",\n        \"frame\": \"MoonInertial\",\n        \"sma\": 90000.0,\n        \"ecc\": 0.1,\n        \"inc\": 30.0,\n        \"raan\": 0.0,\n        \"aop\": 0.0,\n        \"ta\": 0.0\n      }\n    },\n    \"propagator\": {\n      \"type\": \"RungeKutta89\",\n      \"stepSize\": null,\n      \"duration\": {\n        \"value\": 2.0,\n        \"unit\": \"days\"\n      }\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"escapes the sphere of influence of central body 'Moon'\"; got errors: ['unsupported:$.experiment']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X08_MercurySOI",
+      "expect": "reject",
+      "expect_reason": "escapes the sphere of influence of central body 'Mercury'",
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"X08_MercurySOI\",\n    \"spacecraft\": {\n      \"name\": \"SC_X08_MercurySOI\",\n      \"dryMass\": 500.0\n    },\n    \"centralBody\": \"Mercury\",\n    \"initialState\": {\n      \"sma\": 200000.0,\n      \"eccentricity\": 0.2,\n      \"inclination\": 30.0,\n      \"raan\": 0.0,\n      \"argPeriapsis\": 0.0,\n      \"trueAnomaly\": 0.0\n    },\n    \"propagation\": {\n      \"duration\": 2.0,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\"\n    },\n    \"forceModel\": \"default\",\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"escapes the sphere of influence of central body 'Mercury'\"; got errors: ['unsupported:$.experiment']"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X09_SunClose",
+      "expect": "reject",
+      "expect_reason": "below the minimum safe altitude of 6261300.0 km for central body 'Sun'",
+      "raw_output": "```json\n{\n  \"experiment_name\": \"X09_SunClose\",\n  \"spacecraft\": {\n    \"name\": \"SC_X09_SunClose\",\n    \"dry_mass_kg\": 500.0\n  },\n  \"central_body\": \"Sun\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 3000000.0,\n    \"eccentricity\": 0.1,\n    \"inclination_deg\": 5.0,\n    \"raan_deg\": 0.0,\n    \"arg_periapsis_deg\": 0.0,\n    \"true_anomaly_deg\": 0.0\n  },\n  \"propagation\": {\n    \"duration_days\": 10.0,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": \"none\"\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "X10_EarthSOI",
+      "expect": "reject",
+      "expect_reason": "escapes the sphere of influence of central body 'Earth'",
+      "raw_output": "{\n  \"experimentName\": \"X10_EarthSOI\",\n  \"spacecraft\": {\n    \"name\": \"SC_X10_EarthSOI\",\n    \"dryMass\": 500,\n    \"initialState\": {\n      \"centralBody\": \"Earth\",\n      \"frame\": \"EarthMJ2000Eq\",\n      \"elements\": {\n        \"type\": \"Keplerian\",\n        \"sma\": 1200000,\n        \"ecc\": 0,\n        \"inc\": 10,\n        \"raan\": 0,\n        \"argp\": 0,\n        \"trueAnomaly\": 0\n      }\n    }\n  },\n  \"propagator\": {\n    \"type\": \"RungeKutta89\",\n    \"stepSize\": 60,\n    \"duration\": 432000\n  },\n  \"forceModel\": \"Default\",\n  \"output\": {\n    \"variables\": [\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.X\",\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.Y\",\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.Z\",\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.VX\",\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.VY\",\n      \"SC_X10_EarthSOI.EarthMJ2000Eq.VZ\"\n    ]\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": true,
+      "problems": [
+        "reject reason missing \"escapes the sphere of influence of central body 'Earth'\"; got errors: ['unsupported:$.propagator', 'unsupported:$.output', 'unsupported:$.spacecraft.dryMass', 'unsupported:$.spacecraft.initialState']"
+      ],
+      "pass": false
+    }
+  ]
+}

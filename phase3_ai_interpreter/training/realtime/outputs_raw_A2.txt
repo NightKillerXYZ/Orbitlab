@@ -1,0 +1,696 @@
+1. {
+  "experimentName": "T01",
+  "spacecraft": {
+    "name": "SC_T01",
+    "dryMassKg": 850,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 7178.135,
+      "eccentricity": 0,
+      "inclinationDeg": 98.6,
+      "raanDeg": 25,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarApsectRatio": 1.2
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 10
+    },
+    "stepSizeSecs": 60
+  }
+}
+2. {
+  "version": "1.0",
+  "experimentName": "T02",
+  "spacecraft": {
+    "name": "SC_T02",
+    "dryMassKg": 2200,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 7674.864386387925,
+      "eccentricity": 0.65,
+      "inclinationDeg": 41,
+      "raanDeg": 200,
+      "argumentOfPeriapsisDeg": 45,
+      "trueAnomalyDeg": 10
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphereModel": "JacchiaRoberts",
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "PrinceDormand78",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 20
+    },
+    "stepSizeSecs": 60
+  }
+}
+3. {
+  "version": "1.0",
+  "experimentName": "T03",
+  "spacecraft": {
+    "name": "SC_T03",
+    "dryMassKg": 950,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Moon",
+  "coordinateSystem": "LunaMJ2000Eq",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 1855.1,
+      "eccentricity": 0,
+      "inclinationDeg": 45,
+      "raanDeg": 10,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarActivityLevel": "Nil"
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 6
+    },
+    "stepSizeSecs": 60
+  }
+}
+4. {
+  "version": "1.0",
+  "experimentName": "T04",
+  "spacecraft": {
+    "name": "SC_T04",
+    "dryMassKg": 1200,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Mars",
+  "coordinateSystem": "MarsMJ2000Eq",
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 3900,
+      "eccentricity": 0.02,
+      "inclinationDeg": 25,
+      "raanDeg": 80,
+      "argumentOfPeriapsisDeg": 10,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarCycle": 24
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 24
+    },
+    "stepSizeSecs": 60
+  }
+}
+5. {
+  "version": "1.0",
+  "experimentName": "T05",
+  "spacecraft": {
+    "name": "SC_T05",
+    "dryMassKg": 700,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Venus",
+  "coordinateSystem": "VenusMJ2000Eq",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2026 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 6602.8278,
+      "eccentricity": 0,
+      "inclinationDeg": 60,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarActivityIndex": "Quiet"
+    },
+    "solarRadiationPressure": true
+  },
+  "propagation": {
+    "integrator": "PrinceDormand78",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 8
+    },
+    "stepSizeSecs": 60
+  }
+}
+6. {
+  "version": "1.0",
+  "experimentName": "T06",
+  "spacecraft": {
+    "name": "SC_T06",
+    "dryMassKg": 350,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Mercury",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2026 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "MercuryMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 3000,
+      "eccentricity": 0.1,
+      "inclinationDeg": 88,
+      "raanDeg": 10,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 0,
+    "gravityOrder": 0,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "spaceWeatherSensitivity": false
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 12
+    },
+    "stepSizeSecs": 60
+  }
+}
+7. {
+  "version": "1.0",
+  "experimentName": "T07",
+  "spacecraft": {
+    "name": "SC_T07",
+    "dryMassKg": 2600,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Jupiter",
+  "coordinateSystem": "JupiterMJ2000Eq",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 282119.8,
+      "eccentricity": 0,
+      "inclinationDeg": 12,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 0,
+    "gravityOrder": 0,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "rateCoefficient": 1
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "PrinceDormand78",
+    "stopCondition": {
+      "type": "ElapsedDays",
+      "value": 3
+    },
+    "stepSizeSecs": 60
+  }
+}
+8. {
+  "version": "1.0",
+  "experimentName": "T08",
+  "spacecraft": {
+    "name": "SC_T08",
+    "dryMassKg": 400,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Sun",
+  "coordinateSystem": "SunMJ2000Eq",
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 74798935.346,
+      "eccentricity": 0.1,
+      "inclinationDeg": 3,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 0,
+    "gravityOrder": 0,
+    "pointMasses": [],
+    "atmosphericDrag": false,
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedDays",
+      "value": 60
+    },
+    "stepSizeSecs": 60
+  }
+}
+9. {
+  "version": "1.0",
+  "experimentName": "T09",
+  "spacecraft": {
+    "name": "SC_T09",
+    "dryMassKg": 500,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 6378.137,
+      "eccentricity": 0,
+      "inclinationDeg": 51.6,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "maxDensityGPerCm3": 0.02
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 6
+    },
+    "stepSizeSecs": 60
+  }
+}
+10. {
+  "version": "1.0",
+  "experimentName": "T10",
+  "spacecraft": {
+    "name": "SC_T10",
+    "dryMassKg": 500,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 6799,
+      "eccentricity": 0,
+      "inclinationDeg": 200,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "enabled": false,
+      "model": "JacchiaRoberts"
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 6
+    },
+    "stepSizeSecs": 60
+  }
+}
+11. {
+  "version": "1.0",
+  "experimentName": "T11",
+  "spacecraft": {
+    "name": "SC_T11",
+    "dryMassKg": 800,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Moon",
+  "coordinateSystem": "LunaMJ2000Eq",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 80000,
+      "eccentricity": 0.2,
+      "inclinationDeg": 30,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "enabled": false,
+      "model": "JacchiaRoberts"
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedDays",
+      "value": 2
+    },
+    "stepSizeSecs": 60
+  }
+}
+12. {
+  "version": "1.0",
+  "experimentName": "T12",
+  "spacecraft": {
+    "name": "SC_T12",
+    "dryMassKg": 900,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Mars",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2023 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "MarsMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 3714.118,
+      "eccentricity": 0.05,
+      "inclinationDeg": 70,
+      "raanDeg": 0,
+      "argumentOfPeriapsisDeg": 0,
+      "trueAnomalyDeg": 0
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarActivityIndex": "Quiet"
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 6
+    },
+    "stepSizeSecs": 60
+  }
+}
+13. {
+  "version": "1.0",
+  "experimentName": "MercB2_027",
+  "spacecraft": {
+    "name": "SCMercB2_027",
+    "dryMassKg": 535.2,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Mercury",
+  "coordinateSystem": "MercuryMJ2000Eq",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2024 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "elements": {
+      "semiMajorAxisKm": 2710.4,
+      "eccentricity": 0.028,
+      "inclinationDeg": 16.8,
+      "raanDeg": 41,
+      "argumentOfPeriapsisDeg": 58,
+      "trueAnomalyDeg": 38
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 0,
+    "gravityOrder": 0,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarWindSpeedKmS": 400
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 6.5
+    },
+    "stepSizeSecs": 60
+  }
+}
+14. {
+  "experimentName": "ParaphraseTrain033",
+  "description": "Compare altitude evolution while testing a numerical-method lesson.",
+  "spacecraft": {
+    "name": "ParaphraseSat100",
+    "dryMassKg": 680,
+    "coefficientOfDrag": 2.2,
+    "dragAreaM2": 1,
+    "coefficientOfReflectivity": 1.8,
+    "srpAreaM2": 1
+  },
+  "centralBody": "Earth",
+  "epoch": {
+    "format": "UTCGregorian",
+    "value": "01 Jan 2024 12:00:00.000"
+  },
+  "initialOrbit": {
+    "type": "Keplerian",
+    "coordinateSystem": "EarthMJ2000Eq",
+    "elements": {
+      "semiMajorAxisKm": 11200,
+      "eccentricity": 0.013,
+      "inclinationDeg": 117,
+      "raanDeg": 20,
+      "argumentOfPeriapsisDeg": 140,
+      "trueAnomalyDeg": 260
+    }
+  },
+  "forceModel": {
+    "gravityDegree": 4,
+    "gravityOrder": 4,
+    "pointMasses": [
+      "Luna",
+      "Sun"
+    ],
+    "atmosphericDrag": {
+      "model": "JacchiaRoberts",
+      "solarActivityIndex": 50
+    },
+    "solarRadiationPressure": true
+  },
+  "maneuvers": [],
+  "propagation": {
+    "integrator": "RungeKutta89",
+    "stopCondition": {
+      "type": "ElapsedHours",
+      "value": 1.5
+    },
+    "stepSizeSecs": 60
+  }
+}
+--- END --- 

@@ -1,0 +1,566 @@
+{
+  "timestamp": "20261025T184643Z",
+  "cases": "cases_blind.jsonl",
+  "endpoint": "model=deepseek-ai/DeepSeek-V4-Flash-0731:deepinfra url=https://router.huggingface.co/v1",
+  "summary": {
+    "total": 32,
+    "passed": 0,
+    "accuracy": 0.0,
+    "per_body": {
+      "Jupiter": {
+        "n": 8,
+        "acc": 0.0
+      },
+      "Mercury": {
+        "n": 8,
+        "acc": 0.0
+      },
+      "Sun": {
+        "n": 8,
+        "acc": 0.0
+      },
+      "Venus": {
+        "n": 8,
+        "acc": 0.0
+      }
+    },
+    "per_category": {
+      "Keplerian": {
+        "n": 32,
+        "acc": 0.0
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "BlindMerc_001",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindMerc_001\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_001\",\n    \"dry_mass_kg\": 517.34\n  },\n  \"central_body\": \"Mercury\",\n  \"orbit\": {\n    \"type\": \"circular\",\n    \"altitude_km\": 1237.4,\n    \"inclination_deg\": 19.37,\n    \"raan_deg\": 41.8,\n    \"arg_periapsis_deg\": 17.2,\n    \"true_anomaly_deg\": 63.5\n  },\n  \"propagation\": {\n    \"duration_hours\": 7.5,\n    \"integrator\": \"RungeKutta89\",\n    \"force_model\": \"default\"\n  },\n  \"output\": {\n    \"extra_options\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.output | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_hours | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.output"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_002",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindMerc_002\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_002\",\n    \"dryMass\": 783.91,\n    \"initialState\": {\n      \"centralBody\": \"Mercury\",\n      \"frame\": \"Inertial\",\n      \"elements\": {\n        \"type\": \"Keplerian\",\n        \"altitude\": 2843.17,\n        \"inclination\": 43.82,\n        \"raan\": 107.4,\n        \"argPeriapsis\": 89.6,\n        \"trueAnomaly\": 134.1\n      }\n    }\n  },\n  \"propagator\": {\n    \"integrator\": \"PrinceDormand78\",\n    \"duration\": 1.75,\n    \"durationUnit\": \"days\",\n    \"forceModel\": \"default\"\n  },\n  \"output\": {\n    \"extraOptions\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_003",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindMerc_003\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindMerc_003\",\n      \"dryMass\": 1049.62\n    },\n    \"centralBody\": \"Mercury\",\n    \"initialState\": {\n      \"orbit\": {\n        \"type\": \"circular\",\n        \"altitude\": 5192.85,\n        \"inclination\": 77.14,\n        \"raan\": 193.7,\n        \"argOfPeriapsis\": 161.3,\n        \"trueAnomaly\": 218.9\n      }\n    },\n    \"propagation\": {\n      \"duration\": 4.25,\n      \"durationUnits\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_004",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindMerc_004\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_004\",\n    \"dryMass\": 1318.47,\n    \"centralBody\": \"Mercury\",\n    \"initialState\": {\n      \"periapsisAltitude\": 312.67,\n      \"eccentricity\": 0.0731,\n      \"inclination\": 94.63,\n      \"raan\": 251.2,\n      \"argPeriapsis\": 233.8,\n      \"trueAnomaly\": 279.4\n    }\n  },\n  \"propagator\": {\n    \"integrator\": \"PrinceDormand78\",\n    \"duration\": 3.25,\n    \"durationUnit\": \"days\"\n  },\n  \"forceModel\": \"default\",\n  \"output\": {\n    \"extraOptions\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_005",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindMerc_005\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_005\",\n    \"dry_mass_kg\": 1587.19\n  },\n  \"central_body\": \"Mercury\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 847.23,\n    \"eccentricity\": 0.1342,\n    \"inclination_deg\": 119.28,\n    \"raan_deg\": 309.5,\n    \"arg_periapsis_deg\": 297.1,\n    \"true_anomaly_deg\": 341.7\n  },\n  \"propagation\": {\n    \"duration_days\": 5.75,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"output\": {\n    \"extra_options\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model | unsupported:$.output | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_006",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindMerc_006\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_006\",\n    \"dry_mass_kg\": 1842.56\n  },\n  \"central_body\": \"Mercury\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 1623.89,\n    \"eccentricity\": 0.1875,\n    \"inclination_deg\": 136.45,\n    \"raan_deg\": 27.9,\n    \"arg_periapsis_deg\": 43.4,\n    \"true_anomaly_deg\": 52.8\n  },\n  \"propagation\": {\n    \"duration_days\": 6.25,\n    \"integrator\": \"PrinceDormand78\",\n    \"force_model\": \"default\"\n  },\n  \"output\": {\n    \"extra_options\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.output | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days | unsupported:$.propagation.force_model",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.output"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_007",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindMerc_007\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindMerc_007\",\n    \"dry_mass_kg\": 2104.83\n  },\n  \"central_body\": \"Mercury\",\n  \"initial_state\": {\n    \"sma_km\": 4187.65,\n    \"eccentricity\": 0.0914,\n    \"inclination_deg\": 152.71,\n    \"raan_deg\": 83.6,\n    \"arg_periapsis_deg\": 114.9,\n    \"true_anomaly_deg\": 147.3\n  },\n  \"propagation\": {\n    \"duration_days\": 7.25,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"extra_options\": false\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model | unsupported:$.extra_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindMerc_008",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindMerc_008\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindMerc_008\",\n      \"dryMass\": 2379.12,\n      \"wetMass\": 2379.12\n    },\n    \"centralBody\": \"Mercury\",\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"stepSize\": null,\n      \"epoch\": null\n    },\n    \"initialState\": {\n      \"frame\": \"MJ2000Eq\",\n      \"sma\": 6843.92,\n      \"ecc\": 0.2163,\n      \"inc\": 169.34,\n      \"raan\": 149.1,\n      \"argp\": 187.5,\n      \"ta\": 231.6\n    },\n    \"duration\": {\n      \"value\": 8.75,\n      \"units\": \"days\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"variables\": []\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_009",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindVen_009\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindVen_009\",\n    \"dryMass\": 563.78,\n    \"initialState\": {\n      \"centralBody\": \"Venus\",\n      \"orbitType\": \"Circular\",\n      \"altitude\": 1437.6,\n      \"inclination\": 21.49,\n      \"raan\": 53.2,\n      \"argOfPeriapsis\": 29.8,\n      \"trueAnomaly\": 74.3\n    }\n  },\n  \"propagator\": {\n    \"integrator\": \"RungeKutta89\",\n    \"stepSize\": null,\n    \"duration\": {\n      \"value\": 9.5,\n      \"unit\": \"hours\"\n    }\n  },\n  \"forceModel\": \"default\",\n  \"output\": {\n    \"extraOptions\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_010",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"BlindVen_010\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindVen_010\",\n      \"dryMass\": 841.29,\n      \"centralBody\": \"Venus\",\n      \"orbit\": {\n        \"type\": \"circular\",\n        \"altitude\": 4782.35,\n        \"inclination\": 46.73,\n        \"raan\": 118.9,\n        \"argOfPeriapsis\": 97.4,\n        \"trueAnomaly\": 142.8\n      }\n    },\n    \"propagation\": {\n      \"duration\": 2.25,\n      \"durationUnits\": \"days\",\n      \"integrator\": \"PrinceDormand78\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_011",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindVen_011\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindVen_011\",\n      \"dryMass\": 1129.64,\n      \"centralBody\": \"Venus\",\n      \"orbit\": {\n        \"type\": \"circular\",\n        \"altitude\": 13489.7,\n        \"inclination\": 79.85,\n        \"raan\": 204.3,\n        \"argPeriapsis\": 173.6,\n        \"trueAnomaly\": 226.1\n      }\n    },\n    \"propagation\": {\n      \"duration\": 4.75,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_012",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment_name\": \"BlindVen_012\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindVen_012\",\n    \"dry_mass_kg\": 1417.53\n  },\n  \"central_body\": \"Venus\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 612.84,\n    \"eccentricity\": 0.0842,\n    \"inclination_deg\": 98.12,\n    \"raan_deg\": 263.7,\n    \"arg_periapsis_deg\": 241.9,\n    \"true_anomaly_deg\": 287.5\n  },\n  \"propagation\": {\n    \"duration_days\": 3.75,\n    \"integrator\": \"PrinceDormand78\"\n  },\n  \"force_model\": \"default\",\n  \"output_options\": \"none\"\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_013",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"BlindVen_013\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindVen_013\",\n      \"dryMass\": 1692.81\n    },\n    \"centralBody\": \"Venus\",\n    \"initialState\": {\n      \"periapsisAltitude\": 2184.56,\n      \"eccentricity\": 0.1463,\n      \"inclination\": 121.67,\n      \"raan\": 319.4,\n      \"argPeriapsis\": 308.2,\n      \"trueAnomaly\": 349.6\n    },\n    \"propagation\": {\n      \"duration\": 6.25,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\"\n    },\n    \"forceModel\": \"default\",\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_014",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindVen_014\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindVen_014\",\n    \"dryMass\": 1974.38,\n    \"centralBody\": \"Venus\",\n    \"initialState\": {\n      \"periapsisAltitude\": 4912.73,\n      \"eccentricity\": 0.2184,\n      \"inclination\": 139.54,\n      \"raan\": 37.8,\n      \"argOfPeriapsis\": 54.7,\n      \"trueAnomaly\": 61.2\n    }\n  },\n  \"propagator\": {\n    \"integrator\": \"PrinceDormand78\",\n    \"duration\": 7.75,\n    \"durationUnit\": \"days\"\n  },\n  \"forceModel\": \"default\",\n  \"output\": {\n    \"extraOptions\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_015",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"BlindVen_015\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindVen_015\",\n      \"dryMass\": 2248.95,\n      \"massUnit\": \"kg\"\n    },\n    \"centralBody\": \"Venus\",\n    \"initialState\": {\n      \"sma\": 12784.63,\n      \"smaUnit\": \"km\",\n      \"eccentricity\": 0.1127,\n      \"inclination\": 154.89,\n      \"inclinationUnit\": \"deg\",\n      \"raan\": 94.1,\n      \"raanUnit\": \"deg\",\n      \"argPeriapsis\": 126.3,\n      \"argPeriapsisUnit\": \"deg\",\n      \"trueAnomaly\": 158.4,\n      \"trueAnomalyUnit\": \"deg\"\n    },\n    \"propagation\": {\n      \"duration\": 8.25,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindVen_016",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindVen_016\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindVen_016\",\n      \"dryMass\": 2519.42,\n      \"centralBody\": \"Venus\",\n      \"initialState\": {\n        \"sma\": 21493.28,\n        \"ecc\": 0.2341,\n        \"inc\": 170.42,\n        \"raan\": 161.5,\n        \"argp\": 198.7,\n        \"ta\": 243.9\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"PrinceDormand78\",\n      \"stepSize\": null,\n      \"duration\": 9.25,\n      \"durationUnit\": \"days\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_017",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindJup_017\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindJup_017\",\n      \"dryMass\": 934.67,\n      \"centralBody\": \"Jupiter\",\n      \"orbit\": {\n        \"type\": \"Circular\",\n        \"altitude\": 14832.5,\n        \"inclination\": 23.64,\n        \"raan\": 49.3,\n        \"argOfPeriapsis\": 31.7,\n        \"trueAnomaly\": 81.2\n      }\n    },\n    \"propagation\": {\n      \"duration\": 2.75,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_018",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment_name\": \"BlindJup_018\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindJup_018\",\n    \"dry_mass\": 1289.45,\n    \"central_body\": \"Jupiter\",\n    \"orbit\": {\n      \"type\": \"circular\",\n      \"altitude\": 142780.3,\n      \"altitude_units\": \"km\",\n      \"inclination\": 54.18,\n      \"inclination_units\": \"deg\",\n      \"raan\": 127.6,\n      \"raan_units\": \"deg\",\n      \"arg_periapsis\": 103.9,\n      \"arg_periapsis_units\": \"deg\",\n      \"true_anomaly\": 154.7,\n      \"true_anomaly_units\": \"deg\"\n    }\n  },\n  \"propagation\": {\n    \"duration\": 6.75,\n    \"duration_units\": \"days\",\n    \"integrator\": \"PrinceDormand78\",\n    \"force_model\": \"default\"\n  },\n  \"options\": {}\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_019",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"BlindJup_019\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindJup_019\",\n      \"dryMass\": 1643.82,\n      \"wetMass\": 1643.82\n    },\n    \"centralBody\": \"Jupiter\",\n    \"orbit\": {\n      \"type\": \"circular\",\n      \"altitude\": 893450.8,\n      \"inclination\": 83.91,\n      \"raan\": 213.4,\n      \"argOfPeriapsis\": 179.2,\n      \"trueAnomaly\": 233.6\n    },\n    \"propagation\": {\n      \"duration\": 13.5,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_020",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindJup_020\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindJup_020\",\n    \"dry_mass_kg\": 1998.14\n  },\n  \"central_body\": \"Jupiter\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 23480.6,\n    \"eccentricity\": 0.0925,\n    \"inclination_deg\": 101.47,\n    \"raan_deg\": 271.8,\n    \"arg_of_periapsis_deg\": 248.5,\n    \"true_anomaly_deg\": 294.1\n  },\n  \"propagation\": {\n    \"duration_days\": 5.25,\n    \"integrator\": \"PrinceDormand78\"\n  },\n  \"force_model\": \"default\",\n  \"output_options\": \"none\"\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model | unsupported:$.output_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_021",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindJup_021\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindJup_021\",\n    \"dry_mass_kg\": 2354.76\n  },\n  \"central_body\": \"Jupiter\",\n  \"initial_state\": {\n    \"periapsis_altitude_km\": 118420.4,\n    \"eccentricity\": 0.1638,\n    \"inclination_deg\": 124.83,\n    \"raan_deg\": 327.1,\n    \"arg_periapsis_deg\": 314.6,\n    \"true_anomaly_deg\": 353.8\n  },\n  \"propagation\": {\n    \"duration_days\": 9.75,\n    \"integrator\": \"RungeKutta89\"\n  },\n  \"force_model\": \"default\",\n  \"output_options\": \"none\"\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model | unsupported:$.output_options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.initial_state | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_022",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindJup_022\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindJup_022\",\n      \"dryMass\": 2712.39,\n      \"centralBody\": \"Jupiter\"\n    },\n    \"initialState\": {\n      \"frame\": \"JupiterInertial\",\n      \"elements\": {\n        \"periapsisAltitude\": 412890.7,\n        \"eccentricity\": 0.2415,\n        \"inclination\": 142.19,\n        \"raan\": 43.5,\n        \"argPeriapsis\": 61.8,\n        \"trueAnomaly\": 69.4\n      }\n    },\n    \"propagation\": {\n      \"duration\": 14.25,\n      \"durationUnits\": \"days\",\n      \"integrator\": \"PrinceDormand78\",\n      \"forceModel\": \"default\"\n    },\n    \"output\": {\n      \"options\": \"none\"\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_023",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindJup_023\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindJup_023\",\n      \"dryMass\": 3068.51,\n      \"wetMass\": 3068.51,\n      \"fuelMass\": 0.0\n    },\n    \"centralBody\": \"Jupiter\",\n    \"initialState\": {\n      \"sma\": 384920.6,\n      \"ecc\": 0.1284,\n      \"inc\": 158.76,\n      \"raan\": 101.2,\n      \"argp\": 133.4,\n      \"trueAnomaly\": 164.9,\n      \"frame\": \"J2000\"\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"stepSize\": null,\n      \"accuracy\": null\n    },\n    \"duration\": {\n      \"value\": 16.5,\n      \"units\": \"days\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"variables\": []\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindJup_024",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "```json\n{\n  \"experiment\": {\n    \"name\": \"BlindJup_024\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindJup_024\",\n      \"dryMass\": 3425.93,\n      \"wetMass\": 3425.93\n    },\n    \"centralBody\": \"Jupiter\",\n    \"initialState\": {\n      \"sma\": 1482390.4,\n      \"ecc\": 0.2739,\n      \"inc\": 173.15,\n      \"raan\": 168.7,\n      \"argp\": 204.1,\n      \"ta\": 251.3\n    },\n    \"propagation\": {\n      \"duration\": 24.5,\n      \"durationUnits\": \"days\",\n      \"integrator\": \"PrinceDormand78\"\n    },\n    \"forceModel\": \"default\",\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}\n```",
+      "json_valid": false,
+      "schema_valid": false,
+      "validated": false,
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "json: Expecting value: line 1 column 1 (char 0)"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_025",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindSun_025\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindSun_025\",\n    \"dryMass\": 612.48,\n    \"initialState\": {\n      \"centralBody\": \"Sun\",\n      \"frame\": \"EME2000\",\n      \"epoch\": \"2025-01-01T00:00:00.000\",\n      \"sma\": 22439680.604,\n      \"ecc\": 0.0,\n      \"inc\": 11.23,\n      \"raan\": 29.4,\n      \"argp\": 19.6,\n      \"trueAnomaly\": 41.8\n    }\n  },\n  \"propagator\": {\n    \"type\": \"RungeKutta89\",\n    \"stepSize\": 60.0,\n    \"duration\": 1900800.0\n  },\n  \"forceModel\": {\n    \"centralBodyGravity\": true,\n    \"sunGravity\": false,\n    \"moonGravity\": false,\n    \"solarRadiationPressure\": false,\n    \"drag\": false\n  },\n  \"output\": {\n    \"variables\": [\n      \"SCBlindSun_025.EarthMJ2000Eq.X\",\n      \"SCBlindSun_025.EarthMJ2000Eq.Y\",\n      \"SCBlindSun_025.EarthMJ2000Eq.Z\",\n      \"SCBlindSun_025.EarthMJ2000Eq.VX\",\n      \"SCBlindSun_025.EarthMJ2000Eq.VY\",\n      \"SCBlindSun_025.EarthMJ2000Eq.VZ\"\n    ],\n    \"file\": \"BlindSun_025.csv\"\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState | unsupported:$.forceModel.centralBodyGravity | unsupported:$.forceModel.sunGravity | unsupported:$.forceModel.moonGravity | unsupported:$.forceModel.drag",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.initialState"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_026",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"name\": \"BlindSun_026\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindSun_026\",\n    \"dryMass\": 947.31,\n    \"centralBody\": \"Sun\",\n    \"initialState\": {\n      \"sma\": 112198403.018,\n      \"eccentricity\": 0,\n      \"inclination\": 33.87,\n      \"raan\": 104.2,\n      \"argPeriapsis\": 87.5,\n      \"trueAnomaly\": 119.3\n    }\n  },\n  \"propagator\": {\n    \"integrator\": \"PrinceDormand78\",\n    \"duration\": 85,\n    \"durationUnit\": \"days\",\n    \"forceModel\": \"default\"\n  },\n  \"output\": {\n    \"extraOptions\": false\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.name | unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody | unsupported:$.spacecraft.initialState",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.name | unsupported:$.propagator | unsupported:$.output | unsupported:$.spacecraft.dryMass"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_027",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experimentName\": \"BlindSun_027\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindSun_027\",\n    \"dryMass\": 1284.69,\n    \"centralBody\": \"Sun\",\n    \"initialState\": {\n      \"sma\": 261796273.709,\n      \"eccentricity\": 0,\n      \"inclination\": 61.42,\n      \"raan\": 189.7,\n      \"argOfPeriapsis\": 158.1,\n      \"trueAnomaly\": 204.6\n    }\n  },\n  \"propagation\": {\n    \"duration\": 195,\n    \"durationUnit\": \"days\",\n    \"integrator\": \"RungeKutta89\",\n    \"forceModel\": \"default\"\n  },\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.options | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody | unsupported:$.spacecraft.initialState | unsupported:$.propagation.duration | unsupported:$.propagation.durationUnit | unsupported:$.propagation.forceModel",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.options | unsupported:$.spacecraft.dryMass | unsupported:$.spacecraft.centralBody | unsupported:$.spacecraft.initialState"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_028",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment_name\": \"BlindSun_028\",\n  \"spacecraft\": {\n    \"name\": \"SCBlindSun_028\",\n    \"dry_mass_kg\": 1619.52\n  },\n  \"central_body\": \"Sun\",\n  \"orbit\": {\n    \"periapsis_altitude_km\": 24830430.5,\n    \"eccentricity\": 0.0812,\n    \"inclination_deg\": 79.64,\n    \"raan_deg\": 247.3,\n    \"arg_periapsis_deg\": 229.4,\n    \"true_anomaly_deg\": 267.8\n  },\n  \"propagation\": {\n    \"duration_days\": 48,\n    \"integrator\": \"PrinceDormand78\"\n  },\n  \"force_model\": \"default\",\n  \"options\": {}\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model | unsupported:$.options | unsupported:$.spacecraft.dry_mass_kg | unsupported:$.propagation.duration_days",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment_name | unsupported:$.central_body | unsupported:$.orbit | unsupported:$.force_model"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_029",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindSun_029\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindSun_029\",\n      \"dryMass\": 1953.87,\n      \"centralBody\": \"Sun\",\n      \"orbit\": {\n        \"periapsisAltitude\": 78420300.2,\n        \"eccentricity\": 0.1475,\n        \"inclination\": 103.18,\n        \"raan\": 304.9,\n        \"argPeriapsis\": 293.7,\n        \"trueAnomaly\": 329.2\n      }\n    },\n    \"propagator\": {\n      \"integrator\": \"RungeKutta89\",\n      \"duration\": 115,\n      \"durationUnit\": \"days\",\n      \"forceModel\": \"default\"\n    },\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_030",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindSun_030\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindSun_030\",\n      \"dryMass\": 2287.19,\n      \"centralBody\": \"Sun\",\n      \"periapsisAltitude\": 184930200.6,\n      \"eccentricity\": 0.2134,\n      \"inclination\": 127.53,\n      \"raan\": 21.6,\n      \"argOfPeriapsis\": 47.2,\n      \"trueAnomaly\": 53.9\n    },\n    \"propagator\": {\n      \"type\": \"PrinceDormand78\",\n      \"duration\": 210,\n      \"durationUnit\": \"days\"\n    },\n    \"forceModel\": \"default\",\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_031",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindSun_031\",\n    \"spacecraft\": {\n      \"id\": \"SCBlindSun_031\",\n      \"dryMass\": 2614.73,\n      \"initialState\": {\n        \"centralBody\": \"Sun\",\n        \"frame\": \"EME2000\",\n        \"elements\": {\n          \"sma\": 173849200.5,\n          \"ecc\": 0.1328,\n          \"inc\": 146.29,\n          \"raan\": 89.4,\n          \"argp\": 118.6,\n          \"trueAnomaly\": 149.1\n        },\n        \"units\": {\n          \"sma\": \"km\",\n          \"inc\": \"deg\",\n          \"raan\": \"deg\",\n          \"argp\": \"deg\",\n          \"trueAnomaly\": \"deg\"\n        }\n      }\n    },\n    \"propagation\": {\n      \"duration\": 165,\n      \"durationUnits\": \"days\",\n      \"integrator\": \"RungeKutta89\",\n      \"forceModel\": \"default\"\n    },\n    \"output\": {\n      \"extraOptions\": false\n    }\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    },
+    {
+      "id": "BlindSun_032",
+      "expect": "accept",
+      "expect_reason": null,
+      "raw_output": "{\n  \"experiment\": {\n    \"name\": \"BlindSun_032\",\n    \"spacecraft\": {\n      \"name\": \"SCBlindSun_032\",\n      \"dryMass\": 2948.36,\n      \"massUnit\": \"kg\"\n    },\n    \"centralBody\": \"Sun\",\n    \"initialState\": {\n      \"sma\": 394827100.8,\n      \"smaUnit\": \"km\",\n      \"eccentricity\": 0.2847,\n      \"inclination\": 164.81,\n      \"inclinationUnit\": \"deg\",\n      \"raan\": 154.2,\n      \"raanUnit\": \"deg\",\n      \"argPeriapsis\": 191.3,\n      \"argPeriapsisUnit\": \"deg\",\n      \"trueAnomaly\": 237.4,\n      \"trueAnomalyUnit\": \"deg\"\n    },\n    \"propagation\": {\n      \"duration\": 285,\n      \"durationUnit\": \"days\",\n      \"integrator\": \"PrinceDormand78\",\n      \"forceModel\": \"default\"\n    },\n    \"options\": {}\n  }\n}",
+      "json_valid": true,
+      "_errors_full": "unsupported:$.experiment",
+      "schema_valid": false,
+      "validated": false,
+      "warnings": [],
+      "verdict": "reject",
+      "verdict_correct": false,
+      "problems": [
+        "expected accept but validator rejected: unsupported:$.experiment"
+      ],
+      "pass": false
+    }
+  ]
+}

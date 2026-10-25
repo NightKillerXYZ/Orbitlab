@@ -1,0 +1,351 @@
+{
+  "attempt": 2,
+  "data_version": "v12",
+  "data_hash": "a0c20c4f8e106b3eb632dbaca913134a187474375594d574b44a01443b9e45f1",
+  "tests_scored": [
+    "T01",
+    "T02",
+    "T03",
+    "T04",
+    "T05",
+    "T06",
+    "T07",
+    "T08",
+    "T09",
+    "T10",
+    "T11",
+    "T12"
+  ],
+  "fields": [
+    "version",
+    "experimentName",
+    "spacecraft",
+    "centralBody",
+    "epoch",
+    "frame",
+    "SMA",
+    "ecc+angles",
+    "gravity",
+    "pointMasses",
+    "drag",
+    "SRP",
+    "maneuvers",
+    "propagation"
+  ],
+  "score_grid": {
+    "T01": {
+      "version": false,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": true,
+      "SMA": true,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T02": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": true,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T03": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": false,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T04": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": false,
+      "SMA": true,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T05": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": true,
+      "frame": false,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": false,
+      "propagation": true
+    },
+    "T06": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": true,
+      "frame": true,
+      "SMA": true,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T07": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": false,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T08": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": false,
+      "SMA": true,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T09": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": true,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T10": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": true,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": true,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T11": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": false,
+      "SMA": true,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": true,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    },
+    "T12": {
+      "version": true,
+      "experimentName": true,
+      "spacecraft": true,
+      "centralBody": true,
+      "epoch": false,
+      "frame": true,
+      "SMA": false,
+      "ecc+angles": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag": false,
+      "SRP": true,
+      "maneuvers": true,
+      "propagation": true
+    }
+  },
+  "per_test_totals": {
+    "T01": 11,
+    "T02": 11,
+    "T03": 10,
+    "T04": 11,
+    "T05": 10,
+    "T06": 13,
+    "T07": 10,
+    "T08": 11,
+    "T09": 11,
+    "T10": 12,
+    "T11": 12,
+    "T12": 11
+  },
+  "grand_total": 133,
+  "grand_denom": 168,
+  "grand_pct": 79.2,
+  "fully_correct_tests": 0,
+  "field_totals": {
+    "version": 11,
+    "experimentName": 12,
+    "spacecraft": 12,
+    "centralBody": 12,
+    "epoch": 2,
+    "frame": 6,
+    "SMA": 5,
+    "ecc+angles": 12,
+    "gravity": 12,
+    "pointMasses": 12,
+    "drag": 2,
+    "SRP": 12,
+    "maneuvers": 11,
+    "propagation": 12
+  },
+  "failure_classes": {
+    "T01": {
+      "version": "missing key",
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "drag": "extra schema key: ['solarApsectRatio']"
+    },
+    "T02": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "wrong schema key (forceModel.atmosphereModel scalar)"
+    },
+    "T03": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "frame": "wrong placement (top-level, not inside initialOrbit)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "extra schema key: ['solarActivityLevel']"
+    },
+    "T04": {
+      "epoch": "missing key",
+      "frame": "wrong placement (top-level, not inside initialOrbit)",
+      "drag": "extra schema key: ['solarCycle']"
+    },
+    "T05": {
+      "frame": "wrong placement (top-level, not inside initialOrbit)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "extra schema key: ['solarActivityIndex']",
+      "maneuvers": "missing key"
+    },
+    "T06": {
+      "drag": "extra schema key: ['spaceWeatherSensitivity']"
+    },
+    "T07": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "frame": "wrong placement (top-level, not inside initialOrbit)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "extra schema key: ['rateCoefficient']"
+    },
+    "T08": {
+      "epoch": "missing key",
+      "frame": "wrong placement (top-level, not inside initialOrbit)",
+      "drag": "wrong type (boolean, not object)"
+    },
+    "T09": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "extra schema key: ['maxDensityGPerCm3']"
+    },
+    "T10": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)"
+    },
+    "T11": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "frame": "wrong placement (top-level, not inside initialOrbit)"
+    },
+    "T12": {
+      "epoch": "wrong default (year 2023/2024 vs 2026)",
+      "SMA": "arithmetic (wrong orbital radius/altitude)",
+      "drag": "extra schema key: ['solarActivityIndex']"
+    }
+  },
+  "extras_default_scored": {
+    "MercB2_027": {
+      "version": true,
+      "experimentName": true,
+      "epoch_default": false,
+      "frame_inside_initialOrbit": false,
+      "gravity": true,
+      "pointMasses": true,
+      "drag_conforms": false,
+      "SRP": true,
+      "maneuvers_key": true,
+      "propagation_conforms": true
+    },
+    "ParaphraseTrain033": {
+      "version": false,
+      "experimentName": true,
+      "epoch_default": false,
+      "frame_inside_initialOrbit": true,
+      "gravity": true,
+      "pointMasses": true,
+      "drag_conforms": false,
+      "SRP": true,
+      "maneuvers_key": true,
+      "propagation_conforms": true
+    }
+  },
+  "extras_orbit_gold": "none provided in tasking -> SMA/ecc+angles/sc-mass marked N/A"
+}
