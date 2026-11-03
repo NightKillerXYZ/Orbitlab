@@ -1,0 +1,159 @@
+"""Front-step extractor orchestrating deterministic conversions."""
+from __future__ import annotations
+import re
+from typing import Any, Dict, List, Optional
+from .conversions import BODY_RADII_KM, sma_from_circular_altitude, sma_from_periapsis_altitude, sma_and_ecc_from_apses_altitudes, convert_miles_to_km, convert_m_to_km, convert_au_to_km, radians_to_degrees, convert_duration_to_hours_or_days
+
+class ExtractionResult:
+    def __init__(self, status: str, data: Optional[Dict[str,Any]]=None, missing: Optional[List[str]]=None, prompt: Optional[str]=None, extracted: Optional[Dict]=None):
+        self.status=status; self.data=data; self.missing=missing or []; self.prompt=prompt; self.extracted=extracted
+    def to_dict(self):
+        if self.status=="needs_clarification":
+            return {"status":"needs_clarification","missing":self.missing}
+        return {"status":"ok","prompt":self.prompt,"data":self.data, "extracted":self.extracted}
+
+class FrontStepExtractor:
+    def __init__(self, extractor_client=None):
+        self.extractor_client=extractor_client
+    def _safe_defaults(self, text: str, body: Optional[str]):
+        base="Exp001"
+        m=re.search(r"experiment\s+(\w+)", text, re.I)
+        if m: base=m.group(1)
+        else:
+            words=re.findall(r"[A-Za-z0-9_]+", text)
+            if words: base=words[0][:12]
+        exp_name=base; sc_name=base
+        return exp_name, sc_name
+    def deterministic_convert(self, extracted: Dict[str,Any], user_text: str) -> ExtractionResult:
+        central_body=extracted.get("centralBody"); dry_mass=extracted.get("dryMassKg"); orbit=extracted.get("orbit"); cartesian=extracted.get("cartesian"); duration=extracted.get("duration")
+        missing=[]
+        if not central_body: missing.append("centralBody")
+        if dry_mass is None: missing.append("dryMassKg")
+        if not orbit and not cartesian: missing.append("orbit")
+        if not duration: missing.append("duration")
+        if missing: return ExtractionResult("needs_clarification", missing=missing)
+        body_radius=BODY_RADII_KM.get(central_body)
+        if body_radius is None: return ExtractionResult("needs_clarification", missing=["centralBody"])
+        try: dry_mass_val=float(dry_mass)
+        except: dry_mass_val=dry_mass
+        sma=None; ecc=None
+        if cartesian: sma=None
+        else:
+            kind=orbit.get("kind") if isinstance(orbit, dict) else None
+            if kind=="semiMajorAxisKm":
+                sma=float(orbit.get("value")); ecc=float(orbit.get("eccentricity", extracted.get("eccentricity",0)) or 0)
+                unit=orbit.get("unit","km")
+                if unit=="miles": sma=convert_miles_to_km(sma)
+                elif unit=="m": sma=convert_m_to_km(sma)
+                elif unit=="AU": sma=convert_au_to_km(sma)
+            elif kind in ("circularAltitudeKm","circularAltitude"):
+                alt=float(orbit.get("value")); unit=orbit.get("unit","km")
+                if unit=="miles": alt=convert_miles_to_km(alt)
+                elif unit=="m": alt=convert_m_to_km(alt)
+                elif unit=="AU": alt=convert_au_to_km(alt)
+                ecc=0; sma=sma_from_circular_altitude(body_radius, alt)
+            elif kind=="periapsisAltitudeKm":
+                alt=float(orbit.get("value")); unit=orbit.get("unit","km")
+                if unit=="miles": alt=convert_miles_to_km(alt)
+                elif unit=="m": alt=convert_m_to_km(alt)
+                elif unit=="AU": alt=convert_au_to_km(alt)
+                ecc=float(extracted.get("eccentricity", orbit.get("eccentricity",0)) or 0)
+                sma=sma_from_periapsis_altitude(body_radius, alt, ecc)
+            elif kind=="apsisAltitudes":
+                alt_a=float(orbit.get("apoapsisAltitude")); alt_p=float(orbit.get("periapsisAltitude"))
+                sma,ecc=sma_and_ecc_from_apses_altitudes(body_radius, alt_a, alt_p)
+            elif kind=="apoPeriRadii":
+                r_a=float(orbit.get("apoapsisRadius")); r_p=float(orbit.get("periapsisRadius"))
+                sma=(r_a+r_p)/2.0; ecc=(r_a-r_p)/(r_a+r_p) if (r_a+r_p)!=0 else 0
+            elif kind=="circularRadiusKm":
+                r=float(orbit.get("value")); unit=orbit.get("unit","km")
+                if unit=="miles": r=convert_miles_to_km(r)
+                sma=r; ecc=0
+            else:
+                if isinstance(orbit, dict) and "semiMajorAxisKm" in orbit:
+                    sma=float(orbit["semiMajorAxisKm"]); ecc=float(orbit.get("eccentricity",0))
+                elif isinstance(orbit, dict) and "sma" in orbit:
+                    sma=float(orbit["sma"]); ecc=float(orbit.get("eccentricity",0))
+                else:
+                    val=orbit.get("value") if isinstance(orbit, dict) else None
+                    if val is not None: alt=float(val); sma=sma_from_circular_altitude(body_radius, alt); ecc=0
+                    else: return ExtractionResult("needs_clarification", missing=["orbit"])
+        inc=extracted.get("inclinationDeg")
+        if isinstance(inc, dict) and inc.get("unit")=="rad": inc=radians_to_degrees(float(inc["value"]))
+        elif isinstance(inc, dict): inc=float(inc.get("value",0))
+        elif inc is not None: inc=float(inc)
+        else: inc=0
+        raan=extracted.get("raanDeg")
+        if isinstance(raan, dict) and raan.get("unit")=="rad": raan=radians_to_degrees(float(raan["value"]))
+        elif isinstance(raan, dict): raan=float(raan.get("value",0))
+        elif raan is not None: raan=float(raan)
+        else: raan=0
+        aop=extracted.get("aopDeg") or extracted.get("argumentOfPeriapsisDeg")
+        if isinstance(aop, dict) and aop.get("unit")=="rad": aop=radians_to_degrees(float(aop["value"]))
+        elif isinstance(aop, dict): aop=float(aop.get("value",0))
+        elif aop is not None: aop=float(aop)
+        else: aop=0
+        ta=extracted.get("trueAnomalyDeg")
+        if isinstance(ta, dict) and ta.get("unit")=="rad": ta=radians_to_degrees(float(ta["value"]))
+        elif isinstance(ta, dict): ta=float(ta.get("value",0))
+        elif ta is not None: ta=float(ta)
+        else: ta=0
+        dur_val=None; dur_unit=None; stop_type=None
+        if duration:
+            val=float(duration.get("value")); unit=duration.get("unit","hours")
+            try: conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
+            except ValueError: dur_val=val; dur_unit=unit; stop_type="ElapsedHours" if "hour" in unit.lower() else "ElapsedDays"
+        integrator=extracted.get("integrator","RungeKutta89")
+        if integrator not in ("RungeKutta89","PrinceDormand78"): integrator="RungeKutta89"
+        forces=extracted.get("forces"); maneuvers=extracted.get("maneuvers",[])
+        exp_name=extracted.get("experimentName"); sc_name=extracted.get("spacecraftName")
+        if not exp_name or not sc_name:
+            def_exp, def_sc = self._safe_defaults(user_text, central_body)
+            if not exp_name: exp_name=def_exp
+            if not sc_name: sc_name=def_sc
+        normalized={"experimentName":exp_name,"spacecraftName":sc_name,"dryMassKg":dry_mass_val,"centralBody":central_body,"semiMajorAxisKm":sma,"eccentricity":ecc,"inclinationDeg":inc if inc is not None else 0,"raanDeg":raan,"argumentOfPeriapsisDeg":aop,"trueAnomalyDeg":ta,"durationValue":dur_val,"durationUnit":dur_unit,"stopConditionType":stop_type,"integrator":integrator,"forces":forces,"maneuvers":maneuvers,"cartesian":cartesian,"bodyRadiusKm":body_radius}
+        from .prompt_builder import build_canonical_prompt
+        prompt=build_canonical_prompt(normalized)
+        return ExtractionResult("ok", data=normalized, prompt=prompt, extracted=extracted)
+    async def process(self, user_text: str) -> ExtractionResult:
+        if self.extractor_client:
+            try: extracted=await self.extractor_client.extract(user_text)
+            except Exception: extracted=self._fallback_extract(user_text)
+        else: extracted=self._fallback_extract(user_text)
+        return self.deterministic_convert(extracted, user_text)
+    def process_sync(self, user_text: str) -> ExtractionResult:
+        if self.extractor_client and hasattr(self.extractor_client, 'extract_sync'):
+            try: extracted=self.extractor_client.extract_sync(user_text)
+            except Exception: extracted=self._fallback_extract(user_text)
+        else: extracted=self._fallback_extract(user_text)
+        return self.deterministic_convert(extracted, user_text)
+    def _fallback_extract(self, text: str) -> Dict[str,Any]:
+        low=text.lower(); body=None
+        for b in ["Earth","Moon","Mars","Mercury","Venus","Jupiter","Sun"]:
+            if b.lower() in low: body=b; break
+        dry=None
+        import re as _re; m=_re.search(r"(\d+\.?\d*)\s*kg", low)
+        if m: dry=float(m.group(1))
+        orbit=None
+        m=_re.search(r"(\d+\.?\d*)\s*km\s*circular", low)
+        if m: orbit={"kind":"circularAltitudeKm","value":float(m.group(1)),"unit":"km"}
+        else:
+            m=_re.search(r"altitude\s*(\d+\.?\d*)\s*km", low)
+            if m:
+                e=None; me=_re.search(r"e(ccentricity)?\s*=?\s*(\d+\.?\d*)", low)
+                if me: e=float(me.group(2))
+                orbit={"kind":"periapsisAltitudeKm","value":float(m.group(1)),"unit":"km","eccentricity":e}
+            else:
+                m=_re.search(r"sma\s*(\d+\.?\d*)", low)
+                if m: orbit={"kind":"semiMajorAxisKm","value":float(m.group(1)),"unit":"km"}
+        ecc=None; me=_re.search(r"eccentricity\s*(\d+\.?\d*)", low)
+        if me: ecc=float(me.group(1))
+        duration=None; m=_re.search(r"propagate.*?(\d+\.?\d*)\s*(hours|days|seconds|minutes|secs|orbits)", low)
+        if m: duration={"value":float(m.group(1)),"unit":m.group(2)}
+        else:
+            m=_re.search(r"for\s+(\d+\.?\d*)\s*(hours|days|seconds|minutes)", low)
+            if m: duration={"value":float(m.group(1)),"unit":m.group(2)}
+        integrator=None
+        if "prince" in low: integrator="PrinceDormand78"
+        elif "runge" in low: integrator="RungeKutta89"
+        return {"centralBody":body,"dryMassKg":dry,"orbit":orbit,"eccentricity":ecc,"duration":duration,"integrator":integrator,"forces":None,"maneuvers":[],"cartesian":None,"raw_text":text}
