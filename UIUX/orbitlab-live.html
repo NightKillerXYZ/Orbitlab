@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OrbitLab — live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #060a14;
+    color: #e8eeff;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  .app {
+    height: 100vh; display: flex; flex-direction: column;
+    background:
+      radial-gradient(1000px 480px at 60% 0%, rgba(54,86,190,0.22), rgba(6,10,20,0) 70%),
+      #060a14;
+  }
+
+  /* ── Header: slim, one gradient scrim ─────────────────── */
+  .head {
+    flex: 0 0 72px; display: flex; align-items: center; gap: 18px;
+    padding: 0 20px; border-bottom: 1px solid #16213c;
+    background:
+      linear-gradient(180deg, rgba(5,8,19,0.25) 0%, rgba(5,8,19,0.82) 78%, #050813 100%),
+      radial-gradient(900px 300px at 18% 120%, rgba(122,162,255,0.28), rgba(6,10,20,0) 60%),
+      radial-gradient(700px 260px at 82% 130%, rgba(196,168,255,0.18), rgba(6,10,20,0) 60%),
+      linear-gradient(180deg, #0b1226 0%, #070c1a 100%);
+    position: relative; overflow: hidden;
+  }
+  .head::after { /* faint star dust in header */
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 30%, #cdd9ff 60%, transparent 61%),
+      radial-gradient(1px 1px at 30% 70%, #cdd9ff 60%, transparent 61%),
+      radial-gradient(1px 1px at 47% 25%, #cdd9ff 60%, transparent 61%),
+      radial-gradient(1.5px 1.5px at 63% 60%, #cdd9ff 60%, transparent 61%),
+      radial-gradient(1px 1px at 76% 35%, #cdd9ff 60%, transparent 61%),
+      radial-gradient(1px 1px at 90% 65%, #cdd9ff 60%, transparent 61%);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; z-index: 1; }
+  .brand .logo { width: 34px; height: 34px; }
+  .brand .name { font-size: 19px; font-weight: 700; letter-spacing: 0.01em; }
+  .brand .name em { font-style: normal; color: #7aa2ff; }
+  .brand .tag { font-size: 11px; color: #a8b6d8; letter-spacing: 0.05em; margin-top: 1px; }
+  .head .quote {
+    flex: 1; text-align: center; z-index: 1;
+    font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: #c3cee9;
+  }
+  .clock { text-align: right; z-index: 1; font-size: 13px; line-height: 1.45; }
+  .clock .d { color: #a8b6d8; }
+  .clock .t { font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #eef3ff; }
+
+  /* ── Shell ────────────────────────────────────────────── */
+  .shell { flex: 1; min-height: 0; display: flex; }
+
+  /* icon rail */
+  .rail {
+    flex: 0 0 68px; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding: 14px 0; background: rgba(8,13,27,0.92);
+    border-right: 1px solid #16213c;
+  }
+  .rail button {
+    width: 44px; height: 44px; border-radius: 12px;
+    border: 1px solid transparent; background: transparent; color: #b4c0de;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rail button.active { background: #14224a; border-color: #2c4a9a; color: #ffffff; }
+  .rail .ver { margin-top: auto; writing-mode: vertical-rl; font-size: 10px; color: #7f8cab; letter-spacing: .08em; }
+
+  /* center */
+  .center { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px 16px 14px 18px; gap: 10px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; }
+  .btn-ghost {
+    min-height: 40px; padding: 0 15px; border-radius: 10px;
+    border: 1px solid #25355c; background: #121b33; color: #c9d4f2; font-size: 13px;
+  }
+  .status { display: flex; align-items: center; gap: 7px; padding: 0 13px; height: 32px; border-radius: 999px; border: 1px solid rgba(52,211,153,0.4); background: rgba(52,211,153,0.08); color: #7ee0c0; font-size: 12px; font-weight: 600; }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .spacer { flex: 1; }
+  .scen-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8fa0c6; }
+
+  /* orbit canvas */
+  .orbit {
+    flex: 1; min-height: 0; position: relative; overflow: hidden;
+    border-radius: 14px; border: 1px solid #1d2a47; background: #070c1a;
+  }
+  .orbit .corner { position: absolute; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a8b6d8; z-index: 2; }
+  .orbit .tl { top: 12px; left: 14px; display: flex; gap: 8px; align-items: center; }
+  .orbit .tl .tag { font-family: 'Space Grotesk'; padding: 2px 8px; border-radius: 999px; border: 1px solid #25355c; color: #a8b6d8; font-size: 10px; }
+  .orbit .tr { top: 12px; right: 14px; color: #7ee0c0; }
+  .orbit .bl { bottom: 12px; left: 14px; }
+  .orbit .br { bottom: 12px; right: 14px; display: flex; gap: 14px; }
+  .orbit .br span b { color: #eef3ff; font-weight: 500; }
+
+  .ctrl {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; z-index: 3;
+    padding: 6px; border-radius: 12px;
+    background: rgba(10,16,32,0.85); border: 1px solid #25355c;
+    backdrop-filter: blur(6px);
+  }
+  .ctrl button {
+    min-width: 36px; height: 36px; padding: 0 10px; border-radius: 9px;
+    border: 1px solid transparent; background: transparent; color: #c9d4f2; font-size: 13px;
+  }
+  .ctrl button.primary { background: linear-gradient(180deg,#3f7bff,#2455d6); border-color: #4f86ff; color: #fff; }
+  .ctrl button.on { background: #1c2f66; border-color: #4f86ff; color: #fff; }
+  .ctrl .sep { width: 1px; height: 20px; background: #25355c; margin: 0 4px; }
+  .ctrl .t { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #a8b6d8; padding: 0 8px; }
+
+  /* ── Right panel ─────────────────────────────────────── */
+  .right { flex: 0 0 400px; min-height: 0; display: flex; flex-direction: column; background: #0a1020; border-left: 1px solid #16213c; }
+  .tabs { display: flex; gap: 2px; padding: 10px 10px 0; border-bottom: 1px solid #16213c; }
+  .tabs button {
+    flex: 1; min-height: 42px; padding: 0 4px; position: relative;
+    border: none; background: transparent; color: #9aa7c7; font-size: 13px; font-weight: 500;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs button.active { color: #ffffff; border-bottom-color: #4f86ff; }
+  .pane { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  .msg-user {
+    align-self: flex-end; max-width: 88%; padding: 10px 14px;
+    border-radius: 16px 16px 4px 16px; background: #1c2f66; border: 1px solid #2c4a9a; color: #f2f6ff;
+  }
+  .banner {
+    align-self: flex-start; max-width: 94%; box-sizing: border-box; padding: 12px 14px;
+    border-radius: 16px 16px 16px 4px; background: #0e1527; border: 1px solid #34d399;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .banner .bt { display: flex; align-items: center; gap: 8px; color: #34d399; font-weight: 600; font-size: 15px; }
+  .banner .bb { color: #d3dcf5; }
+  .ministats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+  .ministat { background: #0a1020; border: 1px solid #1d2a47; border-radius: 10px; padding: 8px 10px; }
+  .ministat .l { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #a8b6d8; }
+  .ministat .v { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #eef3ff; margin-top: 2px; }
+  .btn-soft { align-self: flex-start; min-height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid #25355c; background: #121b33; color: #c9d4f2; font-size: 13px; }
+
+  .composer { padding: 10px 14px 14px; border-top: 1px solid #16213c; display: flex; flex-direction: column; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    min-height: 34px; padding: 0 12px; border-radius: 999px; font-size: 12px;
+    border: 1px solid #25355c; background: #121b33; color: #c9d4f2;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip .spark { color: #7aa2ff; font-size: 13px; }
+  .row { display: flex; align-items: flex-end; gap: 8px; }
+  .row textarea {
+    flex: 1; min-width: 0; resize: none; height: 56px; box-sizing: border-box;
+    background: #0e1527; color: #e8eeff; border: 1px solid #25355c; border-radius: 12px;
+    padding: 10px 12px; font-family: inherit; font-size: 14px; line-height: 1.4;
+  }
+  .row textarea::placeholder { color: #93a1c4; }
+  .send {
+    flex: none; width: 48px; height: 48px; border-radius: 12px;
+    border: 1px solid #4f86ff; background: linear-gradient(180deg,#3f7bff,#2455d6); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Phase 5 wiring: same palette, no redesign ── */
+  [hidden] { display: none !important; }
+  .stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .stg {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid #25355c;
+    background: #0a1020; color: #7f8cab; white-space: nowrap;
+  }
+  .stg.active { border-color: #4f86ff; background: #1c2f66; color: #ffffff; }
+  .stg.done { border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.10); color: #7ee0c0; }
+  .stg.fail { border-color: rgba(255,122,122,0.6); background: rgba(255,122,122,0.10); color: #ff8a8a; }
+  .warm {
+    font-size: 12px; color: #f5b942; border: 1px solid rgba(245,185,66,0.5);
+    background: rgba(245,185,66,0.08); border-radius: 10px; padding: 7px 12px;
+  }
+  .banner.err { border-color: #ff7a7a; }
+  .banner.err .bt { color: #ff7a7a; }
+  .banner.warn { border-color: #f5b942; }
+  .banner.warn .bt { color: #f5b942; }
+  .frow {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 4px 10px; padding: 9px 0; border-top: 1px solid #1a2542;
+  }
+  .frow .fl { font-size: 12px; color: #9aa7c7; }
+  .frow .fv { font-size: 13px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #eef3ff; }
+  pre.json {
+    margin: 0; max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+    background: #0a1020; border: 1px solid #1d2a47; border-radius: 10px; padding: 10px 12px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #cdd9ff;
+  }
+  .clarbox { display: flex; flex-direction: column; gap: 8px; }
+  .clarbox label { font-size: 12px; color: #9aa7c7; }
+  .clarbox input {
+    min-height: 44px; box-sizing: border-box; background: #0a1020; color: #e8eeff;
+    border: 1px solid #f5b942; border-radius: 10px; padding: 0 12px;
+    font-family: inherit; font-size: 14px;
+  }
+  .btn-primary {
+    min-height: 44px; border-radius: 10px; border: 1px solid #4f86ff;
+    background: linear-gradient(180deg,#3f7bff,#2455d6); color: #fff; font-size: 14px; font-weight: 600;
+  }
+  .errtext { font-size: 12px; color: #ff8a8a; font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header: slim, scrim, one tagline ── -->
+  <header class="head">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" fill="none">
+        <ellipse cx="20" cy="20" rx="16" ry="7" stroke="#7aa2ff" stroke-width="2.2" transform="rotate(-24 20 20)"/>
+        <circle cx="20" cy="20" r="4.5" fill="#e8eeff"/>
+        <circle cx="32.5" cy="13.5" r="2.4" fill="#7ee0c0"/>
+      </svg>
+      <div>
+        <div class="name">Orbit<em>Lab</em></div>
+        <div class="tag">Describe · Check · Run</div>
+      </div>
+    </div>
+    <div class="quote">Gravity turns motion into meaning</div>
+    <div class="clock">
+      <div class="d" id="clockDate">Mon, 19 Oct 2026</div>
+      <div class="t" id="clockTime">18:47</div>
+    </div>
+  </header>
+
+  <div class="shell">
+
+    <!-- ── Icon rail instead of wide sidebar ── -->
+    <nav class="rail" aria-label="Main">
+      <button class="active" title="Saved scenarios">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v16l-5-4-5 4z"/></svg>
+      </button>
+      <button title="Learn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7a2 2 0 012 2v12a2 2 0 00-2-2H4zM20 5h-7a2 2 0 00-2 2"/></svg>
+      </button>
+      <div class="ver">v1 · one spacecraft</div>
+    </nav>
+
+    <!-- ── Center: live orbit view ── -->
+    <main class="center">
+      <div class="toolbar">
+        <button class="btn-ghost" id="exportCsv">Export CSV</button>
+        <div class="status" id="runStatus"><span class="dot" id="runDot"></span><span id="runStatusText">Sample data</span></div>
+        <div class="spacer"></div>
+        <span class="scen-label" id="orbitNote">Illustrative sample · one orbit replayed</span>
+      </div>
+      <div class="stages" id="stageStrip" aria-label="Pipeline stages"></div>
+      <div class="warm" id="warmNote" hidden>model is warming up, this can take up to a minute</div>
+
+      <section class="orbit" aria-label="GMAT view area">
+        <svg id="orbitSvg" width="100%" height="100%" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid slice" style="display:block; position:absolute; inset:0">
+          <defs>
+            <radialGradient id="venus" cx="38%" cy="34%" r="75%">
+              <stop offset="0%" stop-color="#f0d9a8"/>
+              <stop offset="45%" stop-color="#d9a86a"/>
+              <stop offset="100%" stop-color="#8a5a33"/>
+            </radialGradient>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#7aa2ff" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#7aa2ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <!-- starfield -->
+          <g fill="#cdd9ff">
+            <circle cx="60" cy="70" r="1.3" opacity=".7"/><circle cx="140" cy="180" r="1" opacity=".4"/>
+            <circle cx="220" cy="50" r="1.6" opacity=".8"/><circle cx="330" cy="120" r="1" opacity=".35"/>
+            <circle cx="410" cy="60" r="1.2" opacity=".6"/><circle cx="520" cy="90" r="1" opacity=".4"/>
+            <circle cx="600" cy="40" r="1.5" opacity=".75"/><circle cx="700" cy="110" r="1" opacity=".4"/>
+            <circle cx="790" cy="60" r="1.3" opacity=".6"/><circle cx="850" cy="160" r="1" opacity=".35"/>
+            <circle cx="90" cy="300" r="1" opacity=".4"/><circle cx="180" cy="420" r="1.4" opacity=".65"/>
+            <circle cx="70" cy="470" r="1" opacity=".3"/><circle cx="840" cy="420" r="1.2" opacity=".5"/>
+            <circle cx="760" cy="470" r="1" opacity=".35"/><circle cx="860" cy="300" r="1.4" opacity=".6"/>
+            <circle cx="280" cy="470" r="1" opacity=".3"/><circle cx="480" cy="490" r="1.1" opacity=".4"/>
+          </g>
+          <!-- orbit ellipse (computed from the mock's two-body math, scaled) -->
+          <ellipse id="orbitPath" cx="450" cy="260" rx="300" ry="150" fill="none" stroke="#3a5cae" stroke-width="1.4" stroke-dasharray="5 6" opacity=".8"/>
+          <polyline id="trajPath" points="" fill="none" stroke="#3a5cae" stroke-width="1.6" opacity="0"/>
+          <circle cx="150" cy="260" r="5" fill="#7ee0c0"/>
+          <text x="150" y="282" text-anchor="middle" fill="#7ee0c0" font-size="11" font-family="Space Grotesk">Periapsis 300 km</text>
+          <circle cx="750" cy="260" r="5" fill="#8fd4ff"/>
+          <text x="750" y="282" text-anchor="middle" fill="#8fd4ff" font-size="11" font-family="Space Grotesk">Apoapsis 5,000 km</text>
+          <!-- Venus -->
+          <circle cx="450" cy="260" r="95" fill="url(#glow)"/>
+          <circle cx="450" cy="260" r="62" fill="url(#venus)"/>
+          <ellipse cx="450" cy="260" rx="62" ry="14" fill="none" stroke="#f0d9a8" stroke-width="1" opacity=".25"/>
+          <text x="450" y="345" text-anchor="middle" fill="#e8eeff" font-size="13" font-family="Space Grotesk" font-weight="600">Venus</text>
+          <!-- spacecraft on orbit -->
+          <g id="scDot">
+            <circle id="scHalo" cx="588" cy="138" r="12" fill="#7aa2ff" opacity=".25"/>
+            <circle id="scPt" cx="588" cy="138" r="4.5" fill="#ffffff" stroke="#5b9bff" stroke-width="2.5"/>
+          </g>
+          <text x="612" y="130" fill="#cdd9ff" font-size="11" font-family="IBM Plex Mono, monospace">SC-1</text>
+        </svg>
+
+        <div class="corner tl">Orbit view · <span id="viewKind">two-body replay</span> <span class="tag" id="dataTag">sample data</span></div>
+        <div class="corner tr" id="cornerTR">alt 1,842 km · v 7.31 km/s</div>
+        <div class="corner bl" id="cornerBL">Period 7 h 23 min · e 0.264</div>
+        <div class="corner br"><span>t+ <b id="tPlus">0 d 14:12</b></span><span>speed <b id="speedVal">4×</b></span></div>
+
+        <div class="ctrl">
+          <button class="primary" title="Pause" id="playBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          </button>
+          <button title="Reset" id="resetBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 109-9M3 4v5h5"/></svg>
+          </button>
+          <div class="sep"></div>
+          <button class="on" data-speed="1">1×</button><button data-speed="4">4×</button><button data-speed="16">16×</button>
+          <div class="sep"></div>
+          <span class="t">t = 0.62</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- ── Right: assistant, tighter ── -->
+    <aside class="right" aria-label="Assistant">
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="active" role="tab" data-tab="chat">Chat</button>
+        <button role="tab" data-tab="understood">Understood</button>
+        <button role="tab" data-tab="outcome">Outcome</button>
+        <button role="tab" data-tab="graph">Graph</button>
+        <button role="tab" data-tab="physics">Physics</button>
+      </div>
+
+      <div class="pane" role="tabpanel" id="pane-chat">
+        <div id="thread">
+          <div class="msg-user" id="samplePrompt">Put a satellite in orbit around Venus between 300 km and 5,000 km altitude and run it for 2 days.</div>
+
+          <div class="banner" id="sampleBanner">
+            <div class="bt">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+              <span>Run complete</span>
+            </div>
+            <div class="bb">The scenario passed the physics check and the GMAT run finished. Key numbers:</div>
+            <div class="ministats">
+              <div class="ministat"><div class="l">Semi-major axis</div><div class="v">8,051.8 km</div></div>
+              <div class="ministat"><div class="l">Eccentricity</div><div class="v">0.264</div></div>
+              <div class="ministat"><div class="l">Period</div><div class="v">7 h 23 min</div></div>
+              <div class="ministat"><div class="l">Orbits in 2 days</div><div class="v">6.5</div></div>
+            </div>
+            <button class="btn-soft" data-goto="physics">See the physics used</button>
+          </div>
+        </div>
+        <div class="banner warn" id="clarBox" hidden>
+          <div class="bt"><span>More information needed</span></div>
+          <div class="bb" id="clarText"></div>
+          <div class="clarbox">
+            <label for="extraInput">Add the missing details (sent together with your original request)</label>
+            <input id="extraInput" type="text" placeholder="for example: 500 kg, 400 km circular, 2 days">
+            <button class="btn-primary" id="clarSend">Send with original request</button>
+          </div>
+        </div>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-understood" hidden>
+        <div id="understoodBody"><div class="bb" style="color:#aebad8">Nothing understood yet — run a request first.</div></div>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-outcome" hidden>
+        <div id="outcomeBody"><div class="bb" style="color:#aebad8">No result yet. The outcome appears here after a run.</div></div>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-graph" hidden>
+        <div id="graphBody"><div class="bb" style="color:#aebad8">No trajectory yet.</div></div>
+      </div>
+      <div class="pane" role="tabpanel" id="pane-physics" hidden>
+        <div id="physicsBody"><div class="bb" style="color:#aebad8">No explanation yet.</div></div>
+      </div>
+
+      <div class="composer">
+        <div class="chips">
+          <button class="chip" data-text="Put a satellite in a circular orbit around Venus at 400 km altitude for 2 days."><span class="spark">✦</span> Venus, 400 km, 2 days</button>
+          <button class="chip" data-text="A spacecraft orbits the Sun at 0.5 AU from the centre for 100 days."><span class="spark">✦</span> Sun, 0.5 AU, 100 days</button>
+          <button class="chip" data-text="A craft at the height where Earth’s gravity is 70% of the surface value, inclination π/8, for 6 days."><span class="spark">✦</span> 70% gravity, π/8, 6 days</button>
+        </div>
+        <div class="row">
+          <textarea id="promptInput" placeholder="Describe an orbit, for example: a satellite around Venus at 400 km for 2 days"></textarea>
+          <button class="send" id="sendBtn" aria-label="Interpret and run">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+<script src="../orbitlab_backend/api/ui_adapter.js"></script>
+<script src="./orbitlab-live.js"></script>
+</body>
+</html>
