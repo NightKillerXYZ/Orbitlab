@@ -21,7 +21,7 @@ uvicorn orbitlab_backend.api.app:app --reload --port 8000
 ```
 
 ## Run UI locally
-The UI in `UIUX/` is a static mock. For a React/Vite app, set:
+Open `UIUX/orbitlab-live.html` in a browser for the wired UI (same look). For a React/Vite app, set:
 ```bash
 VITE_API_BASE=http://localhost:8000
 VITE_USE_MOCK=false  # true keeps mock data
@@ -30,7 +30,7 @@ Import the adapter in your app:
 ```js
 import { createExperiment, getExperiment, subscribeExperiment } from '../orbitlab_backend/api/ui_adapter.js'
 ```
-The adapter routes through one module and preserves MOCK mode without redesigning the UI.
+The adapter routes through one module and preserves MOCK mode without redesigning the UI. The API address is the single `DEFAULT_API_BASE` constant at the top of the adapter file.
 
 ## Tests
 ```bash
