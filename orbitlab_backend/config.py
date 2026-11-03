@@ -1,0 +1,92 @@
+"""Pydantic-settings config for OrbitLab backend.
+
+All secrets come from environment variables; missing required vars raise
+a clear message naming the variable, never printing values.
+"""
+from __future__ import annotations
+
+import os
+from typing import Optional
+
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+    from pydantic import Field
+    HAS_PYDANTIC_SETTINGS = True
+except ImportError:
+    HAS_PYDANTIC_SETTINGS = False
+    # Fallback minimal implementation if pydantic-settings not installed
+    BaseSettings = object  # type: ignore
+    SettingsConfigDict = dict  # type: ignore
+
+if HAS_PYDANTIC_SETTINGS:
+
+    class Settings(BaseSettings):
+        model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+        # Interpreter (hosted model that returns experiment JSON)
+        ORBITLAB_MODEL_URL: Optional[str] = Field(default=None)
+        ORBITLAB_MODEL_KEY: Optional[str] = Field(default=None)
+        ORBITLAB_MODEL_TIMEOUT_S: float = Field(default=180.0)
+
+        # Front-step extractor + explainer (OpenAI-compatible)
+        EXTRACTOR_BASE_URL: Optional[str] = Field(default=None)
+        EXTRACTOR_API_KEY: Optional[str] = Field(default=None)
+        EXTRACTOR_MODEL: Optional[str] = Field(default=None)
+
+        # GMAT
+        GMAT_PATH: Optional[str] = Field(default=None)
+        GMAT_TIMEOUT_S: float = Field(default=30.0)
+
+        # API / CORS
+        ORBITLAB_CORS_ORIGINS: str = Field(default="*")
+        # If true, use mock interpreter instead of real HTTP
+        ORBITLAB_USE_MOCK_INTERPRETER: bool = Field(default=False)
+
+        def require(self, name: str) -> str:
+            val = getattr(self, name, None)
+            if val is None or (isinstance(val, str) and not val.strip()):
+                raise RuntimeError(f"Missing required environment variable: {name}")
+            return val  # type: ignore
+
+        def cors_origins_list(self):
+            if self.ORBITLAB_CORS_ORIGINS == "*":
+                return ["*"]
+            return [o.strip() for o in self.ORBITLAB_CORS_ORIGINS.split(",") if o.strip()]
+
+else:
+
+    class Settings:  # type: ignore
+        def __init__(self, **kwargs):
+            self.ORBITLAB_MODEL_URL = os.getenv("ORBITLAB_MODEL_URL")
+            self.ORBITLAB_MODEL_KEY = os.getenv("ORBITLAB_MODEL_KEY")
+            self.ORBITLAB_MODEL_TIMEOUT_S = float(os.getenv("ORBITLAB_MODEL_TIMEOUT_S", "180"))
+            self.EXTRACTOR_BASE_URL = os.getenv("EXTRACTOR_BASE_URL")
+            self.EXTRACTOR_API_KEY = os.getenv("EXTRACTOR_API_KEY")
+            self.EXTRACTOR_MODEL = os.getenv("EXTRACTOR_MODEL")
+            self.GMAT_PATH = os.getenv("GMAT_PATH")
+            self.GMAT_TIMEOUT_S = float(os.getenv("GMAT_TIMEOUT_S", "30"))
+            self.ORBITLAB_CORS_ORIGINS = os.getenv("ORBITLAB_CORS_ORIGINS", "*")
+            self.ORBITLAB_USE_MOCK_INTERPRETER = os.getenv("ORBITLAB_USE_MOCK_INTERPRETER", "false").lower() in ("1", "true", "yes")
+
+        def require(self, name: str) -> str:
+            val = getattr(self, name, None)
+            if val is None or (isinstance(val, str) and not val.strip()):
+                raise RuntimeError(f"Missing required environment variable: {name}")
+            return val
+
+        def cors_origins_list(self):
+            if self.ORBITLAB_CORS_ORIGINS == "*":
+                return ["*"]
+            return [o.strip() for o in self.ORBITLAB_CORS_ORIGINS.split(",") if o.strip()]
+
+_settings: Optional[Settings] = None
+
+def get_settings() -> Settings:
+    global _settings
+    if _settings is None:
+        _settings = Settings()  # type: ignore
+    return _settings
+
+def reset_settings():
+    global _settings
+    _settings = None

@@ -1,0 +1,119 @@
+﻿"""Interpreter HTTP client implementing IExperimentInterpreter."""
+from __future__ import annotations
+import asyncio, json
+from typing import Any, Callable, Optional
+from orbitlab_backend.config import get_settings
+from phase3_ai_interpreter.interpreter.model import IExperimentInterpreter, InterpretationResult
+from phase3_ai_interpreter.interpreter.json_interpreter import JsonExperimentInterpreter
+try:
+    import httpx
+    HAS_HTTPX = True
+except ImportError:
+    HAS_HTTPX = False
+
+class InterpreterClientError(RuntimeError):
+    pass
+class InterpreterUnavailableError(InterpreterClientError):
+    pass
+class InterpreterClient:
+    def interpret(self, raw_text: str) -> InterpretationResult:
+        raise NotImplementedError
+class MockInterpreterClient(IExperimentInterpreter):
+    def __init__(self, canned_json=None):
+        self.canned_json = canned_json
+        self._json_interp = JsonExperimentInterpreter()
+    def interpret(self, raw_text: str) -> InterpretationResult:
+        payload = self.canned_json if self.canned_json is not None else raw_text
+        return self._json_interp.interpret(payload)
+    async def interpret_prompt(self, prompt: str, warming_callback=None):
+        if self.canned_json:
+            try:
+                obj = json.loads(self.canned_json)
+                if isinstance(obj, str):
+                    obj = json.loads(obj)
+                return obj
+            except Exception:
+                return json.loads(self.canned_json)
+        return {'version': '1.0','experimentName': 'MockExp','spacecraft': {'name': 'SC_MockExp','dryMassKg': 500},'centralBody': 'Earth','initialOrbit': {'type': 'Keplerian','coordinateSystem': 'EarthMJ2000Eq','elements': {'semiMajorAxisKm': 6778.136,'eccentricity': 0,'inclinationDeg': 28.5,'raanDeg': 0,'argumentOfPeriapsisDeg': 0,'trueAnomalyDeg': 0}},'forceModel': {'gravityDegree': 4,'gravityOrder': 4,'pointMasses': ['Luna','Sun'],'atmosphericDrag': {'enabled': False,'model': 'JacchiaRoberts'},'solarRadiationPressure': True},'propagation': {'integrator': 'RungeKutta89','stopCondition': {'type': 'ElapsedHours','value': 2},'stepSizeSecs': 60},'maneuvers': []}
+class HttpInterpreterClient(IExperimentInterpreter):
+    def __init__(self, model_url=None, model_key=None, timeout_s=None):
+        s=get_settings()
+        self.model_url=model_url or s.ORBITLAB_MODEL_URL
+        self.model_key=model_key or s.ORBITLAB_MODEL_KEY
+        self.timeout_s=timeout_s if timeout_s is not None else float(s.ORBITLAB_MODEL_TIMEOUT_S)
+        if not self.model_url or not str(self.model_url).strip():
+            raise RuntimeError("Missing required environment variable: ORBITLAB_MODEL_URL")
+        if not self.model_key or not str(self.model_key).strip():
+            raise RuntimeError("Missing required environment variable: ORBITLAB_MODEL_KEY")
+        self._json_interp=JsonExperimentInterpreter()
+    def interpret(self, raw_text: str) -> InterpretationResult:
+        return self._json_interp.interpret(raw_text)
+    async def interpret_prompt(self, prompt: str, warming_callback=None):
+        if not HAS_HTTPX:
+            raise InterpreterUnavailableError("httpx not installed")
+        url=self.model_url
+        headers={"Authorization": f"Bearer {self.model_key}","Content-Type": "application/json"}
+        payload={"prompt": prompt}
+        async def single_attempt():
+            async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+                task=asyncio.create_task(client.post(url, json=payload, headers=headers))
+                done,pending=await asyncio.wait([task], timeout=10)
+                if not done:
+                    if warming_callback:
+                        try:
+                            r=warming_callback()
+                            if asyncio.iscoroutine(r):
+                                await r
+                        except Exception:
+                            pass
+                    rem=self.timeout_s-10
+                    if rem<0: rem=self.timeout_s
+                    done2,pending2=await asyncio.wait([task], timeout=rem)
+                    if not done2:
+                        task.cancel()
+                        raise InterpreterUnavailableError(f"Interpreter timeout after {self.timeout_s}s")
+                    result=task.result()
+                else:
+                    result=task.result()
+                if result.status_code in (502,503,504):
+                    raise InterpreterUnavailableError(f"Interpreter returned {result.status_code}")
+                result.raise_for_status()
+                data=result.json()
+                output=data.get("output", data)
+                if isinstance(output, str):
+                    try:
+                        parsed=json.loads(output)
+                        return parsed
+                    except json.JSONDecodeError:
+                        raise InterpreterUnavailableError(f"Invalid JSON string: {output[:200]}")
+                elif isinstance(output, dict):
+                    return output
+                else:
+                    raise InterpreterUnavailableError(f"Unexpected output type: {type(output)}")
+        last=None
+        for attempt in range(2):
+            try:
+                return await single_attempt()
+            except InterpreterUnavailableError as e:
+                last=e
+                if attempt==0:
+                    await asyncio.sleep(1)
+                    continue
+                raise
+            except Exception as e:
+                last=e
+                if attempt==0:
+                    await asyncio.sleep(1)
+                    continue
+                raise InterpreterUnavailableError(str(e)) from e
+        if last:
+            raise last
+        raise InterpreterUnavailableError("Interpreter unavailable")
+def get_interpreter_client():
+    s=get_settings()
+    if s.ORBITLAB_USE_MOCK_INTERPRETER:
+        return MockInterpreterClient()
+    try:
+        return HttpInterpreterClient()
+    except RuntimeError:
+        return MockInterpreterClient()
