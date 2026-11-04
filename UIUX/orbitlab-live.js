@@ -1,6 +1,6 @@
 /*
  * OrbitLab live wiring — connects the (unchanged) mock look to the backend
- * through ../orbitlab_backend/api/ui_adapter.js (window.OrbitLabAdapter).
+ * through ../phase4_backend/orbitlab_backend/api/ui_adapter.js (window.OrbitLabAdapter).
  *
  * Mock mode (adapter MOCK on, or adapter missing): this script does nothing
  * except the clock/tabs, so the page shows exactly the hardcoded sample data

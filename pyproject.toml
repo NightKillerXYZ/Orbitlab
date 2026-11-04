@@ -17,3 +17,6 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["orbitlab_core*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["phase4_backend", "."]
