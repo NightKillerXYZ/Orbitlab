@@ -7,6 +7,7 @@ from orbitlab_backend.config import get_settings
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids, apply_frontstep_names
 from orbitlab_backend.orchestrator.errors import *
+MAX_CACHE_ENTRIES = 500
 from orbitlab_core.ast.models import OrbitLabExperiment
 from orbitlab_core.ast.validation import AstrodynamicValidator
 from orbitlab_core.compiler.generator import GmatScriptCompiler
@@ -251,5 +252,8 @@ class Pipeline:
             raise ExplainerError(str(e))
         result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"prompt": prompt}
         if cache_key:
+            # Failed infrastructure runs raise, so only successes reach here.
             self.cache[cache_key]=result
+            while len(self.cache) > MAX_CACHE_ENTRIES:
+                self.cache.pop(next(iter(self.cache)))
         return result
