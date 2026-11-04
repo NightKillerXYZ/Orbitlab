@@ -9,6 +9,7 @@ from orbitlab_backend.config import get_settings
 from orbitlab_backend.orchestrator.pipeline import Pipeline
 from orbitlab_backend.orchestrator.errors import NeedsClarification, PipelineError
 from orbitlab_backend.api.store import store
+from orbitlab_backend.api.run_cleanup import get_run_root, cleanup_old_run_dirs
 
 logger=logging.getLogger("orbitlab.api")
 
@@ -18,6 +19,12 @@ class CreateExpRequest(BaseModel):
 def create_app() -> FastAPI:
     settings=get_settings()
     app=FastAPI(title="OrbitLab Backend", version="1.0")
+    try:
+        _root = get_run_root(getattr(settings, 'ORBITLAB_RUN_DIR', None))
+        _n = cleanup_old_run_dirs(_root, getattr(settings, 'ORBITLAB_RUN_RETENTION_HOURS', 24.0))
+        logger.info(f"run cleanup at startup: removed {_n} old dirs")
+    except Exception as _e:
+        logger.warning(f"run cleanup at startup skipped: {_e}")
     # CORS
     origins=settings.cors_origins_list()
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -122,6 +129,13 @@ async def run_job(jid: str, text: str):
         err={"stage":"unknown","code":"unknown","message":str(e)}
         store.update(jid, status="failed", error=err)
         store.add_event(jid, {"type":"final","error":err})
+    finally:
+        try:
+            from orbitlab_backend.config import get_settings as _gs
+            _s = _gs()
+            cleanup_old_run_dirs(get_run_root(getattr(_s, 'ORBITLAB_RUN_DIR', None)), getattr(_s, 'ORBITLAB_RUN_RETENTION_HOURS', 24.0))
+        except Exception:
+            pass
 
 # Default app instance
 app=create_app()

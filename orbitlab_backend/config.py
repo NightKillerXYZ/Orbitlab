@@ -41,6 +41,8 @@ if HAS_PYDANTIC_SETTINGS:
         ORBITLAB_CORS_ORIGINS: str = Field(default="*")
         # If true, use mock interpreter instead of real HTTP
         ORBITLAB_USE_MOCK_INTERPRETER: bool = Field(default=False)
+        ORBITLAB_RUN_DIR: Optional[str] = Field(default=None)
+        ORBITLAB_RUN_RETENTION_HOURS: float = Field(default=24.0)
 
         def require(self, name: str) -> str:
             val = getattr(self, name, None)
@@ -67,6 +69,8 @@ else:
             self.GMAT_TIMEOUT_S = float(os.getenv("GMAT_TIMEOUT_S", "30"))
             self.ORBITLAB_CORS_ORIGINS = os.getenv("ORBITLAB_CORS_ORIGINS", "*")
             self.ORBITLAB_USE_MOCK_INTERPRETER = os.getenv("ORBITLAB_USE_MOCK_INTERPRETER", "false").lower() in ("1", "true", "yes")
+            self.ORBITLAB_RUN_DIR = os.getenv("ORBITLAB_RUN_DIR")
+            self.ORBITLAB_RUN_RETENTION_HOURS = float(os.getenv("ORBITLAB_RUN_RETENTION_HOURS", "24"))
 
         def require(self, name: str) -> str:
             val = getattr(self, name, None)
