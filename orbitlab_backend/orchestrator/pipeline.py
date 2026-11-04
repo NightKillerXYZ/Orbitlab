@@ -110,7 +110,11 @@ class Pipeline:
             if mismatches:
                 dur=time.perf_counter()-t0
                 await emit(PipelineEvent("stage_failed","verify",dur,f"Interpreter mismatch: {mismatches}"))
-                raise InterpreterMismatch(mismatches)
+                try:
+                    explanation=await self.explainer.explain(experiment_json, "verify", f"Interpreter mismatch: {mismatches}", warnings_all)
+                except Exception as ee:
+                    logger.warning(f"explainer failed after verify: {ee}")
+                raise InterpreterMismatch(mismatches, details={"mismatches": mismatches, "explanation": explanation})
             experiment_json=normalize_maneuver_ids(experiment_json)
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","verify",dur,"Verification passed", {"warnings":warnings_all} if warnings_all else None))
@@ -141,7 +145,7 @@ class Pipeline:
                     explanation=expl
                 except Exception as ee:
                     logger.warning(f"explainer failed after validation: {ee}")
-                raise ValidationFailed("; ".join(res.errors), details={"errors":res.errors,"warnings":warnings_all})
+                raise ValidationFailed("; ".join(res.errors), details={"errors":res.errors,"warnings":warnings_all,"explanation":explanation})
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","validate",dur,"Validation passed", {"warnings":warnings_all}))
         except PipelineError:
@@ -167,7 +171,7 @@ class Pipeline:
                 explanation=expl
             except Exception:
                 pass
-            raise CompileError(str(e))
+            raise CompileError(str(e), details={"explanation": explanation})
         # simulate
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","simulate",0,"Running GMAT"))
@@ -213,7 +217,7 @@ class Pipeline:
                     explanation=expl
                 except Exception:
                     pass
-                raise GmatTimeout(msg)
+                raise GmatTimeout(msg, details={"explanation": explanation})
             else:
                 await emit(PipelineEvent("stage_failed","simulate",dur,f"GMAT run error: {msg}"))
                 try:
@@ -221,7 +225,7 @@ class Pipeline:
                     explanation=expl
                 except Exception:
                     pass
-                raise GmatRunError(msg)
+                raise GmatRunError(msg, details={"explanation": explanation})
         # parse
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","parse",0,"Parsing telemetry"))
@@ -236,7 +240,7 @@ class Pipeline:
                 explanation=expl
             except Exception:
                 pass
-            raise ParseError(str(e))
+            raise ParseError(str(e), details={"explanation": explanation})
         # explain
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","explain",0,"Generating explanation"))
