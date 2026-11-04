@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 from .conversions import BODY_RADII_KM, sma_from_circular_altitude, sma_from_periapsis_altitude, sma_and_ecc_from_apses_altitudes, convert_miles_to_km, convert_m_to_km, convert_au_to_km, radians_to_degrees, convert_duration_to_hours_or_days
+from .verify import sanitize_identifier
 
 class ExtractionResult:
     def __init__(self, status: str, data: Optional[Dict[str,Any]]=None, missing: Optional[List[str]]=None, prompt: Optional[str]=None, extracted: Optional[Dict]=None):
@@ -22,7 +23,7 @@ class FrontStepExtractor:
         else:
             words=re.findall(r"[A-Za-z0-9_]+", text)
             if words: base=words[0][:12]
-        exp_name=base; sc_name=base
+        exp_name=sanitize_identifier(base, default="Exp001"); sc_name=sanitize_identifier(base, default="Exp001")
         return exp_name, sc_name
     def deterministic_convert(self, extracted: Dict[str,Any], user_text: str) -> ExtractionResult:
         central_body=extracted.get("centralBody"); dry_mass=extracted.get("dryMassKg"); orbit=extracted.get("orbit"); cartesian=extracted.get("cartesian"); duration=extracted.get("duration")
@@ -101,8 +102,22 @@ class FrontStepExtractor:
         dur_val=None; dur_unit=None; stop_type=None
         if duration:
             val=float(duration.get("value")); unit=duration.get("unit","hours")
-            try: conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
-            except ValueError: dur_val=val; dur_unit=unit; stop_type="ElapsedHours" if "hour" in unit.lower() else "ElapsedDays"
+            try:
+                conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
+                if stop_type == "OrbitPeriods" and sma is not None:
+                    try:
+                        from .conversions import orbits_to_hours as _o2h
+                        dur_val, dur_unit, stop_type = _o2h(float(sma), str(central_body), float(val))
+                    except Exception:
+                        pass
+            except ValueError:
+                ul = str(unit).lower()
+                if "sec" in ul or ul.strip() in ("s",): dur_val=round(float(val),6); dur_unit="seconds"; stop_type="ElapsedSeconds"
+                elif "min" in ul: dur_val=round(float(val)*60.0,6); dur_unit="seconds"; stop_type="ElapsedSeconds"
+                elif "hour" in ul: dur_val=round(float(val),6); dur_unit="hours"; stop_type="ElapsedHours"
+                elif "day" in ul: dur_val=round(float(val),6); dur_unit="days"; stop_type="ElapsedDays"
+                elif "orbit" in ul or "period" in ul: dur_val=round(float(val),6); dur_unit="orbital periods"; stop_type="OrbitPeriods"
+                else: dur_val=round(float(val),6); dur_unit=str(unit); stop_type="ElapsedHours"
         integrator=extracted.get("integrator","RungeKutta89")
         if integrator not in ("RungeKutta89","PrinceDormand78"): integrator="RungeKutta89"
         forces=extracted.get("forces"); maneuvers=extracted.get("maneuvers",[])
@@ -111,6 +126,8 @@ class FrontStepExtractor:
             def_exp, def_sc = self._safe_defaults(user_text, central_body)
             if not exp_name: exp_name=def_exp
             if not sc_name: sc_name=def_sc
+            exp_name=sanitize_identifier(exp_name, default=def_exp)
+            sc_name=sanitize_identifier(sc_name, default=def_sc)
         normalized={"experimentName":exp_name,"spacecraftName":sc_name,"dryMassKg":dry_mass_val,"centralBody":central_body,"semiMajorAxisKm":sma,"eccentricity":ecc,"inclinationDeg":inc if inc is not None else 0,"raanDeg":raan,"argumentOfPeriapsisDeg":aop,"trueAnomalyDeg":ta,"durationValue":dur_val,"durationUnit":dur_unit,"stopConditionType":stop_type,"integrator":integrator,"forces":forces,"maneuvers":maneuvers,"cartesian":cartesian,"bodyRadiusKm":body_radius}
         from .prompt_builder import build_canonical_prompt
         prompt=build_canonical_prompt(normalized)
@@ -148,10 +165,10 @@ class FrontStepExtractor:
                 if m: orbit={"kind":"semiMajorAxisKm","value":float(m.group(1)),"unit":"km"}
         ecc=None; me=_re.search(r"eccentricity\s*(\d+\.?\d*)", low)
         if me: ecc=float(me.group(1))
-        duration=None; m=_re.search(r"propagate.*?(\d+\.?\d*)\s*(hours|days|seconds|minutes|secs|orbits)", low)
+        duration=None; m=_re.search(r"propagate.*?(\d+\.?\d*)\s*(orbital periods|orbital period|orbits|orbit|hours|days|seconds|minutes|secs|seconds)", low)
         if m: duration={"value":float(m.group(1)),"unit":m.group(2)}
         else:
-            m=_re.search(r"for\s+(\d+\.?\d*)\s*(hours|days|seconds|minutes)", low)
+            m=_re.search(r"for\s+(\d+\.?\d*)\s*(orbital periods|orbital period|orbits|orbit|hours|days|seconds|minutes)", low)
             if m: duration={"value":float(m.group(1)),"unit":m.group(2)}
         integrator=None
         if "prince" in low: integrator="PrinceDormand78"

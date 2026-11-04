@@ -2,6 +2,7 @@
 from __future__ import annotations
 import math
 from typing import Tuple
+import math as _math
 
 BODY_RADII_KM: dict[str, float] = {
     "Earth": 6378.1363,
@@ -53,24 +54,20 @@ def radians_to_degrees(rad: float) -> float:
     return rad * 180.0 / math.pi
 
 def convert_duration_to_hours_or_days(value: float, unit: str):
-    """Convert seconds/minutes/orbit-count durations to hours or days (model only knows ElapsedHours and ElapsedDays). Keep value exact, no rounding beyond 6 decimals."""
-    unit=unit.lower()
-    if unit in ("s","sec","secs","second","seconds"):
-        # to hours: sec/3600
-        hours=value/3600.0
-        # Return exact, no rounding beyond 6 decimals: caller decides formatting
-        return (round(hours,6), "hours", "ElapsedHours")
-    elif unit in ("min","mins","minute","minutes"):
-        hours=value/60.0
-        return (round(hours,6), "hours", "ElapsedHours")
-    elif unit in ("h","hr","hrs","hour","hours","elapsedhours"):
-        return (round(value,6), "hours", "ElapsedHours")
-    elif unit in ("d","day","days","elapseddays"):
-        return (round(value,6), "days", "ElapsedDays")
-    elif unit in ("orbit","orbits","orbitperiods","orbit-count","orbit_count"):
-        # Cannot convert without period; keep as OrbitPeriods but spec says model only knows ElapsedHours/ElapsedDays: convert before sending; we keep as hours? Actually spec says seconds/minutes/orbit-count durations to hours or days (the model only knows ElapsedHours and ElapsedDays: convert before sending). For orbit-count we cannot convert generically, but spec says convert before sending; we will keep value as hours placeholder? Conservative: if orbit-count, return as days with value unchanged and let validator handle? But we will treat orbit-count as not convertible -> return as-is with type OrbitPeriods (but spec says model only knows ElapsedHours/ElapsedDays). We'll fallback to hours via assumption orbit period? Simpler: return as days with same value and type ElapsedDays? Instead we will return with type OrbitPeriods but note that task says always convert to hours/days. For now we handle orbit-count by converting to hours via no-op: return (value, \"hours\", \"ElapsedHours\")? But we lack period. Better to return as hours with value as-is and document assumption.
-        # We'll keep OrbitPeriods unsupported and let caller decide.
-        return (round(value,6), "hours", "ElapsedHours")
+    """Pass the user stop-condition unit through unchanged. Seconds stay ElapsedSeconds, minutes become seconds (*60), hours stay ElapsedHours, days stay ElapsedDays, orbit counts stay OrbitPeriods. Canonical units: seconds|hours|days|orbital periods. Historic name kept for compatibility."""
+    u = unit.strip().lower()
+    u_norm = u.replace("_", " ").replace("-", " ").strip()
+    u_compact = u_norm.replace(" ", "")
+    if u_norm in ("s", "sec", "secs", "second", "seconds", "elapsedseconds", "elapsed seconds"):
+        return (round(float(value), 6), "seconds", "ElapsedSeconds")
+    elif u_norm in ("min", "mins", "minute", "minutes"):
+        return (round(float(value) * 60.0, 6), "seconds", "ElapsedSeconds")
+    elif u_norm in ("h", "hr", "hrs", "hour", "hours", "elapsedhours", "elapsed hours"):
+        return (round(float(value), 6), "hours", "ElapsedHours")
+    elif u_norm in ("d", "day", "days", "elapseddays", "elapsed days"):
+        return (round(float(value), 6), "days", "ElapsedDays")
+    elif u_compact in ("orbit", "orbits", "orbitperiod", "orbitperiods", "orbitalperiod", "orbitalperiods", "period", "periods", "orbitcount", "orbitcounts") or u_norm in ("orbital period", "orbital periods", "orbit period", "orbit periods"):
+        return (round(float(value), 6), "orbital periods", "OrbitPeriods")
     else:
         raise ValueError(f"Unsupported duration unit: {unit}")
 
@@ -80,3 +77,21 @@ def fmt_sma(a_km: float) -> str:
 
 def format_sma(a_km: float) -> str:
     return f"{round(a_km,3):.3f}"
+
+def _mu_for_body(body: str) -> float:
+    """Reuse repo mu constants from orbitlab_core.constants.BODIES (single source of truth)."""
+    try:
+        from orbitlab_core.constants import BODIES as _BODIES
+        return float(_BODIES[body]["muKm3S2"])
+    except Exception as e:
+        raise ValueError(f"Unknown central body for orbit conversion: {body}") from e
+
+def orbits_to_hours(semi_major_axis_km: float, central_body: str, n_orbits: float):
+    """Convert N orbits to hours via T = 2*pi*sqrt(a^3/mu). Returns (hours, 'hours', 'ElapsedHours')."""
+    import math as _m
+    a = float(semi_major_axis_km); n = float(n_orbits)
+    if not (a > 0) or not (n > 0):
+        raise ValueError("a and N must be positive for orbit conversion")
+    mu = _mu_for_body(central_body)
+    t_sec = 2.0 * _m.pi * _m.sqrt(a ** 3 / mu)
+    return (round(n * t_sec / 3600.0, 6), "hours", "ElapsedHours")
