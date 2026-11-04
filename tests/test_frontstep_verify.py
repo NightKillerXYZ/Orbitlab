@@ -85,14 +85,14 @@ def test_stop_seconds_passthrough_prompt():
     p = build_canonical_prompt(res.data)
     assert "propagate for 7200 seconds using integrator RungeKutta89." in p
 
-def test_stop_orbits_converted_to_hours_prompt():
-    # Step 3 (phase4-gmat): orbit counts convert to hours via T=2*pi*sqrt(a^3/mu); model receives hours only.
+def test_stop_orbits_passthrough_prompt():
+    # "3 orbits" passes through unchanged as OrbitPeriods value 3.
     from orbitlab_backend.frontstep.extractor import FrontStepExtractor
     from orbitlab_backend.frontstep.prompt_builder import build_canonical_prompt
     ext = FrontStepExtractor()
     res = ext.deterministic_convert({"centralBody":"Earth","dryMassKg":500,"orbit":{"kind":"circularAltitudeKm","value":400,"unit":"km"},"duration":{"value":3,"unit":"orbits"},"integrator":"RungeKutta89","forces":None,"maneuvers":[],"cartesian":None}, "Earth 500 kg 400 km circular for 3 orbits")
     assert res.status=="ok"
-    assert res.data["stopConditionType"]=="ElapsedHours" and res.data["durationUnit"]=="hours"
-    assert abs(res.data["durationValue"] - 3 * 1.5398) < 0.03
+    assert res.data["stopConditionType"]=="OrbitPeriods" and res.data["durationValue"]==3
+    assert res.data["durationUnit"]=="orbital periods"
     p = build_canonical_prompt(res.data)
-    assert "using integrator RungeKutta89." in p and "hours" in p
+    assert "propagate for 3 orbital periods using integrator RungeKutta89." in p

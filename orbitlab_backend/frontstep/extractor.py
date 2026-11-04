@@ -102,14 +102,7 @@ class FrontStepExtractor:
         dur_val=None; dur_unit=None; stop_type=None
         if duration:
             val=float(duration.get("value")); unit=duration.get("unit","hours")
-            try:
-                conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
-                if stop_type == "OrbitPeriods" and sma is not None:
-                    try:
-                        from .conversions import orbits_to_hours as _o2h
-                        dur_val, dur_unit, stop_type = _o2h(float(sma), str(central_body), float(val))
-                    except Exception:
-                        pass
+            try: conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
             except ValueError:
                 ul = str(unit).lower()
                 if "sec" in ul or ul.strip() in ("s",): dur_val=round(float(val),6); dur_unit="seconds"; stop_type="ElapsedSeconds"

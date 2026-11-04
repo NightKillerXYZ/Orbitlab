@@ -62,10 +62,11 @@ def test_orbits_to_hours_earth():
     v10, _, _ = orbits_to_hours(6778.136, "Earth", 10)
     assert abs(v10 - 10 * v) < 2e-6
 
-def test_orbit_count_converted_to_hours_in_extractor():
+def test_orbit_count_passthrough_in_extractor():
+    # "1 orbit" passes through unchanged as OrbitPeriods value 1 (helper orbits_to_hours kept but unused by pipeline).
     from orbitlab_backend.frontstep.extractor import FrontStepExtractor
     ext = FrontStepExtractor()
     res = ext.deterministic_convert({"centralBody": "Earth", "dryMassKg": 500, "orbit": {"kind": "circularAltitudeKm", "value": 400, "unit": "km"}, "duration": {"value": 1, "unit": "orbits"}, "integrator": "RungeKutta89", "forces": None, "maneuvers": [], "cartesian": None}, "Earth 500 kg 400 km circular for 1 orbit")
     assert res.status == "ok"
-    assert res.data["stopConditionType"] == "ElapsedHours" and res.data["durationUnit"] == "hours"
-    assert abs(res.data["durationValue"] - 1.5398) < 0.01
+    assert res.data["stopConditionType"] == "OrbitPeriods" and res.data["durationUnit"] == "orbital periods"
+    assert res.data["durationValue"] == 1
