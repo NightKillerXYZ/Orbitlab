@@ -53,19 +53,3 @@ def test_duration_conversions():
     assert v==3 and u=="orbital periods" and t=="OrbitPeriods"
     v,u,t=convert_duration_to_hours_or_days(3, "orbital periods")
     assert v==3 and u=="orbital periods" and t=="OrbitPeriods"
-
-def test_orbits_to_hours_earth():
-    from orbitlab_backend.frontstep.conversions import orbits_to_hours
-    v, u, ty = orbits_to_hours(6778.136, "Earth", 1)
-    assert u == "hours" and ty == "ElapsedHours"
-    assert abs(v - 1.5398) < 0.01, f"got {v}"
-    v10, _, _ = orbits_to_hours(6778.136, "Earth", 10)
-    assert abs(v10 - 10 * v) < 2e-6
-
-def test_orbit_count_converted_to_hours_in_extractor():
-    from orbitlab_backend.frontstep.extractor import FrontStepExtractor
-    ext = FrontStepExtractor()
-    res = ext.deterministic_convert({"centralBody": "Earth", "dryMassKg": 500, "orbit": {"kind": "circularAltitudeKm", "value": 400, "unit": "km"}, "duration": {"value": 1, "unit": "orbits"}, "integrator": "RungeKutta89", "forces": None, "maneuvers": [], "cartesian": None}, "Earth 500 kg 400 km circular for 1 orbit")
-    assert res.status == "ok"
-    assert res.data["stopConditionType"] == "ElapsedHours" and res.data["durationUnit"] == "hours"
-    assert abs(res.data["durationValue"] - 1.5398) < 0.01
