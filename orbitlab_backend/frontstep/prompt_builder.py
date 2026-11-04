@@ -24,7 +24,7 @@ def build_canonical_prompt(data: Dict[str, Any]) -> str:
     data must contain normalized fields:
     experimentName, spacecraftName, dryMassKg, centralBody,
     semiMajorAxisKm, eccentricity, inclinationDeg, raanDeg, aopDeg, trueAnomalyDeg,
-    durationValue, durationUnit (hours|days), integrator (RungeKutta89|PrinceDormand78),
+    durationValue, durationUnit (hours|days|seconds|orbital periods), integrator (RungeKutta89|PrinceDormand78),
     forces: None or dict with gravityDegree, gravityOrder, pointMasses, srp flag
     maneuvers: list of dicts with type and params
     cartesian: optional dict with x,y,z,vx,vy,vz
@@ -36,15 +36,16 @@ def build_canonical_prompt(data: Dict[str, Any]) -> str:
     dry_mass = _fmt_num(data.get("dryMassKg", 500))
     body = data.get("centralBody", "Earth")
     integrator = data.get("integrator", "RungeKutta89")
-    # Duration
+    # Duration: passthrough unit (seconds|hours|days|orbital periods)
     dur_val = data.get("durationValue")
     dur_unit = data.get("durationUnit", "hours")
+    dur_val_fmt = _fmt_num(dur_val) if isinstance(dur_val, (int, float)) else dur_val
     # Cartesian special case
     cartesian = data.get("cartesian")
     if cartesian:
         x=cartesian.get("x"); y=cartesian.get("y"); z=cartesian.get("z")
         vx=cartesian.get("vx"); vy=cartesian.get("vy"); vz=cartesian.get("vz")
-        base = f"Configure experiment {exp_name} for {sc_full}, dry mass {dry_mass} kg, in a {body} orbit with Cartesian state: Initial state: r = [{x}, {y}, {z}] km; v = [{vx}, {vy}, {vz}] km/s in Cartesian coordinates; propagate for {dur_val} {dur_unit} using integrator {integrator}."
+        base = f"Configure experiment {exp_name} for {sc_full}, dry mass {dry_mass} kg, in a {body} orbit with Cartesian state: Initial state: r = [{x}, {y}, {z}] km; v = [{vx}, {vy}, {vz}] km/s in Cartesian coordinates; propagate for {dur_val_fmt} {dur_unit} using integrator {integrator}."
         # Still need to handle forces/maneuvers after
     else:
         sma = _fmt_sma(data.get("semiMajorAxisKm", 6778.136))
@@ -53,7 +54,7 @@ def build_canonical_prompt(data: Dict[str, Any]) -> str:
         raan = _fmt_num(data.get("raanDeg", 0))
         aop = _fmt_num(data.get("argumentOfPeriapsisDeg", 0))
         ta = _fmt_num(data.get("trueAnomalyDeg", 0))
-        base = f"Configure experiment {exp_name} for {sc_full}, dry mass {dry_mass} kg, in a {body} orbit with semi-major axis {sma} km and eccentricity {ecc}, inclination {inc} degrees, RAAN {raan} degrees, argument of periapsis {aop} degrees, and true anomaly {ta} degrees; propagate for {dur_val} {dur_unit} using integrator {integrator}."
+        base = f"Configure experiment {exp_name} for {sc_full}, dry mass {dry_mass} kg, in a {body} orbit with semi-major axis {sma} km and eccentricity {ecc}, inclination {inc} degrees, RAAN {raan} degrees, argument of periapsis {aop} degrees, and true anomaly {ta} degrees; propagate for {dur_val_fmt} {dur_unit} using integrator {integrator}."
     # Forces
     forces = data.get("forces")
     if forces is None or forces == "defaults":

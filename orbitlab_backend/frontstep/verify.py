@@ -2,6 +2,7 @@
 from __future__ import annotations
 import math
 from typing import Any, Dict, List
+import re as _re
 
 def _rel_match(exp: float, got: float, tol=1e-9):
     if exp==0 and got==0:
@@ -9,8 +10,56 @@ def _rel_match(exp: float, got: float, tol=1e-9):
     if exp==0 or got==0:
         return abs(exp-got) <= 1e-12
     return abs(exp-got)/abs(exp) <= tol
+NAME_PATTERN = _re.compile(r"^[A-Za-z0-9_]{1,30}$")
+
+def sanitize_identifier(name, default="Exp001"):
+    """Sanitise to schema pattern ^[A-Za-z0-9_]{1,30}$: invalid chars -> _, truncate 30."""
+    if name is None:
+        return default
+    s = str(name).strip()
+    if not s:
+        return default
+    s = _re.sub(r"[^A-Za-z0-9_]", "_", s)
+    if not s:
+        return default
+    return s[:30]
+
+def frontstep_expected_names(sent):
+    """Return (experimentName, spacecraft full name) owned by the front step."""
+    exp = sanitize_identifier(sent.get("experimentName") or "DefaultExp", default="DefaultExp")
+    base = sanitize_identifier(sent.get("spacecraftName") or exp, default=exp)
+    full = base if base.startswith("SC_") else f"SC_{base}"
+    full = sanitize_identifier(full, default="SC_DefaultExp")[:30]
+    # ensure SC_ prefix survived truncation
+    if not full.startswith("SC_"):
+        full = ("SC_" + full)[-30:]
+        full = sanitize_identifier(full, default="SC_DefaultExp")
+    return exp, full
+
+def apply_frontstep_names(sent, returned):
+    """Override returned names with front-step values. Returns (updated, overrides list)."""
+    exp, sc_full = frontstep_expected_names(sent)
+    if not isinstance(returned, dict):
+        return returned, []
+    overrides = []
+    got_exp = returned.get("experimentName")
+    if got_exp != exp:
+        overrides.append({"field": "experimentName", "expected": exp, "got": got_exp})
+    returned["experimentName"] = exp
+    sc = returned.get("spacecraft")
+    if not isinstance(sc, dict):
+        returned["spacecraft"] = {"name": sc_full}
+        overrides.append({"field": "spacecraft.name", "expected": sc_full, "got": None})
+    else:
+        got_sc = sc.get("name")
+        if got_sc != sc_full:
+            overrides.append({"field": "spacecraft.name", "expected": sc_full, "got": got_sc})
+        sc["name"] = sc_full
+    return returned, overrides
+
 
 def verify_experiment(sent: Dict[str,Any], returned: Dict[str,Any]) -> List[Dict[str,Any]]:
+    # Names are owned by Python (see apply_frontstep_names); never report them here.
     mismatches=[]
     # centralBody
     if sent.get("centralBody") != returned.get("centralBody"):

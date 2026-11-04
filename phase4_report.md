@@ -28,7 +28,7 @@
 - Interpreter client: POST {prompt} Bearer, response {output: object or JSON string}, timeout 180s, retry once 502/503/504/timeout, warming event after 10s.
 
 ## Milestone 2 — Front step
-- IFieldExtractor mock+OpenAI (clients/extractor_client.py); conversions in frontstep/conversions.py radii Earth 6378.1363 Moon 1737.4 Mars 3389.5 Mercury 2440.53 Venus 6051.8 Jupiter 71492 Sun 695700; a=(R+alt)/(1-e), circular/apoPeri, miles/m/AU->km, rad->deg, sec/min->hours/days, SMA 3 decimals.
+- IFieldExtractor mock+OpenAI (clients/extractor_client.py); conversions in frontstep/conversions.py radii Earth 6378.1363 Moon 1737.4 Mars 3389.5 Mercury 2440.53 Venus 6051.8 Jupiter 71492 Sun 695700; a=(R+alt)/(1-e), circular/apoPeri, miles/m/AU->km, rad->deg, durations pass through unchanged (seconds->ElapsedSeconds, minutes*60->ElapsedSeconds, hours->ElapsedHours, days->ElapsedDays, orbits->OrbitPeriods), SMA 3 decimals.
 - Prompt builder exact forms: Base, Forces default/explicit, Hohmann, Elapsed burn, Apsis burn, Cartesian.
 - Missing info -> needs_clarification; verify-after + maneuver M1,M2 normalization.
 
@@ -79,4 +79,6 @@ UI: import ui_adapter.js, VITE_API_BASE, VITE_USE_MOCK switch.
 ## Could not verify
 - Real hosted model (no network), Real GMAT unless GMAT_PATH set.
 
-
+## Corrections (2026-11-04, no secrets printed or committed)
+- Names owned by Python: verify-after overrides returned experimentName / spacecraft.name with front-step values, emits interpreter_name_overridden warning events (also kept in result warnings), and never fails on names. Conservative choices: sanitise invalid chars to _ and truncate to 30 chars to satisfy ^[A-Za-z0-9_]{1,30}$; SC_ prefix applied then truncated to 30; overrides recorded with both model and front-step values.
+- Stop-condition passthrough: removed the old seconds/minutes/orbit-count to hours/days conversion and the model only knows ElapsedHours/ElapsedDays check. Canonical prompt wording is now propagate for N hours|days|seconds|orbital periods using integrator X. Tests updated: test_duration_conversions expects passthrough (7200 seconds, 3 orbits), new tests cover name overrides and seconds/orbits prompts; test_api event-order fixtures now carry matching names so no override events fire there.

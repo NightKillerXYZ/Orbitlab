@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 from orbitlab_backend.config import get_settings
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
-from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids
+from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids, apply_frontstep_names
 from orbitlab_backend.orchestrator.errors import *
 from orbitlab_core.ast.models import OrbitLabExperiment
 from orbitlab_core.ast.validation import AstrodynamicValidator
@@ -102,6 +102,10 @@ class Pipeline:
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","verify",0,"Verifying interpreter output"))
         try:
+            experiment_json, name_overrides = apply_frontstep_names(sent_data, experiment_json)
+            for ov in name_overrides:
+                await emit(PipelineEvent("interpreter_name_overridden","verify",0,f"Name overridden by front step: {ov}",{"override":ov}))
+                warnings_all.append(f"interpreter_name_overridden: {ov.get('field')} model={ov.get('got')!r} front_step={ov.get('expected')!r}")
             mismatches=verify_experiment(sent_data, experiment_json)
             if mismatches:
                 dur=time.perf_counter()-t0
@@ -109,7 +113,7 @@ class Pipeline:
                 raise InterpreterMismatch(mismatches)
             experiment_json=normalize_maneuver_ids(experiment_json)
             dur=time.perf_counter()-t0
-            await emit(PipelineEvent("stage_completed","verify",dur,"Verification passed"))
+            await emit(PipelineEvent("stage_completed","verify",dur,"Verification passed", {"warnings":warnings_all} if warnings_all else None))
         except PipelineError:
             raise
         except Exception as e:
@@ -128,7 +132,7 @@ class Pipeline:
                 await emit(PipelineEvent("stage_failed","validate",dur,f"Schema error: {e}"))
                 raise SchemaError(str(e), details={"raw": str(e)})
             res=AstrodynamicValidator.validate(experiment_obj)
-            warnings_all=list(res.warnings)
+            warnings_all=list(warnings_all)+list(res.warnings)
             if not res.is_valid:
                 dur=time.perf_counter()-t0
                 await emit(PipelineEvent("stage_failed","validate",dur,f"Validation failed: {res.errors}"))
