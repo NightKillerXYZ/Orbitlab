@@ -31,7 +31,9 @@ def test_estimate_seconds_and_step_scaling():
     e = _exp("Earth", "EarthMJ2000Eq", 6778.136, 0, "ElapsedSeconds", 7200, step=60)
     assert estimate_run_seconds(e, 0.5) == pytest.approx(7200 / 86400 * 0.5)
     e300 = _exp("Earth", "EarthMJ2000Eq", 6778.136, 0, "ElapsedSeconds", 7200, step=300)
-    assert estimate_run_seconds(e300, 0.5) == pytest.approx(7200 / 86400 * 0.5 * 60 / 300)
+    assert estimate_run_seconds(e300, 0.5) == pytest.approx(7200 / 86400 * 0.5)
+    e10 = _exp("Earth", "EarthMJ2000Eq", 6778.136, 0, "ElapsedSeconds", 7200, step=10)
+    assert estimate_run_seconds(e10, 0.5) == pytest.approx(7200 / 86400 * 0.5 * 6)
 
 
 def test_estimate_orbit_periods_uses_period_only_for_estimate():

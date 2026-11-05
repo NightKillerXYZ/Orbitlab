@@ -1,11 +1,14 @@
 """Conservative GMAT wall-time estimate (pure Python, no GMAT).
 
-Estimate = simulated_days * ORBITLAB_GMAT_SECS_PER_SIM_DAY * (60 / step_size_secs).
+Estimate = simulated_days * ORBITLAB_GMAT_SECS_PER_SIM_DAY * max(1, 60 / step_size_secs).
 
 The constant is measurement-based (see config comment): the worst measured
 case was Mars 687 days in 317.8 s, i.e. ~0.463 s per simulated day, rounded
-up to 0.5 for conservatism. The reference step (60 s) is the model default;
-larger steps need fewer GMAT steps, hence the scaling factor.
+up to 0.5 for conservatism. The reference step (60 s) is the model default.
+Measured 365-day runs show output step size barely changes wall time
+(60 s vs 300 s steps finished within seconds of each other), so the scaling
+factor is clamped at 1: smaller steps get a larger (safe-direction) budget,
+larger steps never shrink the estimate below the step-independent value.
 
 For OrbitPeriods the orbital period T = 2*pi*sqrt(a^3/mu) is used ONLY for
 this estimate; the stop condition itself is always sent to GMAT unchanged
@@ -76,4 +79,5 @@ def estimate_run_seconds(experiment: Dict[str, Any], secs_per_sim_day: float) ->
     if step <= 0:
         step = REFERENCE_STEP_SECS
     sim_days = total_secs / 86400.0
-    return sim_days * float(secs_per_sim_day) * (REFERENCE_STEP_SECS / step)
+    step_factor = max(1.0, REFERENCE_STEP_SECS / step)
+    return sim_days * float(secs_per_sim_day) * step_factor
