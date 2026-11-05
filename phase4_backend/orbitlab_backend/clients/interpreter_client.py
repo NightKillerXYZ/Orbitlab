@@ -15,6 +15,8 @@ class InterpreterClientError(RuntimeError):
     pass
 class InterpreterUnavailableError(InterpreterClientError):
     pass
+class InterpreterOutputTruncatedError(InterpreterClientError):
+    pass
 class InterpreterClient:
     def interpret(self, raw_text: str) -> InterpretationResult:
         raise NotImplementedError
@@ -64,12 +66,16 @@ def _strip_fences(text: str) -> str:
     return s
 
 class HttpInterpreterClient(IExperimentInterpreter):
-    def __init__(self, model_url=None, model_key=None, timeout_s=None, model_name=None):
+    def __init__(self, model_url=None, model_key=None, timeout_s=None, model_name=None, max_tokens=None):
         s=get_settings()
         self.model_url=model_url or s.ORBITLAB_MODEL_URL
         self.model_key=model_key or s.ORBITLAB_MODEL_KEY
         self.timeout_s=timeout_s if timeout_s is not None else float(s.ORBITLAB_MODEL_TIMEOUT_S)
         self.model_name=model_name or getattr(s, "ORBITLAB_MODEL_NAME", None) or "orbitlab-interpreter"
+        try:
+            self.max_tokens=int(getattr(s, "ORBITLAB_MODEL_MAX_TOKENS", 1500) if max_tokens is None else max_tokens)
+        except (TypeError, ValueError):
+            self.max_tokens=1500
         if not self.model_url or not str(self.model_url).strip():
             raise RuntimeError("Missing required environment variable: ORBITLAB_MODEL_URL")
         if not self.model_key or not str(self.model_key).strip():
@@ -86,7 +92,7 @@ class HttpInterpreterClient(IExperimentInterpreter):
             raise InterpreterUnavailableError("httpx not installed")
         url=self.model_url.rstrip("/")+"/v1/chat/completions"
         headers={"Authorization": f"Bearer {self.model_key}","Content-Type": "application/json"}
-        payload={"model": self.model_name,"messages": [{"role":"system","content": INTERPRETER_SYSTEM_PROMPT},{"role":"user","content": prompt}],"temperature":0}
+        payload={"model": self.model_name,"messages": [{"role":"system","content": INTERPRETER_SYSTEM_PROMPT},{"role":"user","content": prompt}],"temperature":0,"max_tokens": self.max_tokens}
         async def single_attempt():
             async with httpx.AsyncClient(timeout=self.timeout_s) as client:
                 task=asyncio.create_task(client.post(url, json=payload, headers=headers))
@@ -113,7 +119,13 @@ class HttpInterpreterClient(IExperimentInterpreter):
                 result.raise_for_status()
                 data=result.json()
                 try:
-                    content=data["choices"][0]["message"]["content"]
+                    first=data["choices"][0]
+                except (KeyError, IndexError, TypeError) as e:
+                    raise ValueError(f"Unexpected chat-completions response shape: {str(data)[:200]}") from e
+                if isinstance(first, dict) and first.get("finish_reason")=="length":
+                    raise InterpreterOutputTruncatedError("Model output was cut off (finish_reason=length); raise ORBITLAB_MODEL_MAX_TOKENS and retry.")
+                try:
+                    content=first["message"]["content"]
                 except (KeyError, IndexError, TypeError) as e:
                     raise ValueError(f"Unexpected chat-completions response shape: {str(data)[:200]}") from e
                 if isinstance(content, dict):

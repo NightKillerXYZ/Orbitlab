@@ -164,3 +164,34 @@ def test_warming_event():
         finally:
             ic.httpx.AsyncClient = real
     pass
+
+@pytest.mark.asyncio
+async def test_body_contains_max_tokens(monkeypatch):
+    import json as _j
+    seen = {}
+
+    async def handler(request: Request):
+        seen["body"] = _j.loads(request.content.decode())
+        from tests.fake_interpreter import CORRECT_EXPERIMENT
+        return Response(200, json={"choices": [{"message": {"content": _j.dumps(CORRECT_EXPERIMENT)}}]})
+
+    client, _ = _patched_client(monkeypatch, handler)
+    await client.interpret_prompt("hello")
+    assert seen["body"]["max_tokens"] == 1500
+
+
+@pytest.mark.asyncio
+async def test_truncated_output_raises_without_retry(monkeypatch):
+    import json as _j
+    from orbitlab_backend.clients.interpreter_client import InterpreterOutputTruncatedError
+    calls = [0]
+
+    async def handler(request: Request):
+        calls[0] += 1
+        return Response(200, json={"choices": [{"message": {"content": "{\"a\""}, "finish_reason": "length"}]})
+
+    client, _ = _patched_client(monkeypatch, handler)
+    with pytest.raises(InterpreterOutputTruncatedError) as exc:
+        await client.interpret_prompt("hello")
+    assert "cut off" in str(exc.value)
+    assert calls[0] == 1

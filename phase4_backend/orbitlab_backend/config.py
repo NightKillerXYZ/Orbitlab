@@ -28,6 +28,7 @@ if HAS_PYDANTIC_SETTINGS:
         ORBITLAB_MODEL_KEY: Optional[str] = Field(default=None)
         ORBITLAB_MODEL_TIMEOUT_S: float = Field(default=180.0)
         ORBITLAB_MODEL_NAME: Optional[str] = Field(default=None)
+        ORBITLAB_MODEL_MAX_TOKENS: int = Field(default=1500)
 
         # Front-step extractor + explainer (OpenAI-compatible)
         EXTRACTOR_BASE_URL: Optional[str] = Field(default=None)
@@ -64,6 +65,7 @@ else:
             self.ORBITLAB_MODEL_KEY = os.getenv("ORBITLAB_MODEL_KEY")
             self.ORBITLAB_MODEL_TIMEOUT_S = float(os.getenv("ORBITLAB_MODEL_TIMEOUT_S", "180"))
             self.ORBITLAB_MODEL_NAME = os.getenv("ORBITLAB_MODEL_NAME")
+            self.ORBITLAB_MODEL_MAX_TOKENS = int(os.getenv("ORBITLAB_MODEL_MAX_TOKENS", "1500"))
             self.EXTRACTOR_BASE_URL = os.getenv("EXTRACTOR_BASE_URL")
             self.EXTRACTOR_API_KEY = os.getenv("EXTRACTOR_API_KEY")
             self.EXTRACTOR_MODEL = os.getenv("EXTRACTOR_MODEL")
