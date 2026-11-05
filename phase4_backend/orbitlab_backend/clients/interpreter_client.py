@@ -36,10 +36,20 @@ class MockInterpreterClient(IExperimentInterpreter):
                 return json.loads(self.canned_json)
         return {'version': '1.0','experimentName': 'MockExp','spacecraft': {'name': 'SC_MockExp','dryMassKg': 500},'centralBody': 'Earth','initialOrbit': {'type': 'Keplerian','coordinateSystem': 'EarthMJ2000Eq','elements': {'semiMajorAxisKm': 6778.136,'eccentricity': 0,'inclinationDeg': 28.5,'raanDeg': 0,'argumentOfPeriapsisDeg': 0,'trueAnomalyDeg': 0}},'forceModel': {'gravityDegree': 4,'gravityOrder': 4,'pointMasses': ['Luna','Sun'],'atmosphericDrag': {'enabled': False,'model': 'JacchiaRoberts'},'solarRadiationPressure': True},'propagation': {'integrator': 'RungeKutta89','stopCondition': {'type': 'ElapsedHours','value': 2},'stepSizeSecs': 60},'maneuvers': []}
 INTERPRETER_SYSTEM_PROMPT = (
-    "You are an OrbitLab Experiment Interpreter. Convert the user's"
-    " natural-language orbital-simulation request into the exact OrbitLab"
-    " Experiment JSON structure. Output ONLY the JSON object, with no"
-    " surrounding text, explanation or markdown fences."
+    "The model is an OrbitLab Experiment Interpreter.\n"
+    "\n"
+    "It converts natural-language orbital-simulation requests into the exact OrbitLab Experiment JSON structure.\n"
+    "\n"
+    "Rules:\n"
+    "- Output only the Experiment JSON when the request contains enough information for a valid experiment.\n"
+    "- Never output raw GMAT script.\n"
+    "- Never invent unsupported fields.\n"
+    "- Never silently change user-specified physical parameters.\n"
+    "- Use only fields supported by the actual OrbitLab schema.\n"
+    "- Do not decide physical validity independently of OrbitLab validation.\n"
+    "- Preserve the user's requested values and units after converting them to the schema's required units.\n"
+    "- If required information is genuinely missing, the production system should request clarification rather than inventing a value.\n"
+    "- The deterministic OrbitLab compiler, not the AI, is responsible for producing GMAT syntax."
 )
 
 def _strip_fences(text: str) -> str:

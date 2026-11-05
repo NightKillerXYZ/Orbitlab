@@ -67,6 +67,23 @@ async def test_openai_request_shape(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_system_prompt_is_training_text(monkeypatch):
+    from orbitlab_backend.clients.interpreter_client import INTERPRETER_SYSTEM_PROMPT
+    seen = {}
+
+    async def handler(request: Request):
+        import json as _j
+        seen["body"] = _j.loads(request.content.decode())
+        from tests.fake_interpreter import CORRECT_EXPERIMENT
+        return Response(200, json={"choices": [{"message": {"content": _j.dumps(CORRECT_EXPERIMENT)}}]})
+
+    client, _ = _patched_client(monkeypatch, handler)
+    await client.interpret_prompt("hello")
+    assert seen["body"]["messages"][0] == {"role": "system", "content": INTERPRETER_SYSTEM_PROMPT}
+    assert INTERPRETER_SYSTEM_PROMPT.startswith("The model is an OrbitLab Experiment Interpreter.")
+
+
+@pytest.mark.asyncio
 async def test_fenced_json_output(monkeypatch):
     fenced = "```json\n" + json.dumps(CORRECT_EXPERIMENT) + "\n```"
 
