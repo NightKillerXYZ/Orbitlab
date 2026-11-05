@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070d1c" />
+  <title>OrbitLab — Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="global-banner" aria-label="OrbitLab welcome banner">
+      <div class="global-brand"><img src="assets/orbitlab-logo.png" alt="OrbitLab" /><span>Describe · Check · Run</span></div>
+      <div class="global-motto">GRAVITY TURNS MOTION INTO MEANING.</div>
+      <div class="global-message">EXPLORE A MORE<br />BEAUTIFUL UNIVERSE</div>
+      <time class="global-date" id="globalDate"><span></span><span></span></time>
+    </header>
+    <aside class="sidebar">
+      <div class="brand-row"><a class="brand" href="#home" aria-label="OrbitLab home"><img class="brand-wordmark" src="assets/orbitlab-logo.png" alt="OrbitLab" /><img class="brand-symbol" src="assets/orbitlab-small.svg" alt="" /></a><button class="sidebar-toggle" id="toggleSidebar" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">‹</button></div>
+      <div class="workspace-label">YOUR SPACE</div>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#home"><span class="nav-icon">⌂</span>Home</a>
+        <a class="nav-item" href="#missions"><span class="nav-icon">◉</span>My Missions <span class="nav-count">3</span></a>
+        <a class="nav-item" href="#learn"><span class="nav-icon">▤</span>Learn</a>
+        <a class="nav-item" href="#challenges"><span class="nav-icon">✦</span>Challenges <span class="new-dot"></span></a>
+        <a class="nav-item" href="#progress"><span class="nav-icon">◴</span>Progress</a>
+      </nav>
+      <div class="side-divider"></div>
+      <div class="side-heading"><span>FEATURED MISSIONS</span><button class="icon-button small" id="addMission" aria-label="Add a mission">＋</button></div>
+      <button class="mission-link selected" data-mission="venus"><span class="mission-orb venus-mini"></span><span><b>Venus in Motion</b><small>Orbital mechanics</small></span></button>
+      <button class="mission-link" data-mission="mars"><span class="mission-orb mars-mini"></span><span><b>Mars Transfer</b><small>Interplanetary travel</small></span></button>
+      <button class="mission-link" data-mission="moon"><span class="mission-orb moon-mini"></span><span><b>Lunar Landing</b><small>Guided descent</small></span></button>
+      <div class="sidebar-bottom">
+        <div class="streak-card"><div class="streak-icon">✦</div><div><b>4 day streak</b><small>Keep your momentum going!</small></div><span>↗</span></div>
+        <div class="profile"><div class="avatar">A</div><div class="profile-name"><b>Alex Morgan</b><small>Space Explorer · Level 8</small></div><button class="icon-button" aria-label="Profile menu">•••</button></div>
+      </div>
+    </aside>
+
+    <main class="main-area" id="home">
+      <header class="topbar"><div class="breadcrumbs"><span>My missions</span><span class="crumb-slash">/</span><b>Venus in Motion</b></div><div class="top-actions"><span class="live-status"><i></i> SIMULATION READY</span><button class="icon-button" aria-label="Notifications">♧<span class="notification-dot"></span></button><div class="top-avatar">A</div></div></header>
+      <section class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span>MISSION CONTROL <span class="eyebrow-line"></span></div><h1>Venus in <span>Motion</span></h1><p>Explore how gravity shapes the path of a planet around the Sun.</p></div><div class="mission-progress"><div class="progress-ring"><span>2<span class="ring-slash">/</span>5</span></div><div><small>MISSION PROGRESS</small><b>Orbit Explorer</b><span>2 of 5 steps complete</span></div></div></section>
+      <div class="workspace-heading"><div><div class="section-kicker">MISSION WORKSPACE</div><h2>Orbital mechanics</h2></div><div class="workspace-actions"><button class="soft-button max-view-button" id="toggleMaxView" aria-pressed="false"><span>⛶</span> Max View</button><button class="soft-button" id="exportBtn"><span>↧</span> Export CSV</button><button class="soft-button share-button" id="shareBtn"><span>↗</span> Share</button><button class="icon-button bordered" aria-label="More options">•••</button></div></div>
+      <div class="dashboard-grid">
+        <section class="simulation-card">
+          <div class="card-topline"><div><div class="card-title"><span class="tiny-spark">✦</span> Orbital view <span class="info">i</span></div><div class="card-subtitle">Observe Venus as it travels around the Sun</div></div><div class="view-toggle"><button class="active" data-view="2D">2D</button><button data-view="3D">3D</button></div></div>
+          <div class="orbit-visual" id="orbitVisual"><div class="space-grid"></div><div class="orbit-label label-venus">VENUS</div><div class="orbit-label label-sun">THE SUN</div><div class="orbit-path path-outer"></div><div class="orbit-path path-main"></div><div class="orbit-path path-inner"></div><div class="sun-glow"></div><div class="sun-core"></div><div class="planet venus-planet" id="venusPlanet"><span></span></div><div class="planet earth-planet"></div><div class="planet mars-planet"></div><div class="orbit-axis"></div><div class="distance-line"></div><div class="distance-label">0.72 AU</div><div class="scale-label">NOT TO SCALE</div><div class="visual-caption"><span class="caption-dot"></span><span>VENUS</span><b id="captionSpeed">35.0 km/s</b></div></div>
+          <div class="telemetry-row"><div><small>ORBITAL PERIOD</small><b>224.7 <span>days</span></b></div><div><small>AVG. DISTANCE</small><b>108.2 <span>million km</span></b></div><div><small>ORBITAL SPEED</small><b id="speedMetric">35.0 <span>km/s</span></b></div><div><small>ECCENTRICITY</small><b>0.007</b></div></div>
+          <div class="simulation-controls"><div class="play-controls"><button class="control-btn primary-control" id="playBtn" aria-label="Play simulation">Ⅱ</button><button class="control-btn" id="resetBtn" aria-label="Reset simulation">↻</button><span class="control-divider"></span><button class="speed-pill" id="speedBtn">1× <span>⌄</span></button></div><div class="time-control"><span class="time-label">SIMULATION TIME</span><b id="simTime">DAY 0.00</b><div class="timeline"><div class="timeline-fill" id="timelineFill"></div><span class="timeline-knob" id="timelineKnob"></span></div></div><span class="running-indicator"><i id="runIndicator"></i><span id="runText">PAUSED</span></span></div>
+        </section>
+      </div>
+      <div class="below-grid"><section class="concept-card"><div class="concept-icon">◉</div><div><small>KEY CONCEPT</small><h3>Gravity is the architect of orbit</h3><p>A planet’s forward motion and the Sun’s gravitational pull work together to create a stable, curved path.</p></div><button class="text-link" data-tab-link="Understanding">Explore concept <span>↗</span></button></section><section class="next-card"><div class="next-card-icon">✦</div><div><small>UP NEXT</small><b>Try a new scenario</b><span>Change the planet’s speed and see what happens.</span></div><button class="next-arrow" id="tryScenario">→</button></section></div>
+      <section class="secondary-page" id="secondaryPage" aria-live="polite"></section>
+    </main>
+
+    <aside class="right-panel"><div class="panel-header"><div><div class="section-kicker">MISSION ASSISTANT</div><h2>Explore deeper</h2></div><button class="panel-collapse-toggle" id="panelCollapseBtn" aria-label="Collapse assistant panel" title="Collapse assistant panel">›</button><button class="icon-button" aria-label="Panel options">•••</button></div><div class="panel-tabs" role="tablist"><button class="tab active" data-tab="Chat">Chat</button><button class="tab" data-tab="Understanding">Understanding</button><button class="tab" data-tab="Results">Results</button><button class="tab" data-tab="Graph">Graph</button><button class="tab" data-tab="Physics">Physics</button></div><div class="panel-content" id="panelContent"></div><div class="chat-composer" id="chatComposer"><div class="composer-hint"><span>✦</span> Ask about your mission or try a scenario</div><form id="chatForm"><textarea id="promptInput" rows="1" placeholder="What if Venus moved faster?" aria-label="Ask a question or describe a scenario"></textarea><div class="composer-bottom"><button type="button" class="attach-btn" aria-label="Add context">＋</button><span class="composer-note">AI responses can make mistakes</span><button class="send-btn" type="submit" aria-label="Send prompt">↑</button></div></form></div></aside>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../ui_adapter.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

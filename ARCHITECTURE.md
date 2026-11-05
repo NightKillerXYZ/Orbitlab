@@ -287,3 +287,24 @@ flowchart TD
     Phase4 --> Phase5
     Phase5 --> Phase6
 ```
+
+## H. Current state (November 2026)
+
+The sections above are the original plan and are kept unchanged. What follows describes the code as it actually is.
+
+### Central bodies, frames, stop conditions
+
+- Seven central bodies: Earth, Moon, Mars, Mercury, Venus, Jupiter, Sun (constants in `orbitlab_core/constants.py`, single source `orbitlab_core/bodies.json`).
+- Coordinate systems: EarthMJ2000Eq, LunaMJ2000Eq, MarsMJ2000Eq, MercuryMJ2000Eq, VenusMJ2000Eq, JupiterMJ2000Eq, SunMJ2000Eq (body-matched by the validator).
+- Four stop-condition types: ElapsedSeconds, ElapsedHours, ElapsedDays, OrbitPeriods. The front step passes the user's own unit through unchanged (seconds stay seconds, minutes become seconds, orbit counts stay orbit periods); the model is never sent a converted unit.
+- Names are owned by Python: after the interpreter answers, `experimentName` and `spacecraft.name` are overwritten with the front-step values (sanitised to `^[A-Za-z0-9_]{1,30}$`), a name difference warns but never fails. Altitudes are converted to semi-major axis deterministically; questionable numbers are passed through and explained by validation afterwards.
+
+### Where phase 4 lives now
+
+- Backend code: `phase4_backend/orbitlab_backend/` (config, `clients/` interpreter/extractor/explainer, `frontstep/` extractor/conversions/prompt_builder/verify, `orchestrator/` pipeline/errors, `api/` FastAPI app/store/cleanup/adapter). Backend tests: `tests/` (run from inside `phase4_backend/`), route-level end-to-end suite: `tests/e2e/`, all-suites runner: `scripts/e2e_all.py`.
+- Reports: `phase4_backend/` (`phase4_report.md`, `phase4_gmat_report.md`, `phase4_gmat2_report.md`, `phase5_ui_report.md`, `phase5_main_ui_report.md`, `phase5_real_model_report.md`, `phase5_real_model_fix_report.md`, `phase6_e2e_report.md`, `RUNBOOK.md`, `deploy_notes.md`); review notes under `phase4_backend/review/`.
+- UI: `UIUX/orbitlab-live.html` (wired page) and `UIUX/OrbitlabUI Main/` (wired Main UI), served by the backend at `/` and `/main/` with the adapter at `/ui_adapter.js`.
+
+### Real pipeline stages
+
+`extract -> interpret -> verify -> validate -> compile -> simulate -> parse -> explain`, emitting `stage_started/completed/failed` events plus `model_warming_up` and `interpreter_name_overridden` over `GET /api/experiments/{id}` and `WS /ws/experiments/{id}`. Every failure carries a human-readable message and an `explanation`. In-memory job store and prompt cache are bounded; the interpreter client is OpenAI-compatible (`POST {base}/v1/chat/completions`) with one retry on timeout/502/503/504 only.

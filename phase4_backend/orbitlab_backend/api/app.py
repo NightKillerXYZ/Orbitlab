@@ -46,6 +46,8 @@ def create_app() -> FastAPI:
 
     @app.post("/api/experiments")
     async def create_experiment(req: CreateExpRequest, background_tasks: BackgroundTasks):
+        if not req.text or not req.text.strip():
+            raise HTTPException(422, "text must be a non-empty string")
         job=store.create(req.text)
         job.status="running"
         # log stage timings without secrets
@@ -128,6 +130,14 @@ def create_app() -> FastAPI:
         async def ui_adapter():
             return FileResponse(adapter_src, media_type="application/javascript")
 
+        # The finished Mission Assistant UI. Its folder name contains a space,
+        # so redirect to the literal static path; relative css/js/assets then
+        # resolve without extra routes.
+        @app.get("/main", include_in_schema=False)
+        async def ui_main():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse("/OrbitlabUI%20Main/")
+
         app.mount("/", StaticFiles(directory=ui_dir, html=True), name="ui")
         logger.info(f"serving UI from {ui_dir}")
     else:
@@ -154,6 +164,12 @@ async def run_job(jid: str, text: str):
         store.add_event(jid, {"type":"final","result":result})
     except NeedsClarification as e:
         err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details}
+        try:
+            expl=(e.details or {}).get("explanation")
+            if expl:
+                err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details, "explanation": expl}
+        except Exception:
+            pass
         store.update(jid, status="failed", error=err)
         store.add_event(jid, {"type":"final","error":err})
     except PipelineError as e:

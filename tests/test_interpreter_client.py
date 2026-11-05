@@ -5,7 +5,7 @@ from orbitlab_backend.clients.interpreter_client import HttpInterpreterClient
 import httpx
 from httpx import AsyncClient, Response, Request, MockTransport
 
-# Test via direct HttpInterpreterClient with MockTransport
+# Tests via direct HttpInterpreterClient with MockTransport
 
 
 def _choices(content):
@@ -29,6 +29,7 @@ def _patched_client(monkeypatch, handler, timeout_s=2):
 async def test_correct_experiment(monkeypatch):
     async def handler(request: Request):
         return Response(200, json=_choices(CORRECT_EXPERIMENT))
+
     client, _ = _patched_client(monkeypatch, handler)
     out = await client.interpret_prompt("hello")
     assert out["experimentName"] == "FakeExp"
@@ -38,6 +39,7 @@ async def test_correct_experiment(monkeypatch):
 async def test_handles_json_string_output(monkeypatch):
     async def handler(request: Request):
         return Response(200, json=_choices(json.dumps(CORRECT_EXPERIMENT)))
+
     client, _ = _patched_client(monkeypatch, handler)
     out = await client.interpret_prompt("hello")
     assert out["experimentName"] == "FakeExp"
@@ -64,6 +66,7 @@ async def test_openai_request_shape(monkeypatch):
     assert roles == ["system", "user"]
     assert body["messages"][1]["content"] == "hello"
     assert body["messages"][0]["content"]
+    assert body["max_tokens"] == 1500
 
 
 @pytest.mark.asyncio
@@ -72,10 +75,8 @@ async def test_system_prompt_is_training_text(monkeypatch):
     seen = {}
 
     async def handler(request: Request):
-        import json as _j
-        seen["body"] = _j.loads(request.content.decode())
-        from tests.fake_interpreter import CORRECT_EXPERIMENT
-        return Response(200, json={"choices": [{"message": {"content": _j.dumps(CORRECT_EXPERIMENT)}}]})
+        seen["body"] = json.loads(request.content.decode())
+        return Response(200, json=_choices(json.dumps(CORRECT_EXPERIMENT)))
 
     client, _ = _patched_client(monkeypatch, handler)
     await client.interpret_prompt("hello")
@@ -106,6 +107,37 @@ async def test_missing_choices_no_retry(monkeypatch):
     client, _ = _patched_client(monkeypatch, handler)
     with pytest.raises(Exception):
         await client.interpret_prompt("hello")
+    assert calls[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_body_contains_max_tokens(monkeypatch):
+    import json as _j
+    seen = {}
+
+    async def handler(request: Request):
+        seen["body"] = _j.loads(request.content.decode())
+        from tests.fake_interpreter import CORRECT_EXPERIMENT
+        return Response(200, json={"choices": [{"message": {"content": _j.dumps(CORRECT_EXPERIMENT)}}]})
+
+    client, _ = _patched_client(monkeypatch, handler)
+    await client.interpret_prompt("hello")
+    assert seen["body"]["max_tokens"] == 1500
+
+
+@pytest.mark.asyncio
+async def test_truncated_output_no_retry(monkeypatch):
+    from orbitlab_backend.clients.interpreter_client import InterpreterOutputTruncatedError
+    calls = [0]
+
+    async def handler(request: Request):
+        calls[0] += 1
+        return Response(200, json={"choices": [{"message": {"content": "{\"a\""}, "finish_reason": "length"}]})
+
+    client, _ = _patched_client(monkeypatch, handler)
+    with pytest.raises(InterpreterOutputTruncatedError) as exc:
+        await client.interpret_prompt("hello")
+    assert "cut off" in str(exc.value)
     assert calls[0] == 1
 
 
@@ -163,35 +195,5 @@ def test_warming_event():
             assert len(warmed) == 1
         finally:
             ic.httpx.AsyncClient = real
+    # This would take 10.5s, skip as heavy; we just check code path exists
     pass
-
-@pytest.mark.asyncio
-async def test_body_contains_max_tokens(monkeypatch):
-    import json as _j
-    seen = {}
-
-    async def handler(request: Request):
-        seen["body"] = _j.loads(request.content.decode())
-        from tests.fake_interpreter import CORRECT_EXPERIMENT
-        return Response(200, json={"choices": [{"message": {"content": _j.dumps(CORRECT_EXPERIMENT)}}]})
-
-    client, _ = _patched_client(monkeypatch, handler)
-    await client.interpret_prompt("hello")
-    assert seen["body"]["max_tokens"] == 1500
-
-
-@pytest.mark.asyncio
-async def test_truncated_output_raises_without_retry(monkeypatch):
-    import json as _j
-    from orbitlab_backend.clients.interpreter_client import InterpreterOutputTruncatedError
-    calls = [0]
-
-    async def handler(request: Request):
-        calls[0] += 1
-        return Response(200, json={"choices": [{"message": {"content": "{\"a\""}, "finish_reason": "length"}]})
-
-    client, _ = _patched_client(monkeypatch, handler)
-    with pytest.raises(InterpreterOutputTruncatedError) as exc:
-        await client.interpret_prompt("hello")
-    assert "cut off" in str(exc.value)
-    assert calls[0] == 1
