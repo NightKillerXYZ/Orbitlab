@@ -29,6 +29,13 @@ if HAS_PYDANTIC_SETTINGS:
         ORBITLAB_MODEL_TIMEOUT_S: float = Field(default=180.0)
         ORBITLAB_MODEL_NAME: Optional[str] = Field(default=None)
         ORBITLAB_MODEL_MAX_TOKENS: int = Field(default=1500)
+        # Measured GMAT cost, seconds of wall time per simulated day (worst
+        # case seen: Mars 687 d finished in 317.8 s => 317.8/687 = 0.4626,
+        # rounded up to 0.5 to stay conservative). Used only for timeout
+        # estimates; lowering accuracy is never a substitute (see Step 4).
+        ORBITLAB_GMAT_SECS_PER_SIM_DAY: float = Field(default=0.5)
+        ORBITLAB_GMAT_MAX_TIMEOUT_S: float = Field(default=900.0)
+        ORBITLAB_PROGRESS_INTERVAL_S: float = Field(default=10.0)
 
         # Front-step extractor + explainer (OpenAI-compatible)
         EXTRACTOR_BASE_URL: Optional[str] = Field(default=None)
@@ -66,6 +73,9 @@ else:
             self.ORBITLAB_MODEL_TIMEOUT_S = float(os.getenv("ORBITLAB_MODEL_TIMEOUT_S", "180"))
             self.ORBITLAB_MODEL_NAME = os.getenv("ORBITLAB_MODEL_NAME")
             self.ORBITLAB_MODEL_MAX_TOKENS = int(os.getenv("ORBITLAB_MODEL_MAX_TOKENS", "1500"))
+            self.ORBITLAB_GMAT_SECS_PER_SIM_DAY = float(os.getenv("ORBITLAB_GMAT_SECS_PER_SIM_DAY", "0.5"))
+            self.ORBITLAB_GMAT_MAX_TIMEOUT_S = float(os.getenv("ORBITLAB_GMAT_MAX_TIMEOUT_S", "900"))
+            self.ORBITLAB_PROGRESS_INTERVAL_S = float(os.getenv("ORBITLAB_PROGRESS_INTERVAL_S", "10"))
             self.EXTRACTOR_BASE_URL = os.getenv("EXTRACTOR_BASE_URL")
             self.EXTRACTOR_API_KEY = os.getenv("EXTRACTOR_API_KEY")
             self.EXTRACTOR_MODEL = os.getenv("EXTRACTOR_MODEL")

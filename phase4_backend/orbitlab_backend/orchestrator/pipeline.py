@@ -7,6 +7,7 @@ from orbitlab_backend.config import get_settings
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids, apply_frontstep_names
 from orbitlab_backend.orchestrator.errors import *
+from orbitlab_backend.orchestrator.estimate import estimate_run_seconds
 MAX_CACHE_ENTRIES = 500
 from orbitlab_core.ast.models import OrbitLabExperiment
 from orbitlab_core.ast.validation import AstrodynamicValidator
@@ -138,6 +139,22 @@ class Pipeline:
                 raise SchemaError(str(e), details={"raw": str(e)})
             res=AstrodynamicValidator.validate(experiment_obj)
             warnings_all=list(warnings_all)+list(res.warnings)
+            try:
+                _secs_per_day=float(get_settings().ORBITLAB_GMAT_SECS_PER_SIM_DAY)
+                _max_timeout=float(get_settings().ORBITLAB_GMAT_MAX_TIMEOUT_S)
+            except Exception:
+                _secs_per_day=0.5
+                _max_timeout=900.0
+            try:
+                _estimate=estimate_run_seconds(experiment_json, _secs_per_day)
+            except Exception:
+                _estimate=0.0
+            if _estimate > _max_timeout:
+                dur=time.perf_counter()-t0
+                _msg=(f"Run too long: estimated wall time {_estimate:.0f}s exceeds the maximum timeout {_max_timeout:.0f}s. Shorten the duration (fewer days/hours or fewer orbit periods) and try again.")
+                await emit(PipelineEvent("stage_failed","validate",dur,f"Validation failed: {_msg}"))
+                _expl=_msg+" The estimator uses measured GMAT cost per simulated day and never changes the physics, the stop condition, or the validator."
+                raise ValidationFailed(_msg, details={"errors":[_msg],"warnings":warnings_all,"explanation":_expl})
             if not res.is_valid:
                 dur=time.perf_counter()-t0
                 await emit(PipelineEvent("stage_failed","validate",dur,f"Validation failed: {res.errors}"))
@@ -180,31 +197,62 @@ class Pipeline:
         try:
             settings=get_settings()
             gmat_path=settings.GMAT_PATH
-            gmat_timeout=float(settings.GMAT_TIMEOUT_S)
-            if self.gmat_runner:
-                from orbitlab_simulation_engine import GmatExecutionRequest
-                req=GmatExecutionRequest(compiled_script=script, timeout_seconds=gmat_timeout)
-                if hasattr(self.gmat_runner, 'execute'):
-                    result=await self.gmat_runner.execute(req)
-                    trajectory_data=result.trajectory
-                else:
+            try:
+                _secs2=float(settings.ORBITLAB_GMAT_SECS_PER_SIM_DAY)
+                _max2=float(settings.ORBITLAB_GMAT_MAX_TIMEOUT_S)
+                _floor=float(settings.GMAT_TIMEOUT_S)
+            except Exception:
+                _secs2=0.5
+                _max2=900.0
+                _floor=30.0
+            try:
+                _est2=estimate_run_seconds(experiment_json, _secs2)
+            except Exception:
+                _est2=0.0
+            gmat_timeout=min(max(_est2*2.0, _floor), _max2)
+            if gmat_timeout <= 0:
+                gmat_timeout=_floor
+            async def _do_simulate():
+                if self.gmat_runner:
+                    from orbitlab_simulation_engine import GmatExecutionRequest
+                    req=GmatExecutionRequest(compiled_script=script, timeout_seconds=gmat_timeout)
+                    if hasattr(self.gmat_runner, 'execute'):
+                        result=await self.gmat_runner.execute(req)
+                        return result.trajectory
                     result=await self.gmat_runner(req)
-                    trajectory_data=result
-            else:
+                    return result
                 if gmat_path and pathlib.Path(gmat_path).exists():
                     from orbitlab_simulation_engine import GmatRunner, GmatRunnerConfig, GmatExecutionRequest
                     cfg=GmatRunnerConfig(executable_path=pathlib.Path(gmat_path), default_timeout_seconds=gmat_timeout, max_visualization_points=2000)
                     runner=GmatRunner(cfg)
                     result=await runner.execute(GmatExecutionRequest(compiled_script=script, timeout_seconds=gmat_timeout))
-                    trajectory_data=result.trajectory
-                else:
-                    from orbitlab_simulation_engine import TrajectoryPoint, TrajectoryData
-                    pts=[]
-                    for i in range(10):
-                        sma_val=experiment_obj.initialOrbit.elements.semiMajorAxisKm if hasattr(experiment_obj.initialOrbit.elements,'semiMajorAxisKm') else 6778
-                        ecc_val=experiment_obj.initialOrbit.elements.eccentricity if hasattr(experiment_obj.initialOrbit.elements,'eccentricity') else 0
-                        pts.append(TrajectoryPoint(elapsed_secs=i*60, x_km=7000+i*10, y_km=0, z_km=0, vx_km_s=0, vy_km_s=7.5, vz_km_s=0, semi_major_axis_km=sma_val, eccentricity=ecc_val, inclination_deg=28.5, altitude_km=400))
-                    trajectory_data=TrajectoryData(full=tuple(pts), visualization=tuple(pts[:2]))
+                    return result.trajectory
+                from orbitlab_simulation_engine import TrajectoryPoint, TrajectoryData
+                pts=[]
+                for i in range(10):
+                    sma_val=experiment_obj.initialOrbit.elements.semiMajorAxisKm if hasattr(experiment_obj.initialOrbit.elements,'semiMajorAxisKm') else 6778
+                    ecc_val=experiment_obj.initialOrbit.elements.eccentricity if hasattr(experiment_obj.initialOrbit.elements,'eccentricity') else 0
+                    pts.append(TrajectoryPoint(elapsed_secs=i*60, x_km=7000+i*10, y_km=0, z_km=0, vx_km_s=0, vy_km_s=7.5, vz_km_s=0, semi_major_axis_km=sma_val, eccentricity=ecc_val, inclination_deg=28.5, altitude_km=400))
+                return TrajectoryData(full=tuple(pts), visualization=tuple(pts[:2]))
+            try:
+                _interval=float(getattr(settings, "ORBITLAB_PROGRESS_INTERVAL_S", 10.0))
+            except Exception:
+                _interval=10.0
+            if not _interval or _interval <= 0:
+                _interval=10.0
+            _sim_task=asyncio.create_task(_do_simulate())
+            _sim_start=time.perf_counter()
+            try:
+                while not _sim_task.done():
+                    try:
+                        await asyncio.wait_for(asyncio.shield(_sim_task), timeout=_interval)
+                    except asyncio.TimeoutError:
+                        _el=time.perf_counter()-_sim_start
+                        await emit(PipelineEvent("progress","simulate",_el,f"Simulating... {_el:.0f}s of ~{_est2:.0f}s estimated",{"elapsedSecs":round(_el,1),"estimateSecs":round(_est2,1)}))
+            except asyncio.CancelledError:
+                _sim_task.cancel()
+                raise
+            trajectory_data=_sim_task.result()
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","simulate",dur,"Simulation succeeded"))
         except Exception as e:

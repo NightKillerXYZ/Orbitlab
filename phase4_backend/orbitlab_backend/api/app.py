@@ -140,6 +140,10 @@ async def run_job(jid: str, text: str):
     # event callback pushes to store
     async def cb(event):
         ev={"type": event.type, "stage": event.stage, "duration": event.duration, "message": event.message, "details": event.details}
+        if event.type == "progress" and isinstance(event.details, dict):
+            for _k in ("elapsedSecs", "estimateSecs"):
+                if _k in event.details:
+                    ev[_k] = event.details[_k]
         store.add_event(jid, ev)
         # also log stage timings without secrets
         logger.info(f"job {jid} {event.stage} {event.type} {event.duration:.3f}s")
