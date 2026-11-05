@@ -15,6 +15,25 @@ class InterpreterClientError(RuntimeError):
     pass
 class InterpreterUnavailableError(InterpreterClientError):
     pass
+class InterpreterOutputTruncatedError(InterpreterClientError):
+    pass
+
+INTERPRETER_SYSTEM_PROMPT = (
+    "The model is an OrbitLab Experiment Interpreter.\n"
+    "\n"
+    "It converts natural-language orbital-simulation requests into the exact OrbitLab Experiment JSON structure.\n"
+    "\n"
+    "Rules:\n"
+    "- Output only the Experiment JSON when the request contains enough information for a valid experiment.\n"
+    "- Never output raw GMAT script.\n"
+    "- Never invent unsupported fields.\n"
+    "- Never silently change user-specified physical parameters.\n"
+    "- Use only fields supported by the actual OrbitLab schema.\n"
+    "- Do not decide physical validity independently of OrbitLab validation.\n"
+    "- Preserve the user's requested values and units after converting them to the schema's required units.\n"
+    "- If required information is genuinely missing, the production system should request clarification rather than inventing a value.\n"
+    "- The deterministic OrbitLab compiler, not the AI, is responsible for producing GMAT syntax."
+)
 class InterpreterClient:
     def interpret(self, raw_text: str) -> InterpretationResult:
         raise NotImplementedError
@@ -36,11 +55,16 @@ class MockInterpreterClient(IExperimentInterpreter):
                 return json.loads(self.canned_json)
         return {'version': '1.0','experimentName': 'MockExp','spacecraft': {'name': 'SC_MockExp','dryMassKg': 500},'centralBody': 'Earth','initialOrbit': {'type': 'Keplerian','coordinateSystem': 'EarthMJ2000Eq','elements': {'semiMajorAxisKm': 6778.136,'eccentricity': 0,'inclinationDeg': 28.5,'raanDeg': 0,'argumentOfPeriapsisDeg': 0,'trueAnomalyDeg': 0}},'forceModel': {'gravityDegree': 4,'gravityOrder': 4,'pointMasses': ['Luna','Sun'],'atmosphericDrag': {'enabled': False,'model': 'JacchiaRoberts'},'solarRadiationPressure': True},'propagation': {'integrator': 'RungeKutta89','stopCondition': {'type': 'ElapsedHours','value': 2},'stepSizeSecs': 60},'maneuvers': []}
 class HttpInterpreterClient(IExperimentInterpreter):
-    def __init__(self, model_url=None, model_key=None, timeout_s=None):
+    def __init__(self, model_url=None, model_key=None, timeout_s=None, model_name=None, max_tokens=None):
         s=get_settings()
         self.model_url=model_url or s.ORBITLAB_MODEL_URL
         self.model_key=model_key or s.ORBITLAB_MODEL_KEY
         self.timeout_s=timeout_s if timeout_s is not None else float(s.ORBITLAB_MODEL_TIMEOUT_S)
+        self.model_name=model_name or getattr(s, "ORBITLAB_MODEL_NAME", None) or "orbitlab-interpreter"
+        try:
+            self.max_tokens=int(getattr(s, "ORBITLAB_MODEL_MAX_TOKENS", 1500) if max_tokens is None else max_tokens)
+        except (TypeError, ValueError):
+            self.max_tokens=1500
         if not self.model_url or not str(self.model_url).strip():
             raise RuntimeError("Missing required environment variable: ORBITLAB_MODEL_URL")
         if not self.model_key or not str(self.model_key).strip():
@@ -51,9 +75,13 @@ class HttpInterpreterClient(IExperimentInterpreter):
     async def interpret_prompt(self, prompt: str, warming_callback=None):
         if not HAS_HTTPX:
             raise InterpreterUnavailableError("httpx not installed")
-        url=self.model_url
+        # OpenAI-compatible chat completions contract: POST
+        # {base_url}/v1/chat/completions with system+user messages and
+        # Authorization: Bearer <key>; the experiment JSON is read from
+        # choices[0].message.content.
+        url=self.model_url.rstrip("/")+"/v1/chat/completions"
         headers={"Authorization": f"Bearer {self.model_key}","Content-Type": "application/json"}
-        payload={"prompt": prompt}
+        payload={"model": self.model_name,"messages": [{"role":"system","content": INTERPRETER_SYSTEM_PROMPT},{"role":"user","content": prompt}],"temperature":0,"max_tokens": self.max_tokens}
         async def single_attempt():
             async with httpx.AsyncClient(timeout=self.timeout_s) as client:
                 task=asyncio.create_task(client.post(url, json=payload, headers=headers))
@@ -79,17 +107,34 @@ class HttpInterpreterClient(IExperimentInterpreter):
                     raise InterpreterUnavailableError(f"Interpreter returned {result.status_code}")
                 result.raise_for_status()
                 data=result.json()
-                output=data.get("output", data)
-                if isinstance(output, str):
-                    try:
-                        parsed=json.loads(output)
-                        return parsed
-                    except json.JSONDecodeError:
-                        raise ValueError(f"Invalid JSON string: {output[:200]}")
-                elif isinstance(output, dict):
-                    return output
-                else:
-                    raise ValueError(f"Unexpected output type: {type(output)}")
+                try:
+                    first=data["choices"][0]
+                except (KeyError, IndexError, TypeError) as e:
+                    raise ValueError(f"Unexpected chat-completions response shape: {str(data)[:200]}") from e
+                if isinstance(first, dict) and first.get("finish_reason")=="length":
+                    raise InterpreterOutputTruncatedError("Model output was cut off (finish_reason=length); raise ORBITLAB_MODEL_MAX_TOKENS and retry.")
+                try:
+                    content=first["message"]["content"]
+                except (KeyError, IndexError, TypeError) as e:
+                    raise ValueError(f"Unexpected chat-completions response shape: {str(data)[:200]}") from e
+                if isinstance(content, dict):
+                    return content
+                if not isinstance(content, str):
+                    raise ValueError(f"Unexpected content type: {type(content)}")
+                def _strip_fences(text):
+                    s=text.strip()
+                    if s.startswith("```"):
+                        lines=s.splitlines()
+                        if lines and lines[0].startswith("```"):
+                            lines=lines[1:]
+                        if lines and lines[-1].strip().startswith("```"):
+                            lines=lines[:-1]
+                        s="\n".join(lines).strip()
+                    return s
+                try:
+                    return json.loads(_strip_fences(content))
+                except json.JSONDecodeError:
+                    raise ValueError(f"Invalid JSON string: {content[:200]}")
         last=None
         # Retry exactly once, and only for timeout/502/503/504 (raised as
         # InterpreterUnavailableError). All other errors propagate immediately.
