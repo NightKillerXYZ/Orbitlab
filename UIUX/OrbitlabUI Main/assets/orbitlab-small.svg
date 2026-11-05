@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="planetGrad" x1="35%" y1="10%" x2="65%" y2="90%">
+      <stop offset="0%" stop-color="#35b8ff" />
+      <stop offset="50%" stop-color="#0a85ff" />
+      <stop offset="100%" stop-color="#0051ff" />
+    </linearGradient>
+    <linearGradient id="ringFrontGrad" x1="15%" y1="75%" x2="85%" y2="25%">
+      <stop offset="0%" stop-color="#29a9ff" />
+      <stop offset="38%" stop-color="#47c6ff" />
+      <stop offset="75%" stop-color="#006aff" />
+      <stop offset="100%" stop-color="#004de6" />
+    </linearGradient>
+    <linearGradient id="ringBackGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0055ff" />
+      <stop offset="100%" stop-color="#0044cc" />
+    </linearGradient>
+    <clipPath id="backHalf"><rect x="-500" y="-500" width="1000" height="500" /></clipPath>
+    <clipPath id="frontHalf"><rect x="-500" y="-2" width="1000" height="500" /></clipPath>
+    <path id="orbitalRing" fill-rule="evenodd" d="M -395,0 A 395,108 0 1,0 395,0 A 395,108 0 1,0 -395,0 Z M -348,-12 A 348,82 0 1,0 348,-12 A 348,82 0 1,0 -348,-12 Z" />
+  </defs>
+  <rect width="1000" height="800" fill="#000000" />
+  <g transform="translate(500, 405) rotate(-29)"><use href="#orbitalRing" clip-path="url(#backHalf)" fill="url(#ringBackGrad)" /></g>
+  <circle cx="505" cy="400" r="218" fill="none" stroke="url(#planetGrad)" stroke-width="58" />
+  <g transform="translate(500, 405) rotate(-29)"><use href="#orbitalRing" clip-path="url(#frontHalf)" fill="url(#ringFrontGrad)" /></g>
+</svg>
