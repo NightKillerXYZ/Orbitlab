@@ -160,6 +160,12 @@ async def run_job(jid: str, text: str):
         store.add_event(jid, {"type":"final","result":result})
     except NeedsClarification as e:
         err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details}
+        try:
+            expl=(e.details or {}).get("explanation")
+            if expl:
+                err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details, "explanation": expl}
+        except Exception:
+            pass
         store.update(jid, status="failed", error=err)
         store.add_event(jid, {"type":"final","error":err})
     except PipelineError as e:
