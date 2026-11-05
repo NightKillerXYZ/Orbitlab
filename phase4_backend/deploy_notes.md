@@ -16,3 +16,16 @@
   printed, in code and reports.
 - Backend import root is `phase4_backend/` (`PYTHONPATH=phase4_backend`;
   pytest handles this via `pyproject.toml`).
+
+## Real model call
+
+The interpreter client (`HttpInterpreterClient`) speaks OpenAI-compatible
+chat completions: `POST {ORBITLAB_MODEL_URL}/v1/chat/completions` with
+headers `Authorization: Bearer <key>` + `Content-Type: application/json` and
+body `{model, messages: [{role: system}, {role: user}], temperature: 0}`. The
+experiment JSON is read from `choices[0].message.content` (plain JSON object,
+JSON string, or fenced block). Model name comes from `ORBITLAB_MODEL_NAME`
+(default `orbitlab-interpreter`); set it to the hosted deployment name.
+Timeouts: first call >= 180 s, retries exactly once on timeout/502/503/504,
+no retry on other errors. No secret value is ever logged, returned, or
+committed - variable names only, everywhere.
