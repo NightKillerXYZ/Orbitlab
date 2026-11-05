@@ -119,12 +119,12 @@ def create_app() -> FastAPI:
     # routes so they keep priority. Same-origin: the UI uses relative URLs.
     ui_dir = _find_uiux_dir()
     if ui_dir is not None:
-        live_page = ui_dir / "orbitlab-live.html"
+        main_page = ui_dir / "OrbitlabUI Main" / "index.html"
         adapter_src = Path(__file__).resolve().parent / "ui_adapter.js"
 
         @app.get("/", include_in_schema=False)
         async def ui_index():
-            return FileResponse(live_page)
+            return FileResponse(main_page)
 
         @app.get("/ui_adapter.js", include_in_schema=False)
         async def ui_adapter():

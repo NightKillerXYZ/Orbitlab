@@ -2,18 +2,16 @@ from fastapi.testclient import TestClient
 from orbitlab_backend.api.app import create_app
 
 
-def test_root_serves_ui():
+def test_root_serves_main_ui():
     client = TestClient(create_app())
     r = client.get("/")
     assert r.status_code == 200
-    assert "OrbitLab" in r.text
+    assert "MISSION ASSISTANT" in r.text
+    assert "ui_adapter.js" in r.text
 
 
-def test_static_live_page_and_adapter():
+def test_adapter_served_without_hardcoded_localhost():
     client = TestClient(create_app())
-    page = client.get("/orbitlab-live.html")
-    assert page.status_code == 200
-    assert "ui_adapter.js" in page.text
     js = client.get("/ui_adapter.js")
     assert js.status_code == 200
     assert "OrbitLabAdapter" in js.text
