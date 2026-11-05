@@ -1,14 +1,25 @@
 """FastAPI app for OrbitLab backend."""
 from __future__ import annotations
 import asyncio, logging, time
+from pathlib import Path
 from typing import Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from orbitlab_backend.config import get_settings
 from orbitlab_backend.orchestrator.pipeline import Pipeline
 from orbitlab_backend.orchestrator.errors import NeedsClarification, PipelineError
 from orbitlab_backend.api.store import store
+
+def _find_uiux_dir() -> Path | None:
+    here = Path(__file__).resolve()
+    for base in [here.parent.parent.parent.parent, Path.cwd(), Path.cwd() / "phase4_backend"]:
+        cand = base / "UIUX"
+        if cand.is_dir():
+            return cand
+    return None
 from orbitlab_backend.api.run_cleanup import get_run_root, cleanup_old_run_dirs
 
 logger=logging.getLogger("orbitlab.api")
@@ -101,6 +112,26 @@ def create_app() -> FastAPI:
                 await ws.close()
             except Exception:
                 pass
+
+    # Serve the static UIUX folder at "/". Registered AFTER the /api and /ws
+    # routes so they keep priority. Same-origin: the UI uses relative URLs.
+    ui_dir = _find_uiux_dir()
+    if ui_dir is not None:
+        live_page = ui_dir / "orbitlab-live.html"
+        adapter_src = Path(__file__).resolve().parent / "ui_adapter.js"
+
+        @app.get("/", include_in_schema=False)
+        async def ui_index():
+            return FileResponse(live_page)
+
+        @app.get("/ui_adapter.js", include_in_schema=False)
+        async def ui_adapter():
+            return FileResponse(adapter_src, media_type="application/javascript")
+
+        app.mount("/", StaticFiles(directory=ui_dir, html=True), name="ui")
+        logger.info(f"serving UI from {ui_dir}")
+    else:
+        logger.warning("UIUX folder not found; serving API only")
 
     return app
 

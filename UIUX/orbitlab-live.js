@@ -450,17 +450,43 @@
     if (ev.stage) renderStageStrip(stageStates(events));
   }
 
+  var runActive = false;
+
+  function setRunning(active) {
+    runActive = active;
+    var send = $('sendBtn'), input = $('promptInput');
+    if (send) {
+      try { send.disabled = !!active; } catch (e) {}
+      send.setAttribute('aria-disabled', active ? 'true' : 'false');
+    }
+    if (input) {
+      try { input.disabled = !!active; } catch (e) {}
+    }
+  }
+
   function runRequest(text) {
-    if (!adapter) return;
+    if (!adapter || runActive) return;
     originalText = text;
     addUserMsg(text);
     resetForRun();
     statusPill('run', 'Running…');
     var events = [];
+    setRunning(true);
+    var finished = false;
+    // Long runs (GMAT can take minutes): say so after 60 s without a final.
+    var slowTimer = setTimeout(function () {
+      if (!finished) addBanner('', 'Still simulating', escapeHtml('Still simulating - this can take a few minutes for long propagations.'));
+    }, 60000);
+    function finishRun() {
+      finished = true;
+      try { clearTimeout(slowTimer); } catch (e) {}
+      setRunning(false);
+    }
     adapter.runExperiment(text, function (ev) {
       events.push(ev);
       onStreamEvent(ev, events);
     }).then(function (outcome) {
+      finishRun();
       var warm = $('warmNote');
       if (warm) warm.hidden = true;
       renderStageStrip(stageStates(outcome.events || events));
@@ -471,6 +497,7 @@
         renderSuccess(outcome.result);
       }
     }).catch(function (err) {
+      finishRun();
       renderCannotReach(err);
     });
   }
@@ -492,8 +519,13 @@
 
     var input = $('promptInput'), send = $('sendBtn');
     function sendCurrent() {
+      if (runActive) return;
       var v = input ? input.value.trim() : '';
-      if (!v) return;
+      if (!v) {
+        addBanner('warn', 'Nothing to send', escapeHtml('Please describe an orbit first, for example: a satellite around Earth at 400 km for 2 days.'));
+        if (input) input.focus();
+        return;
+      }
       if (input) input.value = '';
       runRequest(v);
     }

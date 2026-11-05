@@ -22,8 +22,13 @@
 (function () {
   'use strict';
 
-  // ===== THE ONE SETTING (STEP 4): where the backend lives =====
-  var DEFAULT_API_BASE = 'http://localhost:8000';
+  // ===== THE ONE SETTING: where the backend lives =====
+  // Empty means same origin (relative URLs). When this script runs from a
+  // page served over http(s) with no explicit override, the page's own
+  // origin is used, so no localhost port is ever hard-coded. The
+  // localhost fallback below only applies to file:// and Node contexts.
+  var DEFAULT_API_BASE = '';
+  var LOCALHOST_FALLBACK = 'http://localhost:8000';
 
   // MOCK switch (kept working; mock output unchanged).
   var ORBITLAB_USE_MOCK = false;
@@ -47,7 +52,15 @@
     } catch (e) {}
     var fromEnv = readEnv('ORBITLAB_API_BASE') || readEnv('VITE_API_BASE');
     if (fromEnv) return fromEnv;
-    return DEFAULT_API_BASE;
+    if (DEFAULT_API_BASE) return DEFAULT_API_BASE;
+    // Same origin when served over http(s); localhost fallback otherwise.
+    try {
+      if (typeof window !== 'undefined' && window && window.location &&
+          /^https?:$/.test(window.location.protocol) && window.location.origin) {
+        return window.location.origin;
+      }
+    } catch (e) {}
+    return LOCALHOST_FALLBACK;
   }
 
   function detectMockMode() {
@@ -199,6 +212,27 @@
           try { sub.close(); } catch (e) {}
           resolve(outcome);
         }
+        var pollTimer = null;
+        function stopPolling() {
+          try { if (pollTimer) clearInterval(pollTimer); } catch (e) {}
+          pollTimer = null;
+        }
+        var origDone = done;
+        done = function (outcome) {
+          stopPolling();
+          origDone(outcome);
+        };
+        function pollOnce(onMissing) {
+          getExperiment(created.id).then(function (job) {
+            if (job && job.status === 'success' && job.result) {
+              done({ events: events, result: job.result });
+            } else if (job && job.status === 'failed' && job.error) {
+              done({ events: events, error: job.error });
+            } else if (onMissing) {
+              onMissing();
+            }
+          }).catch(function () {});
+        }
         try {
           sub = subscribeExperiment(created.id, function (ev) {
             events.push(ev);
@@ -207,32 +241,29 @@
               if (ev.error) done({ events: events, error: ev.error });
               else done({ events: events, result: ev.result });
             }
-          }, function (err) {
-            // Fall back to polling the job record once (covers a WS-only failure).
-            getExperiment(created.id).then(function (job) {
-              if (job && job.status === 'success' && job.result) {
-                done({ events: events, result: job.result });
-              } else if (job && job.status === 'failed' && job.error) {
-                done({ events: events, error: job.error });
-              } else {
-                reject(err || cannotReach());
-              }
-            }).catch(function () { reject(err || cannotReach()); });
+          }, function () {
+            // WS failed: poll immediately, then keep polling below.
+            pollOnce();
           });
         } catch (e) {
           reject(e);
+          return;
         }
-        // Safety net: poll once if no final arrives within 5 minutes.
-        setTimeout(function () {
+        // If the socket drops or closes early without a final, poll the job
+        // record every 2 seconds until it finishes. Safety net: give up and
+        // report unreachable after 10 minutes.
+        var polls = 0;
+        pollTimer = setInterval(function () {
           if (settled) return;
-          getExperiment(created.id).then(function (job) {
-            if (job && job.status === 'success' && job.result) {
-              done({ events: events, result: job.result });
-            } else if (job && job.status === 'failed' && job.error) {
-              done({ events: events, error: job.error });
-            }
-          }).catch(function () {});
-        }, 300000);
+          polls += 1;
+          if (polls > 300) {
+            try { sub.close(); } catch (e) {}
+            stopPolling();
+            reject(cannotReach());
+            return;
+          }
+          pollOnce();
+        }, 2000);
       });
     });
   }
