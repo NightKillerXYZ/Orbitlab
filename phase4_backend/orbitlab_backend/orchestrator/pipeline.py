@@ -57,7 +57,7 @@ class Pipeline:
             dur=time.perf_counter()-t0
             if ex_res.status=="needs_clarification":
                 await emit(PipelineEvent("stage_failed","extract",dur,f"Missing {ex_res.missing}",{"missing":ex_res.missing}))
-                raise NeedsClarification(ex_res.missing)
+                raise NeedsClarification(ex_res.missing, details={"explanation": "This request needs more details before it can run: missing %s. Add them and send again." % (ex_res.missing,)})
             await emit(PipelineEvent("stage_completed","extract",dur,"Extraction completed"))
             sent_data=ex_res.data; prompt=ex_res.prompt
         except PipelineError:
@@ -65,7 +65,7 @@ class Pipeline:
         except Exception as e:
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_failed","extract",dur,f"Extraction failed: {e}"))
-            raise ExtractionError(str(e))
+            raise ExtractionError(str(e), details={"explanation": "The request could not be understood (%s). Try rephrasing it or sending it again." % (str(e)[:200],)})
         if prompt:
             cache_key=self._hash_prompt(prompt)
             if cache_key in self.cache:
@@ -96,9 +96,9 @@ class Pipeline:
             msg=str(e)
             if "timeout" in msg.lower() or "503" in msg or "502" in msg or "504" in msg:
                 await emit(PipelineEvent("stage_failed","interpret",dur,f"Interpreter unavailable: {msg}"))
-                raise InterpreterUnavailable(msg)
+                raise InterpreterUnavailable(msg, details={"explanation": "The interpreter model did not answer in time (timeout or 5xx, retried once). It may be warming up; wait a minute and try again."})
             await emit(PipelineEvent("stage_failed","interpret",dur,f"Interpreter failed: {msg}"))
-            raise InterpreterUnavailable(msg)
+            raise InterpreterUnavailable(msg, details={"explanation": "The interpreter did not return a usable experiment (%s). Try rephrasing the request." % (msg[:200],)})
         # verify
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","verify",0,"Verifying interpreter output"))
@@ -135,7 +135,11 @@ class Pipeline:
             except Exception as e:
                 dur=time.perf_counter()-t0
                 await emit(PipelineEvent("stage_failed","validate",dur,f"Schema error: {e}"))
-                raise SchemaError(str(e), details={"raw": str(e)})
+                try:
+                    schema_expl=await self.explainer.explain(experiment_json, "validate", "Schema error: %s" % (e,), warnings_all)
+                except Exception:
+                    schema_expl=None
+                raise SchemaError(str(e), details={"raw": str(e), "explanation": schema_expl or ("The returned experiment is not valid JSON against the schema (%s). The interpreter output could not be used." % (str(e)[:200],))})
             res=AstrodynamicValidator.validate(experiment_obj)
             warnings_all=list(warnings_all)+list(res.warnings)
             if not res.is_valid:

@@ -46,6 +46,8 @@ def create_app() -> FastAPI:
 
     @app.post("/api/experiments")
     async def create_experiment(req: CreateExpRequest, background_tasks: BackgroundTasks):
+        if not req.text or not req.text.strip():
+            raise HTTPException(422, "text must be a non-empty string")
         job=store.create(req.text)
         job.status="running"
         # log stage timings without secrets
