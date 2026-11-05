@@ -128,6 +128,14 @@ def create_app() -> FastAPI:
         async def ui_adapter():
             return FileResponse(adapter_src, media_type="application/javascript")
 
+        # The finished Mission Assistant UI. Its folder name contains a space,
+        # so redirect to the literal static path; relative css/js/assets then
+        # resolve without extra routes.
+        @app.get("/main", include_in_schema=False)
+        async def ui_main():
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse("/OrbitlabUI%20Main/")
+
         app.mount("/", StaticFiles(directory=ui_dir, html=True), name="ui")
         logger.info(f"serving UI from {ui_dir}")
     else:
