@@ -25,8 +25,36 @@
 (c) Backend routes `ui_adapter.js` already calls (unchanged by this task):
 - `POST /api/experiments` (`createExperiment`), `GET /api/experiments/{id}` (`getExperiment`, also the polling fallback), `WS /ws/experiments/{id}` (`subscribeExperiment`), `GET /api/health` (`checkHealth`).
 
-## Step 2 — static serving (TODO)
-## Step 3 — real-call wiring (TODO)
-## Step 4 — UI states (TODO)
-## Step 5 — tests + smoke (TODO)
-## Step 6 — run command, counts, unsure (TODO)
+## Step 2 — static serving
+
+`phase4_backend/orbitlab_backend/api/app.py::create_app` now mounts the `UIUX/` folder with FastAPI `StaticFiles` at `/` (registered after all `/api` and `/ws` routes, so they keep priority), plus explicit `GET /` → `orbitlab-live.html` and `GET /ui_adapter.js` → the backend adapter file (no backend source tree is exposed). The UI directory is located by walking up from `app.py`, so it works regardless of the server's working directory. Verified: `/`, `/orbitlab-live.html`, `/orbitlab-live.js`, `/ui_adapter.js` → 200; `/api/health` → 200 `{"status":"ok"}`.
+
+## Step 3 — real-call wiring
+
+- Submit button → `POST /api/experiments` with the composer text → id (unchanged path, already existed).
+- Base URL is now relative: `detectApiBase()` uses `window.location.origin` when the page is served over http(s) with no explicit override (`window.ORBITLAB_API_BASE`/env still win; `file://` and Node fall back to `http://localhost:8000`). No hard-coded localhost port remains in the served path.
+- Stage progress renders from WS events as before; `runExperiment` now also polls `GET /api/experiments/{id}` every 2 s until a terminal status, so a dropped/failed socket or an early close still reaches the final result (gives up with "cannot reach" after 10 min).
+- Success renders orbit polyline, telemetry ministats, Understood/Outcome/Graph panes and the Physics explanation exactly as the page already expected (unchanged).
+- Failure shows stage, readable message, `stage · code`, and the top-level/details `explanation` from the error (added in the phase4-gmat payload work); never a stack trace or raw JSON (`renderFailure` escapes everything).
+- Mock mode unchanged: `?mock=1` in the URL still runs the page with zero network calls.
+
+## Step 4 — UI states (plain language)
+
+- Backend unreachable → red "Cannot reach the server" banner with the adapter message (existing `renderCannotReach`).
+- Run longer than 60 s → "Still simulating — this can take a few minutes for long propagations." banner, once per run (`slowTimer` in `runRequest`).
+- Empty text → "Nothing to send — please describe an orbit first…" warning banner instead of silently ignoring.
+- Two submissions at once → `sendBtn`/`promptInput` disabled while a run is active (`runActive` guard + `aria-disabled`), re-enabled on final or error.
+
+## Step 5 — tests + smoke
+
+- New `tests/test_static_ui.py` (3 tests): `/` returns 200 with OrbitLab HTML; `/orbitlab-live.html` references `ui_adapter.js`; `/ui_adapter.js` serves the adapter; `/api/health` still 200 with StaticFiles mounted.
+- Counts (backend suite from inside `phase4_backend`): **61 passed** (58 + 3 new). `orbitlab_core/tests`: **48 passed, 29 subtests**; `simulation_engine/tests`: **23 passed**.
+- Real server (mock switches ON, no keys): `$env:ORBITLAB_USE_MOCK_INTERPRETER='true'; $env:PYTHONPATH='phase4_backend'; python -m uvicorn orbitlab_backend.api.app:app --port 8000`. Live flow over real HTTP: `POST /api/experiments` ("Put a 500 kg satellite in a 400 km circular orbit around Earth for 2 days") → polled `GET` → final `verify/interpreter_mismatch` with stage, message, and explanation (the fixed mock returns i=28.5 while the regex fallback yields i=0, so a mismatch final is the honest result here — it still proves submit→WS-stages→final rendering).
+- Playwright is **not installed** in this environment (no `playwright` module, no `ms-playwright` browsers), so per the task I did not install anything globally. `scripts/ui_smoke.py` is committed ready-to-run (opens `/orbitlab-live.html`, submits the prompt, waits for `.banner`, screenshots). Instead I verified with: (a) the TestClient/HTTP flow above, (b) headless Chrome render screenshot `phase4_backend/phase5_ui_smoke.png` (229 KB, valid PNG of the served sample page; no interaction possible without Playwright).
+
+## Step 6 — run command, files, unsure
+
+- Start: `$env:ORBITLAB_USE_MOCK_INTERPRETER='true'; $env:PYTHONPATH='phase4_backend'; python -m uvicorn orbitlab_backend.api.app:app --port 8000` → open http://localhost:8000/.
+- Changed per file: `api/app.py` (static mount + `/`, `/ui_adapter.js`), `api/ui_adapter.js` (same-origin default, 2 s poll loop), `UIUX/orbitlab-live.html` (adapter src → `ui_adapter.js`), `UIUX/orbitlab-live.js` (busy lock, empty-text message, 60 s notice), `tests/test_static_ui.py` (new), `scripts/ui_smoke.py` (new), `phase4_backend/RUNBOOK.md` + `deploy_notes.md` (new), this report.
+- Screenshot: `phase4_backend/phase5_ui_smoke.png`.
+- Unsure: (1) Step 6 says commit on `phase5-ui-wiring` — used `phase5-ui-wiring-v2` instead to honor "do not change it yet". (2) Wired `orbitlab-live.html`, not `OrbitlabUI Main/` — the live page is the one built on the adapter and already implements every Step 3/4 behavior; the newer prototype would need a fresh full wiring pass (its `app.js` fakes everything) and was left untouched. (3) Playwright missing — smoke script committed but not executed; substitute evidence above. (4) `file://` double-click of the live page now shows the sample (adapter missing relatively) instead of live data — acceptable: same-origin serving is the supported path.
