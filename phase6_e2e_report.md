@@ -11,12 +11,14 @@ No secret printed or committed. No physics, validator rules, compiler output, sc
 | folder | passed | failed | skipped |
 |---|---|---|---|
 | tests/e2e | 32 | 0 | 0 |
-| tests (rest) | 67 | 0 | 0 |
+| tests (rest) | 68 | 0 | 0 |
 | orbitlab_core/tests | 48 (+29 subtests) | 0 | 0 |
 | simulation_engine/tests | 23 | 0 | 0 |
-| **total** | **170 (+29 subtests)** | **0** | **0** |
+| **total** | **171 (+29 subtests)** | **0** | **0** |
 
-Without `GMAT_PATH`: `tests/` = 83 passed + 16 skipped (the 16 GMAT-gated e2e tests skip with reason "GMAT not installed (set GMAT_PATH to GmatConsole.exe)"); core/sim unchanged. `scripts/e2e_all.py` runs all four folders, prints this table, exits 1 on any failure/error.
+Without `GMAT_PATH`: `tests/` = 84 passed + 16 skipped (the 16 GMAT-gated e2e tests skip with reason "GMAT not installed (set GMAT_PATH to GmatConsole.exe)"); core/sim unchanged. `scripts/e2e_all.py` runs all four folders, prints this table, exits 1 on any failure/error.
+
+Extra: `test_main_entry_returns_200_with_adapter` (`tests/test_static_ui.py`) asserts `GET /main` → 200 with the `ui_adapter.js` reference, plus `/` → 200 and `/api/health` → 200 `{"status":"ok"}`.
 
 Coverage: 7 bodies + Cartesian + 3 burn triggers + Hohmann + 4 stop types (success, GMAT-gated); validate fails (periapsis below surface, outside SOI, drag on non-Earth, ecc 1.2, inc 200, duration over limit); interpret fails (invalid JSON, unknown field, timeout retried once then typed error); extract fails (timeout, empty fields); API (404 unknown id, 422 empty text, store bound, late-join WS gets final, concurrent runs isolated). Every failure test asserts final status + failing stage + a present `explanation` (top-level and in `details`).
 
