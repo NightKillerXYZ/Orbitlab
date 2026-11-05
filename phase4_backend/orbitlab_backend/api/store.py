@@ -15,11 +15,23 @@ class Job:
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 
+MAX_JOBS = 1000
+
 class JobStore:
     def __init__(self):
         self.jobs: Dict[str, Job] = {}
         self._listeners: Dict[str, List[asyncio.Queue]] = {}
+    def _evict_if_full(self):
+        # Never evict running/queued jobs; drop oldest terminal jobs first.
+        while len(self.jobs) >= MAX_JOBS:
+            terminal=[j for j in self.jobs.values() if j.status in ("success","failed")]
+            if not terminal:
+                return
+            oldest=min(terminal, key=lambda j: j.created_at)
+            self.jobs.pop(oldest.id, None)
+            self._listeners.pop(oldest.id, None)
     def create(self, text: str) -> Job:
+        self._evict_if_full()
         jid=str(uuid.uuid4())
         job=Job(id=jid, text=text)
         self.jobs[jid]=job

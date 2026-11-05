@@ -85,12 +85,14 @@ class HttpInterpreterClient(IExperimentInterpreter):
                         parsed=json.loads(output)
                         return parsed
                     except json.JSONDecodeError:
-                        raise InterpreterUnavailableError(f"Invalid JSON string: {output[:200]}")
+                        raise ValueError(f"Invalid JSON string: {output[:200]}")
                 elif isinstance(output, dict):
                     return output
                 else:
-                    raise InterpreterUnavailableError(f"Unexpected output type: {type(output)}")
+                    raise ValueError(f"Unexpected output type: {type(output)}")
         last=None
+        # Retry exactly once, and only for timeout/502/503/504 (raised as
+        # InterpreterUnavailableError). All other errors propagate immediately.
         for attempt in range(2):
             try:
                 return await single_attempt()
@@ -100,12 +102,8 @@ class HttpInterpreterClient(IExperimentInterpreter):
                     await asyncio.sleep(1)
                     continue
                 raise
-            except Exception as e:
-                last=e
-                if attempt==0:
-                    await asyncio.sleep(1)
-                    continue
-                raise InterpreterUnavailableError(str(e)) from e
+            except Exception:
+                raise
         if last:
             raise last
         raise InterpreterUnavailableError("Interpreter unavailable")

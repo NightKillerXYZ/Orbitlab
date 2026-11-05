@@ -2,7 +2,6 @@
 from __future__ import annotations
 import math
 from typing import Tuple
-import math as _math
 
 BODY_RADII_KM: dict[str, float] = {
     "Earth": 6378.1363,
@@ -77,21 +76,3 @@ def fmt_sma(a_km: float) -> str:
 
 def format_sma(a_km: float) -> str:
     return f"{round(a_km,3):.3f}"
-
-def _mu_for_body(body: str) -> float:
-    """Reuse repo mu constants from orbitlab_core.constants.BODIES (single source of truth)."""
-    try:
-        from orbitlab_core.constants import BODIES as _BODIES
-        return float(_BODIES[body]["muKm3S2"])
-    except Exception as e:
-        raise ValueError(f"Unknown central body for orbit conversion: {body}") from e
-
-def orbits_to_hours(semi_major_axis_km: float, central_body: str, n_orbits: float):
-    """Convert N orbits to hours via T = 2*pi*sqrt(a^3/mu). Returns (hours, 'hours', 'ElapsedHours')."""
-    import math as _m
-    a = float(semi_major_axis_km); n = float(n_orbits)
-    if not (a > 0) or not (n > 0):
-        raise ValueError("a and N must be positive for orbit conversion")
-    mu = _mu_for_body(central_body)
-    t_sec = 2.0 * _m.pi * _m.sqrt(a ** 3 / mu)
-    return (round(n * t_sec / 3600.0, 6), "hours", "ElapsedHours")

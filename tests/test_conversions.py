@@ -54,14 +54,6 @@ def test_duration_conversions():
     v,u,t=convert_duration_to_hours_or_days(3, "orbital periods")
     assert v==3 and u=="orbital periods" and t=="OrbitPeriods"
 
-def test_orbits_to_hours_earth():
-    from orbitlab_backend.frontstep.conversions import orbits_to_hours
-    v, u, ty = orbits_to_hours(6778.136, "Earth", 1)
-    assert u == "hours" and ty == "ElapsedHours"
-    assert abs(v - 1.5398) < 0.01, f"got {v}"
-    v10, _, _ = orbits_to_hours(6778.136, "Earth", 10)
-    assert abs(v10 - 10 * v) < 2e-6
-
 def test_orbit_count_passthrough_in_extractor():
     # "1 orbit" passes through unchanged as OrbitPeriods value 1 (helper orbits_to_hours kept but unused by pipeline).
     from orbitlab_backend.frontstep.extractor import FrontStepExtractor
@@ -70,3 +62,4 @@ def test_orbit_count_passthrough_in_extractor():
     assert res.status == "ok"
     assert res.data["stopConditionType"] == "OrbitPeriods" and res.data["durationUnit"] == "orbital periods"
     assert res.data["durationValue"] == 1
+

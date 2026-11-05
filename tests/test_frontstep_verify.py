@@ -86,7 +86,7 @@ def test_stop_seconds_passthrough_prompt():
     assert "propagate for 7200 seconds using integrator RungeKutta89." in p
 
 def test_stop_orbits_passthrough_prompt():
-    # "3 orbits" passes through unchanged as OrbitPeriods value 3.
+    # Orbit counts pass through unchanged as OrbitPeriods (review item 13).
     from orbitlab_backend.frontstep.extractor import FrontStepExtractor
     from orbitlab_backend.frontstep.prompt_builder import build_canonical_prompt
     ext = FrontStepExtractor()
