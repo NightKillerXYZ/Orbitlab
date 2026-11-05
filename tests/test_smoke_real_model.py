@@ -10,6 +10,43 @@ def _load():
     return mod
 
 
+def test_skip_extract_uses_prebuilt_sent_without_extractor(monkeypatch):
+    import asyncio
+    import orbitlab_backend.frontstep.extractor as extmod
+
+    mod = _load()
+
+    def _boom(*a, **k):
+        raise AssertionError("extractor must not be called with --skip-extract")
+
+    monkeypatch.setattr(extmod.FrontStepExtractor, "process", _boom)
+    monkeypatch.setattr(extmod.FrontStepExtractor, "process_sync", _boom)
+
+    sent = dict(mod.SKIP_PROMPTS[3][1])
+    canned = {
+        "version": "1.0",
+        "experimentName": sent["experimentName"],
+        "spacecraft": {"name": "SC_" + sent["spacecraftName"], "dryMassKg": sent["dryMassKg"]},
+        "centralBody": sent["centralBody"],
+        "initialOrbit": {"type": "Keplerian", "coordinateSystem": "EarthMJ2000Eq", "elements": {
+            "semiMajorAxisKm": sent["semiMajorAxisKm"], "eccentricity": sent["eccentricity"],
+            "inclinationDeg": sent["inclinationDeg"], "raanDeg": 0,
+            "argumentOfPeriapsisDeg": 0, "trueAnomalyDeg": 0}},
+        "propagation": {"integrator": "RungeKutta89", "stopCondition": {
+            "type": sent["stopConditionType"], "value": sent["durationValue"]}, "stepSizeSecs": 60},
+        "maneuvers": [],
+    }
+
+    class FakeClient:
+        async def interpret_prompt(self, prompt, warming_callback=None):
+            assert prompt == mod.SKIP_PROMPTS[3][0]
+            return canned
+
+    entry = asyncio.run(mod.run_one(mod.SKIP_PROMPTS[3][0], FakeClient(), sent=sent))
+    assert entry["verdict"] == "PASS"
+    assert entry["sent"]["semiMajorAxisKm"] == 6528.136
+
+
 def test_missing_both_vars_exit_2(monkeypatch):
     mod = _load()
     monkeypatch.delenv("ORBITLAB_MODEL_URL", raising=False)
