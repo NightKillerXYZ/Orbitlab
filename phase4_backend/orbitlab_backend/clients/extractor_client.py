@@ -1,6 +1,6 @@
 """IFieldExtractor interface with mock and OpenAI-compatible impl."""
 from __future__ import annotations
-import json, re
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from orbitlab_backend.config import get_settings
@@ -38,12 +38,58 @@ class MockExtractor(IFieldExtractor):
         # Very minimal mock
         return {"centralBody": body, "spacecraftName": None, "experimentName": None, "dryMassKg": None, "orbit": None, "eccentricity": None, "inclinationDeg": None, "raanDeg": None, "aopDeg": None, "trueAnomalyDeg": None, "integrator": None, "duration": None, "forces": None, "maneuvers": [], "cartesian": None, "raw_text": user_text}
 
+def extract_json_object(text):
+    """Return the first balanced {...} JSON object found in text (fences/prose tolerated).
+
+    Raises ValueError when no balanced object parses. Never invents content.
+    """
+    s=text if isinstance(text, str) else ""
+    stripped=s.strip()
+    if stripped.startswith("{"):
+        try:
+            obj=json.loads(stripped)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+    i=0
+    n=len(s)
+    while i<n:
+        if s[i]!="{": i+=1; continue
+        depth=0; in_str=False; esc=False; j=i
+        while j<n:
+            ch=s[j]
+            if in_str:
+                if esc: esc=False
+                elif ch=="\\": esc=True
+                elif ch=='"': in_str=False
+            else:
+                if ch=='"': in_str=True
+                elif ch=="{": depth+=1
+                elif ch=="}":
+                    depth-=1
+                    if depth==0: break
+            j+=1
+        if depth==0 and j<n:
+            cand=s[i:j+1]
+            try:
+                obj=json.loads(cand)
+                if isinstance(obj, dict):
+                    return obj
+            except Exception:
+                pass
+            i=j+1
+        else:
+            i+=1
+    raise ValueError("No JSON object found in reply: %s" % s[:200])
+
 class OpenAIExtractor(IFieldExtractor):
-    def __init__(self, base_url=None, api_key=None, model=None):
+    def __init__(self, base_url=None, api_key=None, model=None, json_mode=None):
         s=get_settings()
         self.base_url=base_url or s.EXTRACTOR_BASE_URL
         self.api_key=api_key or s.EXTRACTOR_API_KEY
         self.model=model or s.EXTRACTOR_MODEL
+        self.json_mode=(json_mode if json_mode is not None else getattr(s, "EXTRACTOR_JSON_MODE", "prompt") or "prompt").strip().lower()
         if not self.base_url or not str(self.base_url).strip():
             raise RuntimeError("Missing required environment variable: EXTRACTOR_BASE_URL")
         if not self.api_key or not str(self.api_key).strip():
@@ -56,19 +102,14 @@ class OpenAIExtractor(IFieldExtractor):
         url = self.base_url.rstrip("/") + "/chat/completions"
         headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload={"model": self.model, "messages": [{"role":"system","content": SYSTEM_PROMPT},{"role":"user","content": user_text}], "temperature":0}
+        if self.json_mode=="json_object":
+            payload["response_format"]={"type":"json_object"}
         async with httpx.AsyncClient(timeout=30) as client:
             r=await client.post(url, json=payload, headers=headers)
             r.raise_for_status()
             data=r.json()
             content=data["choices"][0]["message"]["content"]
-            try:
-                return json.loads(content)
-            except:
-                # try extract json block
-                m=re.search(r"\{.*\}", content, re.DOTALL)
-                if m:
-                    return json.loads(m.group(0))
-                raise
+            return extract_json_object(content)
     def extract_sync(self, user_text: str) -> Dict[str, Any]:
         import asyncio
         return asyncio.run(self.extract(user_text))

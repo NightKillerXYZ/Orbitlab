@@ -41,6 +41,7 @@ if HAS_PYDANTIC_SETTINGS:
         EXTRACTOR_BASE_URL: Optional[str] = Field(default=None)
         EXTRACTOR_API_KEY: Optional[str] = Field(default=None)
         EXTRACTOR_MODEL: Optional[str] = Field(default=None)
+        EXTRACTOR_JSON_MODE: str = Field(default="prompt")
 
         # GMAT
         GMAT_PATH: Optional[str] = Field(default=None)
@@ -79,6 +80,7 @@ else:
             self.EXTRACTOR_BASE_URL = os.getenv("EXTRACTOR_BASE_URL")
             self.EXTRACTOR_API_KEY = os.getenv("EXTRACTOR_API_KEY")
             self.EXTRACTOR_MODEL = os.getenv("EXTRACTOR_MODEL")
+            self.EXTRACTOR_JSON_MODE = os.getenv("EXTRACTOR_JSON_MODE", "prompt")
             self.GMAT_PATH = os.getenv("GMAT_PATH")
             self.GMAT_TIMEOUT_S = float(os.getenv("GMAT_TIMEOUT_S", "30"))
             self.ORBITLAB_CORS_ORIGINS = os.getenv("ORBITLAB_CORS_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000")

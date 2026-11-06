@@ -23,7 +23,17 @@ class PipelineEvent:
 STAGES=["extract","interpret","verify","validate","compile","simulate","parse","explain"]
 class Pipeline:
     def __init__(self, extractor=None, interpreter=None, explainer=None, gmat_runner=None, cache=None):
-        self.extractor=extractor or FrontStepExtractor()
+        if extractor is None:
+            try:
+                from orbitlab_backend.clients.extractor_client import get_extractor, OpenAIExtractor
+                _cli = get_extractor()
+                # Only a real configured endpoint changes behavior; without env
+                # vars get_extractor() yields an empty MockExtractor, so keep the
+                # deterministic regex fallback as the default.
+                extractor = FrontStepExtractor(extractor_client=_cli if isinstance(_cli, OpenAIExtractor) else None)
+            except Exception:
+                extractor = FrontStepExtractor()
+        self.extractor=extractor
         self.interpreter=interpreter
         self.explainer=explainer
         self.gmat_runner=gmat_runner

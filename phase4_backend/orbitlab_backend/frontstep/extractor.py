@@ -1,9 +1,29 @@
 """Front-step extractor orchestrating deterministic conversions."""
 from __future__ import annotations
+import logging
 import re
 from typing import Any, Dict, List, Optional
 from .conversions import BODY_RADII_KM, sma_from_circular_altitude, sma_from_periapsis_altitude, sma_and_ecc_from_apses_altitudes, convert_miles_to_km, convert_m_to_km, convert_au_to_km, radians_to_degrees, convert_duration_to_hours_or_days
-from .verify import sanitize_identifier
+from .verify import sanitize_identifier
+
+_logger = logging.getLogger("orbitlab.frontstep")
+
+def _safe_summary(exc):
+    kind = type(exc).__name__
+    msg = str(exc)
+    return kind, msg[:200]
+
+def _log_extractor_failure(exc):
+    kind, summary = _safe_summary(exc)
+    _logger.warning("extractor failed (%s); falling back to regex: %s", kind, summary)
+
+def _log_extractor_ok(extracted):
+    try:
+        names = sorted(k for k in dict(extracted or {}).keys())
+    except Exception:
+        names = []
+    _logger.info("extractor ok; fields: %s", ",".join(names))
+
 
 class ExtractionResult:
     def __init__(self, status: str, data: Optional[Dict[str,Any]]=None, missing: Optional[List[str]]=None, prompt: Optional[str]=None, extracted: Optional[Dict]=None):
@@ -12,6 +32,35 @@ class ExtractionResult:
         if self.status=="needs_clarification":
             return {"status":"needs_clarification","missing":self.missing}
         return {"status":"ok","prompt":self.prompt,"data":self.data, "extracted":self.extracted}
+
+def _orbit_numbers_ok(orbit: Any) -> bool:
+    """True when an orbit dict carries parseable numbers for its kind.
+
+    Null or non-numeric values count as missing (never silently defaulted).
+    Dict shapes without a "kind" key are handled by downstream fallbacks.
+    """
+    if not isinstance(orbit, dict):
+        return True
+    need = {
+        "semiMajorAxisKm": ["value"],
+        "circularAltitudeKm": ["value"], "circularAltitude": ["value"],
+        "periapsisAltitudeKm": ["value"],
+        "apsisAltitudes": ["apoapsisAltitude", "periapsisAltitude"],
+        "apoPeriRadii": ["apoapsisRadius", "periapsisRadius"],
+        "circularRadiusKm": ["value"],
+    }
+    kind = orbit.get("kind")
+    if kind not in need:
+        return True
+    for key in need[kind]:
+        val = orbit.get(key)
+        if val is None:
+            return False
+        try:
+            float(val)
+        except (TypeError, ValueError):
+            return False
+    return True
 
 class FrontStepExtractor:
     def __init__(self, extractor_client=None):
@@ -33,6 +82,8 @@ class FrontStepExtractor:
         if not orbit and not cartesian: missing.append("orbit")
         if not duration: missing.append("duration")
         if missing: return ExtractionResult("needs_clarification", missing=missing)
+        if not cartesian and not _orbit_numbers_ok(orbit):
+            return ExtractionResult("needs_clarification", missing=["orbit"])
         body_radius=BODY_RADII_KM.get(central_body)
         if body_radius is None: return ExtractionResult("needs_clarification", missing=["centralBody"])
         try: dry_mass_val=float(dry_mass)
@@ -101,7 +152,15 @@ class FrontStepExtractor:
         else: ta=0
         dur_val=None; dur_unit=None; stop_type=None
         if duration:
-            val=float(duration.get("value")); unit=duration.get("unit","hours")
+            if not isinstance(duration, dict):
+                return ExtractionResult("needs_clarification", missing=["duration"])
+            try:
+                val=float(duration.get("value"))
+            except (TypeError, ValueError):
+                return ExtractionResult("needs_clarification", missing=["duration"])
+            unit=duration.get("unit") or "hours"
+            if not isinstance(unit, str):
+                unit=str(unit)
             try: conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
             except ValueError:
                 ul = str(unit).lower()
@@ -127,14 +186,22 @@ class FrontStepExtractor:
         return ExtractionResult("ok", data=normalized, prompt=prompt, extracted=extracted)
     async def process(self, user_text: str) -> ExtractionResult:
         if self.extractor_client:
-            try: extracted=await self.extractor_client.extract(user_text)
-            except Exception: extracted=self._fallback_extract(user_text)
+            try:
+                extracted=await self.extractor_client.extract(user_text)
+                _log_extractor_ok(extracted)
+            except Exception as e:
+                _log_extractor_failure(e)
+                extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
         return self.deterministic_convert(extracted, user_text)
     def process_sync(self, user_text: str) -> ExtractionResult:
         if self.extractor_client and hasattr(self.extractor_client, 'extract_sync'):
-            try: extracted=self.extractor_client.extract_sync(user_text)
-            except Exception: extracted=self._fallback_extract(user_text)
+            try:
+                extracted=self.extractor_client.extract_sync(user_text)
+                _log_extractor_ok(extracted)
+            except Exception as e:
+                _log_extractor_failure(e)
+                extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
         return self.deterministic_convert(extracted, user_text)
     def _fallback_extract(self, text: str) -> Dict[str,Any]:
