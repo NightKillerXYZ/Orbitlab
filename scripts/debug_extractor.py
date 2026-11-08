@@ -38,6 +38,8 @@ def _summarize_sent(sent):
     return {
         "body": sent.get("centralBody"),
         "semiMajorAxisKm": sent.get("semiMajorAxisKm"),
+        "eccentricity": sent.get("eccentricity"),
+        "inclinationDeg": sent.get("inclinationDeg"),
         "duration": [sent.get("stopConditionType"), sent.get("durationValue"), sent.get("durationUnit")],
     }
 
@@ -74,9 +76,11 @@ async def run_one(text, client, timeout_s):
         return entry
     if res.status == "needs_clarification":
         entry.update({"verdict": "FAIL", "missing": res.missing,
-                      "sent": None, "elapsed_s": round(time.perf_counter() - t0, 1)})
+                      "sent": None, "converter": None,
+                      "elapsed_s": round(time.perf_counter() - t0, 1)})
     else:
         entry.update({"verdict": "OK", "sent": _summarize_sent(res.data),
+                      "converter": _summarize_sent(res.data),
                       "elapsed_s": round(time.perf_counter() - t0, 1)})
     return entry
 
@@ -95,7 +99,8 @@ async def amain(out_path):
         print("RAW (first 600 chars): %s" % entry.get("raw_reply_first_600", entry.get("error", ""))[:600])
         print("PARSED FIELDS: %s" % json.dumps(entry.get("parsed_fields"))[:600])
         if entry.get("verdict") == "OK":
-            print("FINAL: ok sent=%s elapsed=%.1fs" % (entry.get("sent"), entry.get("elapsed_s")))
+            c = entry.get("converter") or {}
+            print("FINAL: ok a=%s e=%s inc=%s duration=%s elapsed=%.1fs" % (c.get("semiMajorAxisKm"), c.get("eccentricity"), c.get("inclinationDeg"), c.get("duration"), entry.get("elapsed_s")))
         elif "missing" in entry:
             print("FINAL: needs_clarification missing=%s elapsed=%.1fs" % (entry["missing"], entry.get("elapsed_s")))
         else:
