@@ -92,6 +92,8 @@ class FrontStepExtractor:
         if cartesian: sma=None
         else:
             kind=orbit.get("kind") if isinstance(orbit, dict) else None
+            if isinstance(orbit, dict) and kind=="circular" and "semiMajorAxisKm" not in orbit and "sma" not in orbit:
+                return ExtractionResult("needs_clarification", missing=["orbit.quantity (is it an altitude or a radius?)"])
             if kind=="semiMajorAxisKm":
                 sma=float(orbit.get("value")); ecc=float(orbit.get("eccentricity", extracted.get("eccentricity",0)) or 0)
                 unit=orbit.get("unit","km")
@@ -158,9 +160,9 @@ class FrontStepExtractor:
                 val=float(duration.get("value"))
             except (TypeError, ValueError):
                 return ExtractionResult("needs_clarification", missing=["duration"])
-            unit=duration.get("unit") or "hours"
-            if not isinstance(unit, str):
-                unit=str(unit)
+            unit=duration.get("unit")
+            if not isinstance(unit, str) or not unit.strip():
+                return ExtractionResult("needs_clarification", missing=["duration"])
             try: conv_val, conv_unit, stop_type = convert_duration_to_hours_or_days(val, unit); dur_val=conv_val; dur_unit=conv_unit
             except ValueError:
                 ul = str(unit).lower()
@@ -173,13 +175,9 @@ class FrontStepExtractor:
         integrator=extracted.get("integrator","RungeKutta89")
         if integrator not in ("RungeKutta89","PrinceDormand78"): integrator="RungeKutta89"
         forces=extracted.get("forces"); maneuvers=extracted.get("maneuvers",[])
-        exp_name=extracted.get("experimentName"); sc_name=extracted.get("spacecraftName")
-        if not exp_name or not sc_name:
-            def_exp, def_sc = self._safe_defaults(user_text, central_body)
-            if not exp_name: exp_name=def_exp
-            if not sc_name: sc_name=def_sc
-            exp_name=sanitize_identifier(exp_name, default=def_exp)
-            sc_name=sanitize_identifier(sc_name, default=def_sc)
+        # Names are owned by Python, never by the model: any model-provided
+        # spacecraftName/experimentName keys are ignored and generated instead.
+        exp_name, sc_name = self._safe_defaults(user_text, central_body)
         normalized={"experimentName":exp_name,"spacecraftName":sc_name,"dryMassKg":dry_mass_val,"centralBody":central_body,"semiMajorAxisKm":sma,"eccentricity":ecc,"inclinationDeg":inc if inc is not None else 0,"raanDeg":raan,"argumentOfPeriapsisDeg":aop,"trueAnomalyDeg":ta,"durationValue":dur_val,"durationUnit":dur_unit,"stopConditionType":stop_type,"integrator":integrator,"forces":forces,"maneuvers":maneuvers,"cartesian":cartesian,"bodyRadiusKm":body_radius}
         from .prompt_builder import build_canonical_prompt
         prompt=build_canonical_prompt(normalized)
