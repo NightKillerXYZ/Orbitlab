@@ -14,7 +14,7 @@ def _fail_case(sent_kwargs, canned_kwargs=None, text="CASE-FAIL", timeout_s=120,
     if canned_kwargs is None:
         canned_kwargs = {}
     canned = canned_for(sent, **canned_kwargs)
-    routes = routes if routes is not None else [(sent["experimentName"], canned)]
+    routes = routes if routes is not None else [("CASE", canned)]
     extracted = extracted_map if extracted_map is not None else {text: extracted_for(sent)}
     client = client_for(routes, extracted)
     job = run_text(client, text, timeout_s=timeout_s)
@@ -46,7 +46,7 @@ def test_validate_drag_on_non_earth():
         "gravityDegree": 4, "gravityOrder": 4, "pointMasses": ["Luna", "Sun"],
         "atmosphericDrag": {"enabled": True, "model": "JacchiaRoberts"},
         "solarRadiationPressure": True})
-    routes = [(sent["experimentName"], canned)]
+    routes = [("CASE", canned)]
     client = client_for(routes, {"CASE-FAIL": extracted_for(sent)})
     job = run_text(client, "CASE-FAIL")
     assert job["status"] == "failed", job

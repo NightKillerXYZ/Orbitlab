@@ -32,9 +32,9 @@ def test_create_and_get_experiment(client):
 @pytest.mark.asyncio
 async def test_websocket_event_order():
     # Test pipeline event order directly
-    extracted={"centralBody":"Earth","dryMassKg":500,"orbit":{"kind":"circularAltitudeKm","value":400,"unit":"km"},"duration":{"value":2,"unit":"hours"},"integrator":"RungeKutta89","inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0,"forces":None,"maneuvers":[],"cartesian":None,"experimentName":"TestExp","spacecraftName":"TestExp"}
+    extracted={"centralBody":"Earth","dryMassKg":500,"orbit":{"kind":"circularAltitudeKm","value":400,"unit":"km"},"duration":{"value":2,"unit":"hours"},"integrator":"RungeKutta89","inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0,"forces":None,"maneuvers":[],"cartesian":None}
     ext=FrontStepExtractor(); ext._fallback_extract=lambda t: extracted
-    correct={"version":"1.0","experimentName":"TestExp","spacecraft":{"name":"SC_TestExp","dryMassKg":500},"centralBody":"Earth","initialOrbit":{"type":"Keplerian","coordinateSystem":"EarthMJ2000Eq","elements":{"semiMajorAxisKm":6778.136,"eccentricity":0,"inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0}},"forceModel":{"gravityDegree":4,"gravityOrder":4,"pointMasses":["Luna","Sun"],"atmosphericDrag":{"enabled":False,"model":"JacchiaRoberts"},"solarRadiationPressure":True},"propagation":{"integrator":"RungeKutta89","stopCondition":{"type":"ElapsedHours","value":2},"stepSizeSecs":60},"maneuvers":[]}
+    correct={"version":"1.0","experimentName":"dummy","spacecraft":{"name":"SC_dummy","dryMassKg":500},"centralBody":"Earth","initialOrbit":{"type":"Keplerian","coordinateSystem":"EarthMJ2000Eq","elements":{"semiMajorAxisKm":6778.136,"eccentricity":0,"inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0}},"forceModel":{"gravityDegree":4,"gravityOrder":4,"pointMasses":["Luna","Sun"],"atmosphericDrag":{"enabled":False,"model":"JacchiaRoberts"},"solarRadiationPressure":True},"propagation":{"integrator":"RungeKutta89","stopCondition":{"type":"ElapsedHours","value":2},"stepSizeSecs":60},"maneuvers":[]}
     from orbitlab_backend.clients.interpreter_client import MockInterpreterClient
     from orbitlab_backend.clients.explainer_client import MockExplainer
     interp=MockInterpreterClient(canned_json=json.dumps(correct))
@@ -49,9 +49,9 @@ async def test_websocket_event_order():
 
 @pytest.mark.asyncio
 async def test_websocket_event_order_failing():
-    extracted={"centralBody":"Earth","dryMassKg":500,"orbit":{"kind":"circularAltitudeKm","value":400,"unit":"km"},"duration":{"value":2,"unit":"hours"},"integrator":"RungeKutta89","inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0,"forces":None,"maneuvers":[],"cartesian":None,"experimentName":"TestExp","spacecraftName":"TestExp"}
+    extracted={"centralBody":"Earth","dryMassKg":500,"orbit":{"kind":"circularAltitudeKm","value":400,"unit":"km"},"duration":{"value":2,"unit":"hours"},"integrator":"RungeKutta89","inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0,"forces":None,"maneuvers":[],"cartesian":None}
     ext=FrontStepExtractor(); ext._fallback_extract=lambda t: extracted
-    mismatch={"version":"1.0","experimentName":"TestExp","spacecraft":{"name":"SC_TestExp","dryMassKg":500},"centralBody":"Earth","initialOrbit":{"type":"Keplerian","coordinateSystem":"EarthMJ2000Eq","elements":{"semiMajorAxisKm":7000,"eccentricity":0,"inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0}},"forceModel":{"gravityDegree":4,"gravityOrder":4,"pointMasses":["Luna","Sun"],"atmosphericDrag":{"enabled":False,"model":"JacchiaRoberts"},"solarRadiationPressure":True},"propagation":{"integrator":"RungeKutta89","stopCondition":{"type":"ElapsedHours","value":2},"stepSizeSecs":60},"maneuvers":[]}
+    mismatch={"version":"1.0","experimentName":"dummy","spacecraft":{"name":"SC_dummy","dryMassKg":500},"centralBody":"Earth","initialOrbit":{"type":"Keplerian","coordinateSystem":"EarthMJ2000Eq","elements":{"semiMajorAxisKm":7000,"eccentricity":0,"inclinationDeg":28.5,"raanDeg":0,"argumentOfPeriapsisDeg":0,"trueAnomalyDeg":0}},"forceModel":{"gravityDegree":4,"gravityOrder":4,"pointMasses":["Luna","Sun"],"atmosphericDrag":{"enabled":False,"model":"JacchiaRoberts"},"solarRadiationPressure":True},"propagation":{"integrator":"RungeKutta89","stopCondition":{"type":"ElapsedHours","value":2},"stepSizeSecs":60},"maneuvers":[]}
     from orbitlab_backend.clients.interpreter_client import MockInterpreterClient
     from orbitlab_backend.clients.explainer_client import MockExplainer
     interp=MockInterpreterClient(canned_json=json.dumps(mismatch))

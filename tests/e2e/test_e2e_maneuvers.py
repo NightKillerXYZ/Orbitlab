@@ -8,7 +8,7 @@ from tests.e2e.helpers import (
 
 
 def _run(sent, canned, text, timeout_s=300):
-    routes = [(sent["experimentName"], canned)]
+    routes = [("CASE", canned)]
     client = client_for(routes, {text: extracted_for(sent)} if sent.get("cartesian") is None else {text: extracted_cartesian_for(sent)})
     job = run_text(client, text, timeout_s=timeout_s)
     assert job["status"] == "success", job.get("error")

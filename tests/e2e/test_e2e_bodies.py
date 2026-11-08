@@ -28,7 +28,7 @@ def test_body_success(body, coord, sma, ecc, inc, mass, stop_type, stop_val, for
                        {"ElapsedHours": "hours", "ElapsedDays": "days"}[stop_type],
                        stop_type)
     canned = canned_for(sent, coord, forces=forces)
-    routes = [(name, canned)]
+    routes = [("CASE", canned)]
     extracted = {"CASE-" + body: extracted_for(sent)}
     client = client_for(routes, extracted)
     job = run_text(client, "CASE-" + body, timeout_s=300)

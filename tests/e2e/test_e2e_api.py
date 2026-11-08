@@ -40,7 +40,7 @@ def test_websocket_late_join_gets_final():
     sent = sent_kepler("E2ELate", "Earth", 6778.136, 0.0, 0.0, 500, 2, "hours", "ElapsedHours")
     bad = canned_for(sent_kepler("E2ELate", "Earth", 7000.0, 0.0, 0.0, 500, 2, "hours", "ElapsedHours"),
                      "EarthMJ2000Eq")
-    routes = [(sent["experimentName"], bad)]
+    routes = [("CASE", bad)]
     client = client_for(routes, {"CASE-LATE": extracted_for(sent)})
     job = run_text(client, "CASE-LATE")
     assert job["status"] == "failed"
@@ -62,18 +62,18 @@ def test_websocket_late_join_gets_final():
 def test_two_runs_do_not_mix_results():
     sent_a = sent_kepler("E2EA", "Earth", 6778.136, 0.0, 0.0, 500, 2, "hours", "ElapsedHours")
     sent_b = sent_kepler("E2EB", "Earth", 7000.0, 0.0, 0.0, 500, 2, "hours", "ElapsedHours")
-    routes = [(sent_a["experimentName"], canned_for(sent_a, "EarthMJ2000Eq")),
-              (sent_b["experimentName"], canned_for(sent_b, "EarthMJ2000Eq"))]
-    extracted = {"TEXT-A": extracted_for(sent_a), "TEXT-B": extracted_for(sent_b)}
+    routes = [("ALPHA", canned_for(sent_a, "EarthMJ2000Eq")),
+              ("BETA", canned_for(sent_b, "EarthMJ2000Eq"))]
+    extracted = {"ALPHA run one": extracted_for(sent_a), "BETA run two": extracted_for(sent_b)}
     client = client_for(routes, extracted)
-    ja = client.post("/api/experiments", json={"text": "TEXT-A"}).json()["id"]
-    jb = client.post("/api/experiments", json={"text": "TEXT-B"}).json()["id"]
+    ja = client.post("/api/experiments", json={"text": "ALPHA run one"}).json()["id"]
+    jb = client.post("/api/experiments", json={"text": "BETA run two"}).json()["id"]
     from tests.e2e.helpers import wait_for_job
     ra = wait_for_job(client, ja)
     rb = wait_for_job(client, jb)
     assert ra["status"] == "success" and rb["status"] == "success"
-    assert ra["result"]["experiment"]["experimentName"] == "E2EA"
-    assert rb["result"]["experiment"]["experimentName"] == "E2EB"
+    assert ra["result"]["experiment"]["experimentName"] == "ALPHA"
+    assert rb["result"]["experiment"]["experimentName"] == "BETA"
     first = ra["result"]["experiment"]["initialOrbit"]["elements"]["semiMajorAxisKm"]
     second = rb["result"]["experiment"]["initialOrbit"]["elements"]["semiMajorAxisKm"]
     assert (first, second) == (6778.136, 7000.0)
