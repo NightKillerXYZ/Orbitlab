@@ -45,35 +45,23 @@ def _summarize_sent(sent):
 
 
 async def run_one(text, client, timeout_s):
-    from orbitlab_backend.clients.extractor_client import extract_json_object
+    """Run one sentence through the SAME path as the pipeline: process()."""
     from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 
     t0 = time.perf_counter()
     entry = {"sentence": text}
+    ext = FrontStepExtractor(extractor_client=client)
     try:
-        raw = await asyncio.wait_for(client.extract_raw(text), timeout=timeout_s + 30)
+        res = await asyncio.wait_for(ext.process(text), timeout=timeout_s + 30)
     except Exception as e:
         entry.update({"verdict": "ERROR", "stage": "extract", "code": "extractor_error",
                       "error": "%s: %s" % (type(e).__name__, str(e)[:200]),
+                      "raw_reply_first_600": getattr(client, "last_raw", None),
+                      "parsed_fields": getattr(client, "last_parsed", None),
                       "elapsed_s": round(time.perf_counter() - t0, 1)})
         return entry
-    entry["raw_reply_first_600"] = raw[:600]
-    try:
-        parsed = extract_json_object(raw)
-    except Exception as e:
-        entry.update({"verdict": "ERROR", "stage": "extract", "code": "parse_error",
-                      "error": "%s: %s" % (type(e).__name__, str(e)[:200]),
-                      "parsed_fields": None,
-                      "elapsed_s": round(time.perf_counter() - t0, 1)})
-        return entry
-    entry["parsed_fields"] = parsed
-    try:
-        res = FrontStepExtractor().deterministic_convert(dict(parsed), text)
-    except Exception as e:
-        entry.update({"verdict": "ERROR", "stage": "extract", "code": "convert_error",
-                      "error": "%s: %s" % (type(e).__name__, str(e)[:200]),
-                      "elapsed_s": round(time.perf_counter() - t0, 1)})
-        return entry
+    entry["raw_reply_first_600"] = (getattr(client, "last_raw", "") or "")[:600]
+    entry["parsed_fields"] = getattr(client, "last_parsed", None)
     if res.status == "needs_clarification":
         entry.update({"verdict": "FAIL", "missing": res.missing,
                       "sent": None, "converter": None,
@@ -96,7 +84,7 @@ async def amain(out_path):
         print("SENTENCE: %s" % text)
         entry = await run_one(text, client, timeout)
         results.append(entry)
-        print("RAW (first 600 chars): %s" % entry.get("raw_reply_first_600", entry.get("error", ""))[:600])
+        print("RAW (first 600 chars): %s" % (entry.get("raw_reply_first_600") or entry.get("error", "") or "")[:600])
         print("PARSED FIELDS: %s" % json.dumps(entry.get("parsed_fields"))[:600])
         if entry.get("verdict") == "OK":
             c = entry.get("converter") or {}
