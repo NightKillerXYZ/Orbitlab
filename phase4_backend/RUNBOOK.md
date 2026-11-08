@@ -89,3 +89,16 @@ chat endpoint when configured, else it uses a built-in regex fallback:
 - `EXTRACTOR_MODEL` — model/deployment name the endpoint serves.
 - `EXTRACTOR_JSON_MODE` — `prompt` (default: ask for JSON in the system prompt, no extra parameters; works with vLLM + Qwen as-is) or `json_object` (sends `response_format: {"type": "json_object"}`), or `json_schema` (sends the full `orbitlab_extraction` JSON schema with `strict: true`; only use this if the endpoint was started with structured output for this schema — on HTTP 400/422 the extractor logs a warning and falls back to regex, no retries).
 - Without these set, the regex fallback only handles simple phrasings (e.g. `400 km circular`, `for 2 hours`); anything else yields `needs_clarification`. For robust phrasings — or the exact training-form sentences — point the extractor at a real model or use `scripts/smoke_real_model.py --skip-extract`.
+
+## Explainer setup
+
+The physics explainer shares the extractor's endpoint variables
+(`EXTRACTOR_BASE_URL`, `EXTRACTOR_API_KEY`, `EXTRACTOR_MODEL`) plus one more:
+- `EXTRACTOR_TIMEOUT_S` — request timeout in seconds (default 150; the first
+  call after idle can take ~90 s on a cold model). Retried once on timeout or
+  HTTP 502/503/504 only.
+- Without these set, or if the explainer call fails/returns empty text, a
+  successful run still succeeds: the `explanation` field holds a deterministic
+  automatic summary and `explanationSource` is `"fallback"` (vs `"model"`).
+  The explain stage never fails a run that simulated fine; the UI shows
+  "Automatic summary (the AI explainer was unavailable)" in that case.
