@@ -132,6 +132,15 @@ def create_app() -> FastAPI:
         async def ui_adapter():
             return FileResponse(adapter_src, media_type="application/javascript")
 
+        # Dev-only sample of a real successful run (fixed file, no listing:
+        # exposes nothing else). Powers ?fixture=1 in the Main UI.
+        @app.get("/sample-result", include_in_schema=False)
+        async def sample_result():
+            p = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "real_result_earth.json"
+            if not p.is_file():
+                raise HTTPException(404, "sample result not found")
+            return FileResponse(p, media_type="application/json")
+
         # The finished Mission Assistant UI. Its folder name contains a space,
         # so redirect to the literal static path; relative css/js/assets then
         # resolve without extra routes.
