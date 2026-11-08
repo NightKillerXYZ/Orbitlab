@@ -191,7 +191,8 @@ class FrontStepExtractor:
                 _log_extractor_failure(e)
                 extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
-        return self.deterministic_convert(extracted, user_text)
+        from orbitlab_backend.clients.extractor_client import normalize_extracted
+        return self.deterministic_convert(normalize_extracted(extracted), user_text)
     def process_sync(self, user_text: str) -> ExtractionResult:
         if self.extractor_client and hasattr(self.extractor_client, 'extract_sync'):
             try:
@@ -201,7 +202,8 @@ class FrontStepExtractor:
                 _log_extractor_failure(e)
                 extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
-        return self.deterministic_convert(extracted, user_text)
+        from orbitlab_backend.clients.extractor_client import normalize_extracted
+        return self.deterministic_convert(normalize_extracted(extracted), user_text)
     def _fallback_extract(self, text: str) -> Dict[str,Any]:
         low=text.lower(); body=None
         for b in ["Earth","Moon","Mars","Mercury","Venus","Jupiter","Sun"]:

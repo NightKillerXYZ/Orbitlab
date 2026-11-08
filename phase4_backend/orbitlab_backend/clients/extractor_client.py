@@ -357,6 +357,8 @@ class OpenAIExtractor(IFieldExtractor):
         self.model=model or s.EXTRACTOR_MODEL
         self.json_mode=(json_mode if json_mode is not None else getattr(s, "EXTRACTOR_JSON_MODE", "prompt") or "prompt").strip().lower()
         self.timeout_s=float(timeout_s) if timeout_s is not None else 30.0
+        self.last_raw = None
+        self.last_parsed = None
         if not self.base_url or not str(self.base_url).strip():
             raise RuntimeError("Missing required environment variable: EXTRACTOR_BASE_URL")
         if not self.api_key or not str(self.api_key).strip():
@@ -383,7 +385,11 @@ class OpenAIExtractor(IFieldExtractor):
                 raise ValueError("Unexpected content type: %s" % type(content))
             return content
     async def extract(self, user_text: str) -> Dict[str, Any]:
-        return normalize_extracted(extract_json_object(await self.extract_raw(user_text)))
+        raw = await self.extract_raw(user_text)
+        self.last_raw = raw
+        parsed = extract_json_object(raw)
+        self.last_parsed = parsed
+        return parsed
     def extract_sync(self, user_text: str) -> Dict[str, Any]:
         import asyncio
         return asyncio.run(self.extract(user_text))
