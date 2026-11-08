@@ -8,6 +8,7 @@ from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids, apply_frontstep_names
 from orbitlab_backend.orchestrator.errors import *
 from orbitlab_backend.orchestrator.estimate import estimate_run_seconds
+from orbitlab_backend.clients.explainer_client import MockExplainer, fallback_explanation, failure_explanation
 MAX_CACHE_ENTRIES = 500
 from orbitlab_core.ast.models import OrbitLabExperiment
 from orbitlab_core.ast.validation import AstrodynamicValidator
@@ -126,6 +127,7 @@ class Pipeline:
                     explanation=await self.explainer.explain(experiment_json, "verify", f"Interpreter mismatch: {mismatches}", warnings_all)
                 except Exception as ee:
                     logger.warning(f"explainer failed after verify: {ee}")
+                    explanation=failure_explanation("verify", f"Interpreter mismatch: {mismatches}")
                 raise InterpreterMismatch(mismatches, details={"mismatches": mismatches, "explanation": explanation})
             experiment_json=normalize_maneuver_ids(experiment_json)
             dur=time.perf_counter()-t0
@@ -177,6 +179,7 @@ class Pipeline:
                     explanation=expl
                 except Exception as ee:
                     logger.warning(f"explainer failed after validation: {ee}")
+                    explanation=failure_explanation("validate", "; ".join(res.errors))
                 raise ValidationFailed("; ".join(res.errors), details={"errors":res.errors,"warnings":warnings_all,"explanation":explanation})
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","validate",dur,"Validation passed", {"warnings":warnings_all}))
@@ -202,7 +205,7 @@ class Pipeline:
                 expl=await self.explainer.explain(experiment_json, "compile", str(e), warnings_all)
                 explanation=expl
             except Exception:
-                pass
+                explanation=failure_explanation("compile", str(e))
             raise CompileError(str(e), details={"explanation": explanation})
         # simulate
         t0=time.perf_counter()
@@ -279,7 +282,7 @@ class Pipeline:
                     expl=await self.explainer.explain(experiment_json, "simulate", msg, warnings_all)
                     explanation=expl
                 except Exception:
-                    pass
+                    explanation=failure_explanation("simulate", msg)
                 raise GmatTimeout(msg, details={"explanation": explanation})
             else:
                 await emit(PipelineEvent("stage_failed","simulate",dur,f"GMAT run error: {msg}"))
@@ -287,7 +290,7 @@ class Pipeline:
                     expl=await self.explainer.explain(experiment_json, "simulate", msg, warnings_all)
                     explanation=expl
                 except Exception:
-                    pass
+                    explanation=failure_explanation("simulate", msg)
                 raise GmatRunError(msg, details={"explanation": explanation})
         # parse
         t0=time.perf_counter()
@@ -302,21 +305,63 @@ class Pipeline:
                 expl=await self.explainer.explain(experiment_json, "parse", str(e), warnings_all)
                 explanation=expl
             except Exception:
-                pass
+                explanation=failure_explanation("parse", str(e))
             raise ParseError(str(e), details={"explanation": explanation})
-        # explain
+        # explain: this stage must never fail a successful simulation. If the
+        # explainer is not configured (MockExplainer), fails after its retry,
+        # or returns empty text, the run still succeeds with a deterministic
+        # automatic summary and explanationSource "fallback".
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","explain",0,"Generating explanation"))
+        explanation_source="fallback"
         try:
             summary={"num_points": len(trajectory_data.full) if trajectory_data else 0, "warnings": warnings_all}
-            explanation=await self.explainer.explain(experiment_json, "success", None, warnings_all, summary)
+            try:
+                _pts=list(trajectory_data.full) if trajectory_data else []
+                _alts=[]
+                for _p in _pts:
+                    try:
+                        _a=float(getattr(_p, "altitude_km", float("nan")))
+                    except (TypeError, ValueError):
+                        continue
+                    if _a==_a:
+                        _alts.append(_a)
+                if _alts:
+                    summary["min_altitude_km"]=min(_alts)
+                    summary["max_altitude_km"]=max(_alts)
+                    try:
+                        summary["final_altitude_km"]=float(getattr(_pts[-1], "altitude_km"))
+                    except (TypeError, ValueError):
+                        pass
+                try:
+                    _lp=_pts[-1]
+                    _vx=float(getattr(_lp, "vx_km_s", 0.0)); _vy=float(getattr(_lp, "vy_km_s", 0.0)); _vz=float(getattr(_lp, "vz_km_s", 0.0))
+                    summary["final_speed_km_s"]=(_vx*_vx+_vy*_vy+_vz*_vz)**0.5
+                except (TypeError, ValueError, IndexError):
+                    pass
+            except Exception:
+                pass
+            if isinstance(self.explainer, MockExplainer):
+                explanation=fallback_explanation(experiment_json, "success", None, warnings_all, summary)
+            else:
+                try:
+                    explanation=await self.explainer.explain(experiment_json, "success", None, warnings_all, summary)
+                except Exception:
+                    explanation=None
+                if not isinstance(explanation, str) or not explanation.strip():
+                    explanation=fallback_explanation(experiment_json, "success", None, warnings_all, summary)
+                else:
+                    explanation_source="model"
             dur=time.perf_counter()-t0
-            await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready"))
-        except Exception as e:
+            await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready (automatic summary)" if explanation_source=="fallback" else "Explanation ready"))
+        except Exception:
+            # fallback_explanation never raises; last-resort guard so a
+            # successful simulation always returns its results.
+            explanation="The simulation completed successfully."
+            explanation_source="fallback"
             dur=time.perf_counter()-t0
-            await emit(PipelineEvent("stage_failed","explain",dur,f"Explainer failed: {e}"))
-            raise ExplainerError(str(e))
-        result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"prompt": prompt}
+            await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready (automatic summary)"))
+        result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"explanationSource": explanation_source,"prompt": prompt}
         if cache_key:
             # Failed infrastructure runs raise, so only successes reach here.
             self.cache[cache_key]=result
