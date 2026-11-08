@@ -1,3 +1,62 @@
+/* ---- Pure result helpers (no DOM): unit-tested with node --test. ---- */
+/* Body table mirrors orbitlab_core/bodies.json (radius + mu, the repo's
+   single source of truth for central-body constants). Colours are UI-only. */
+const BODY_TABLE={
+ Earth:{radiusKm:6378.1363,muKm3S2:398600.4415,color:'#5b9dff',hi:'#bfe0ff'},
+ Moon:{radiusKm:1737.4,muKm3S2:4902.800066,color:'#a9b6c9',hi:'#eef3fa'},
+ Mars:{radiusKm:3389.5,muKm3S2:42828.375214,color:'#e06a4a',hi:'#ffc9a8'},
+ Mercury:{radiusKm:2440.53,muKm3S2:22032.080486,color:'#b09a7e',hi:'#e8d9bd'},
+ Venus:{radiusKm:6051.8,muKm3S2:324858.598827,color:'#e89a62',hi:'#ffe2b0'},
+ Jupiter:{radiusKm:71492,muKm3S2:126712767.857614,color:'#d8a97a',hi:'#ffe9c4'},
+ Sun:{radiusKm:695700,muKm3S2:132712440017.74652,color:'#ffae54',hi:'#fff2c9'}
+};
+function bodyInfo(name){try{const b=BODY_TABLE[name];if(b)return {name:name,radiusKm:b.radiusKm,muKm3S2:b.muKm3S2,color:b.color,hi:b.hi};}catch(e){}return {name:(typeof name==='string'&&name)?name:'unknown',radiusKm:null,muKm3S2:null,color:'#8fa6c8',hi:'#d5e4f7'};}
+function numOrNull(x){const n=Number(x);return isFinite(n)?n:null;}
+function pointRadiusKm(p){try{const x=+p.x_km,y=+p.y_km,z=+p.z_km;const r=Math.sqrt(x*x+y*y+z*z);return (r>0&&isFinite(r))?r:null;}catch(e){return null;}}
+function pointSpeedKms(p){try{const x=+p.vx_km_s,y=+p.vy_km_s,z=+p.vz_km_s;const v=Math.sqrt(x*x+y*y+z*z);return isFinite(v)?v:null;}catch(e){return null;}}
+function pointAltKm(p,bodyRadiusKm){try{if(p&&p.altitude_km!=null&&p.altitude_km!==''){const a=+p.altitude_km;if(isFinite(a))return a;}}catch(e){}const r=pointRadiusKm(p);if(r==null||!(bodyRadiusKm>0))return null;return r-bodyRadiusKm;}
+function keplerPeriodSecs(aKm,mu){const a=+aKm,m=+mu;if(!(a>0)||!(m>0))return null;const t=2*Math.PI*Math.sqrt(Math.pow(a,3)/m);return isFinite(t)?t:null;}
+/* The result carries no period field, so the UI computes T = 2*pi*sqrt(a^3/mu)
+   from the experiment echo's semi-major axis (or the telemetry mean when the
+   echo is Cartesian) and this body's mu. */
+function smaForDisplay(exp,pts){try{const els=exp&&exp.initialOrbit&&exp.initialOrbit.elements;const a=numOrNull(els&&els.semiMajorAxisKm);if(a!=null)return a;}catch(e){}try{const vs=(pts||[]).map(p=>numOrNull(p.semi_major_axis_km)).filter(v=>v!=null&&v>0);if(vs.length)return vs.reduce((x,y)=>x+y,0)/vs.length;}catch(e){}return null;}
+function periodText(aKm,mu){const t=keplerPeriodSecs(aKm,mu);if(t==null)return 'n/a';if(t>=172800)return (t/86400).toFixed(2)+' days';if(t>=3600)return (t/3600).toFixed(2)+' hours';if(t>=120)return (t/60).toFixed(1)+' min';return Math.round(t)+' s';}
+function fmtKm(x,dec){const n=Number(x);if(!isFinite(n))return 'n/a';const d=(dec==null?1:dec);return n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtSecs(s){const t=Number(s);if(!isFinite(t)||t<0)return 'n/a';if(t>=172800)return 'DAY '+(t/86400).toFixed(2);const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),ss=Math.floor(t%60);const p=n=>(n<10?'0':'')+n;return 'T+'+p(h)+':'+p(m)+':'+p(ss);}
+/* Body-centred fit: the origin (central body) maps to the card centre and the
+   whole path fits with a margin. Returns null when nothing drawable. */
+function fitOrbit(pts,W,H,margin){try{
+ if(!Array.isArray(pts)||!pts.length)return null;
+ let maxR=0;for(const p of pts){const r=pointRadiusKm(p);if(r!=null&&r>maxR)maxR=r;}
+ if(!(maxR>0))return null;
+ const m=(margin==null?16:margin);
+ const scale=Math.min((W-2*m)/(2*maxR),(H-2*m)/(2*maxR));
+ const line=[];
+ for(const p of pts){const x=+p.x_km,y=+p.y_km;if(!isFinite(x)||!isFinite(y))continue;line.push([W/2+x*scale,H/2-y*scale]);}
+ if(!line.length)return null;
+ return {cx:W/2,cy:H/2,scale:scale,line:line,maxR:maxR};
+}catch(e){return null;}}
+function trajectoryStats(pts,bodyRadiusKm){
+ const out={n:0,minAlt:null,maxAlt:null,finalAlt:null,minSpeed:null,maxSpeed:null,finalSpeed:null,spanSecs:null};
+ try{
+  if(!Array.isArray(pts)||!pts.length)return out;
+  out.n=pts.length;
+  let mnA=Infinity,mxA=-Infinity,mnS=Infinity,mxS=-Infinity,mnt=Infinity,mxt=-Infinity;
+  for(const p of pts){
+   const a=pointAltKm(p,bodyRadiusKm);if(a!=null){if(a<mnA)mnA=a;if(a>mxA)mxA=a;}
+   const v=pointSpeedKms(p);if(v!=null){if(v<mnS)mnS=v;if(v>mxS)mxS=v;}
+   const t=+p.elapsed_secs;if(isFinite(t)){if(t<mnt)mnt=t;if(t>mxt)mxt=t;}
+  }
+  if(isFinite(mnA)){out.minAlt=mnA;out.maxAlt=mxA;}
+  if(isFinite(mnS)){out.minSpeed=mnS;out.maxSpeed=mxS;}
+  if(isFinite(mnt))out.spanSecs=Math.max(0,mxt-mnt);
+  const lp=pts[pts.length-1];
+  out.finalAlt=pointAltKm(lp,bodyRadiusKm);
+  out.finalSpeed=pointSpeedKms(lp);
+ }catch(e){}
+ return out;
+}
+/* ---- End of pure helpers. Everything below touches the DOM. ---- */
 const tabs = ['Chat','Understanding','Results','Graph','Physics'];
 const panel = document.querySelector('#panelContent');
 const composer = document.querySelector('#chatComposer');
@@ -13,6 +72,8 @@ let toastTimer;
 function useMock(){try{if(typeof globalThis!=='undefined'&&globalThis.OrbitLabAdapter&&globalThis.OrbitLabAdapter.isMockMode)return globalThis.OrbitLabAdapter.isMockMode();}catch(e){}return true;}
 const BACKEND_STAGES=['extract','interpret','verify','validate','compile','simulate','parse','explain'];
 let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null;
+/* Live trajectory replay state (real runs only). */
+let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=null,curSpeed=null;function trajSpan(){try{if(runStats&&runStats.spanSecs!=null)return runStats.spanSecs;}catch(e){}const s=teleSpan(trajPts());return (s==null?0:s);}
 function fmt1(x){const n=Number(x);return isFinite(n)?n.toFixed(1):'n/a';}
 function trajPts(){try{const ps=lastResult&&lastResult.trajectory&&lastResult.trajectory.points;return Array.isArray(ps)?ps:[];}catch(e){return[];}}
 function meanSpeed(pts){const v=pts.map(p=>{const vx=+p.vx_km_s||0,vy=+p.vy_km_s||0,vz=+p.vz_km_s||0;return Math.sqrt(vx*vx+vy*vy+vz*vz);}).filter(Number.isFinite);if(!v.length)return null;return v.reduce((a,b)=>a+b,0)/v.length;}
@@ -36,7 +97,7 @@ function renderTime(){
 }
 function setRunning(value){running=value;document.querySelector('#runText').textContent=value?'RUNNING':'PAUSED';document.querySelector('#runIndicator').parentElement.classList.toggle('running',value);document.querySelector('#venusPlanet').classList.toggle('playing',value);document.querySelector('#playBtn').textContent=value?'Ⅱ':'▶';document.querySelector('#playBtn').setAttribute('aria-label',value?'Pause simulation':'Play simulation')}
 function completeObjective(){if(completed)return;completed=true;const ring=document.querySelector('.progress-ring span');if(ring)ring.innerHTML='3<span class="ring-slash">/</span>5';const progressLabel=document.querySelector('.mission-progress>div+div span');if(progressLabel)progressLabel.textContent='3 of 5 steps complete';showToast('Mission progress updated · +50 XP')}
-setInterval(()=>{if(running){simDay+=speed*0.12;if(simDay>=224.7){simDay=0;completeObjective()}renderTime();}},100);
+setInterval(()=>{if(running){simDay+=speed*0.12;if(simDay>=224.7){simDay=0;completeObjective()}renderTime();}if(animPlaying&&lastResult){const span=trajSpan();if(span>0){animT+=span/600*speed;if(animT>=span){animT=span;animPlaying=false;syncPlayBtn();}drawCraft();updateTelemetry();}}},100);
 
 const content={
  Chat:`<div class="welcome-assistant"><div class="assistant-avatar">✦</div><div class="assistant-message"><p><b>Welcome back, Alex.</b> Ready to explore?</p><p>Venus takes about 225 Earth days to orbit the Sun. Try a scenario or ask me what you notice.</p></div></div><div class="suggestion-label">QUICK START</div><button class="suggestion" data-prompt="What keeps Venus in orbit around the Sun?"><span>✧</span> What keeps Venus in orbit?</button><button class="suggestion" data-prompt="What would happen if Venus moved twice as fast?"><span>↗</span> What if Venus moved twice as fast?</button><button class="suggestion" data-prompt="Compare Venus's orbit with Earth's orbit."><span>◎</span> Compare Venus and Earth</button>${lastScenario?scenarioMarkup(lastScenario):''}`,
@@ -48,6 +109,34 @@ const content={
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function scenarioMarkup(run){return `<div class="chat-result"><strong>Scenario simulated</strong>Changing Venus’s orbital speed gives a ${run.outcome.toLowerCase()}.<div class="result-chips"><span>${run.velocity} km/s</span><span>${run.period} day period</span></div></div>`}
 function renderTab(tab){activeTab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));let html=null;if(!useMock())html=liveBody(tab);panel.innerHTML=(html===null||html===undefined)?content[tab]:html;composer.style.display=tab==='Chat'?'block':'none';panel.scrollTop=0;refreshExportState();}
+function axisTickT(t,span){if(span>=172800)return (t/86400).toFixed(1)+'d';if(span>=7200)return (t/3600).toFixed(1)+'h';return Math.round(t)+'s';}
+function chartSVG(title,unit,times,vals,color){
+ const W=260,H=150,L=44,R=8,T=12,B=22;
+ try{
+  const n=Math.min(times.length,vals.length);
+  if(!n)return '<div class="result-note">No data.</div>';
+  let mn=Infinity,mx=-Infinity,any=false;
+  for(let i=0;i<n;i++){const raw=vals[i];if(raw==null||raw==='')continue;const v=+raw;if(isFinite(v)){any=true;if(v<mn)mn=v;if(v>mx)mx=v;}}
+  if(!any)return '<div class="result-note">No data.</div>';
+  if(mx===mn){mn-=1;mx+=1;}
+  const t0=+times[0]||0,t1=+times[n-1]||0;const span=Math.max(t1-t0,1e-9);
+  const X=t=>L+(+t-t0)/span*(W-L-R);
+  const Y=v=>T+(1-(+v-mn)/(mx-mn))*(H-T-B);
+  let line='';
+  for(let i=0;i<n;i++){const raw=vals[i];if(raw==null||raw==='')continue;const t=+times[i],v=+raw;if(!isFinite(t)||!isFinite(v))continue;line+=X(t).toFixed(1)+','+Y(v).toFixed(1)+' ';}
+  if(!line.trim())return '<div class="result-note">No data.</div>';
+  const mid=(mn+mx)/2,yl=v=>fmtKm(v,1)+' '+unit;
+  return '<svg class="chart" viewBox="0 0 260 150" role="img" aria-label="'+escapeHtml(title)+'">'
+   +'<path d="M'+L+' '+T+'H'+(W-R)+'M'+L+' '+T+'V'+(H-B)+'M'+L+' '+(H-B)+'H'+(W-R)+'" stroke="#25344d" fill="none"/>'
+   +'<text x="'+(L-3)+'" y="'+(T+8)+'" text-anchor="end" font-size="7" fill="#8296b6">'+escapeHtml(yl(mx))+'</text>'
+   +'<text x="'+(L-3)+'" y="'+(Y(mid)+3).toFixed(1)+'" text-anchor="end" font-size="7" fill="#8296b6">'+escapeHtml(yl(mid))+'</text>'
+   +'<text x="'+(L-3)+'" y="'+(H-B)+'" text-anchor="end" font-size="7" fill="#8296b6">'+escapeHtml(yl(mn))+'</text>'
+   +'<text x="'+L+'" y="'+(H-6)+'" font-size="7" fill="#8296b6">'+escapeHtml(axisTickT(t0,span))+'</text>'
+   +'<text x="'+(W-R)+'" y="'+(H-6)+'" text-anchor="end" font-size="7" fill="#8296b6">'+escapeHtml(axisTickT(t1,span))+'</text>'
+   +'<text x="'+((L+W-R)/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="6" fill="#5d6c87">elapsed time</text>'
+   +'<polyline points="'+line.trim()+'" fill="none" stroke="'+color+'" stroke-width="1.5"/></svg>';
+ }catch(e){return '<div class="result-note">No data.</div>';}
+}
 function liveBody(tab){
   if(!lastResult&&!lastError&&!runActive)return null;
   if(tab==='Chat'){
@@ -64,13 +153,24 @@ function liveBody(tab){
     if(!lastResult&&!lastError)return null;
     if(lastError){return '<div class="result-header"><div class="assistant-avatar">i</div><div><div class="section-kicker">LATEST RUN</div><h3>Run failed</h3></div><span class="result-badge">FAILED</span></div><p class="panel-copy">'+escapeHtml((lastError.stage||'unknown')+': '+(lastError.message||'The run did not finish.'))+'</p>';}
     const els=expEls();const sp=meanSpeed(trajPts());const warns=lastResult.warnings||[];
-    return '<div class="result-header"><div class="assistant-avatar">i</div><div><div class="section-kicker">LATEST RUN</div><h3>Run complete</h3></div><span class="result-badge">LIVE DATA</span></div><p class="panel-copy">'+escapeHtml('Backend run finished. Telemetry points: '+trajPts().length+'.')+'</p><div class="result-metrics"><div><small>ORBITAL PERIOD</small><b>n/a</b></div><div><small>ORBIT SHAPE</small><b>'+escapeHtml(els.eccentricity==null?'n/a':(+els.eccentricity<0.05?'Near circular':'Elliptical'))+'</b></div><div><small>ORBITAL SPEED</small><b>'+escapeHtml(sp===null?'n/a':fmt1(sp))+' <i>km/s</i></b></div><div><small>OUTCOME</small><b class="outcome">Stable orbit - run complete</b></div></div><div class="result-note"><span>o </span>'+escapeHtml('Validator warnings: '+warns.length+'.')+'</div><button class="panel-cta" id="resultsExport">Export run data <span>></span></button>';
+    const rBody=runBodyName(),rInfo=bodyInfo(rBody);
+    const rStats=trajectoryStats(trajPts(),rInfo.radiusKm);
+    const finTxt=(rStats.finalAlt==null&&rStats.finalSpeed==null)?'n/a':('alt '+fmtKm(rStats.finalAlt,1)+' km, '+fmt1(rStats.finalSpeed)+' km/s');
+    const warnList=(warns.length?warns.slice(0,8).map(w=>'<div class="result-note"><span>!</span> '+escapeHtml(String(w))+'</div>').join('')+(warns.length>8?'<div class="result-note">+'+(warns.length-8)+' more</div>':''):'<div class="result-note">No warnings.</div>');
+    return '<div class="result-header"><div class="assistant-avatar">i</div><div><div class="section-kicker">LATEST RUN</div><h3>Run complete</h3></div><span class="result-badge">LIVE DATA</span></div><p class="panel-copy">'+escapeHtml('Backend run finished. Telemetry points: '+trajPts().length+'.')+'</p><div class="result-metrics"><div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(smaForDisplay(lastResult.experiment,trajPts()),rInfo.muKm3S2))+'</b></div><div><small>ORBIT SHAPE</small><b>'+escapeHtml(els.eccentricity==null?'n/a':(+els.eccentricity<0.05?'Near circular':'Elliptical'))+'</b></div><div><small>ORBITAL SPEED</small><b>'+escapeHtml(sp===null?'n/a':fmt1(sp))+' <i>km/s</i></b></div><div><small>OUTCOME</small><b class="outcome">Stable orbit - run complete</b></div></div><div class="result-metrics"><div><small>MIN ALTITUDE</small><b>'+escapeHtml(rStats.minAlt==null?'n/a':fmtKm(rStats.minAlt,1)+' km')+'</b></div><div><small>MAX ALTITUDE</small><b>'+escapeHtml(rStats.maxAlt==null?'n/a':fmtKm(rStats.maxAlt,1)+' km')+'</b></div><div><small>MIN SPEED</small><b>'+escapeHtml(rStats.minSpeed==null?'n/a':fmt1(rStats.minSpeed)+' km/s')+'</b></div><div><small>MAX SPEED</small><b>'+escapeHtml(rStats.maxSpeed==null?'n/a':fmt1(rStats.maxSpeed)+' km/s')+'</b></div></div><div class="result-note"><span>o </span>'+escapeHtml('Final state: '+finTxt+'. Telemetry points: '+trajPts().length+'.')+'</div>'+warnList+'<button class="panel-cta" id="resultsExport">Export run data <span>></span></button>';
   }
   if(tab==='Graph'){
     if(!lastResult)return null;
-    const pts=trajPts();let svg='<div class="result-note">No trajectory yet.</div>';
-    if(pts.length){let mnx=Infinity,mxx=-Infinity,mny=Infinity,mxy=-Infinity;pts.forEach(q=>{const x=+q.x_km,y=+q.y_km;if(isFinite(x)&&isFinite(y)){if(x<mnx)mnx=x;if(x>mxx)mxx=x;if(y<mny)mny=y;if(y>mxy)mxy=y;}});const span=Math.max(mxx-mnx,mxy-mny,1e-9);const line=pts.filter(q=>isFinite(+q.x_km)&&isFinite(+q.y_km)).map(q=>((+q.x_km-mnx)/span*260).toFixed(1)+','+(130-(+q.y_km-mny)/span*130).toFixed(1)).join(' ');svg='<svg class="chart" viewBox="0 0 260 150" role="img" aria-label="Run trajectory"><polyline points="'+line+'" fill="none" stroke="#6faaff" stroke-width="1.5"/></svg>';}
-    return '<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Run trajectory</h3><p>'+escapeHtml(pts.length+' points from the backend')+'</p></div>'+svg+'<div class="chart-legend"><i></i> Live run <b>'+escapeHtml(pts.length+' points')+'</b></div><pre class="json">'+escapeHtml(JSON.stringify(lastResult.experiment||{},null,2))+'</pre>';
+    const pts=trajPts();
+    if(!pts.length)return '<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Run trajectory</h3><p>no trajectory returned</p></div><div class="result-note">The backend returned no telemetry points.</div>';
+    const gBody=runBodyName(),gInfo=bodyInfo(gBody);
+    const gT=pts.map(p=>+p.elapsed_secs||0);
+    const gA=pts.map(p=>pointAltKm(p,gInfo.radiusKm));
+    const gS=pts.map(p=>pointSpeedKms(p));
+    return '<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Run trajectory · '+escapeHtml(gBody)+'</h3><p>'+escapeHtml(pts.length+' telemetry points')+'</p></div>'
+     +'<div class="section-kicker">ALTITUDE vs TIME</div>'+chartSVG('Altitude vs time','km',gT,gA,'#6faaff')
+     +'<div class="section-kicker">SPEED vs TIME</div>'+chartSVG('Speed vs time','km/s',gT,gS,'#58d4b0')
+     +'<div class="chart-legend"><i></i> Live run <b>'+escapeHtml(pts.length+' points')+'</b></div>';
   }
   if(tab==='Physics'){
     let h=content.Physics;
@@ -80,36 +180,141 @@ function liveBody(tab){
   }
   if(tab==='Understanding'){
     let h=content.Understanding;
-    if(lastResult){const els=expEls();const sc=(lastResult.experiment&&lastResult.experiment.spacecraft)||{};h+='<div class="result-note"><span>o </span>Latest run</div><div class="physics-values"><div><span>Central body</span><b>'+escapeHtml((lastResult.experiment&&lastResult.experiment.centralBody)||'n/a')+'</b></div><div><span>Semi-major axis</span><b>'+escapeHtml(els.semiMajorAxisKm==null?'n/a':fmt1(els.semiMajorAxisKm)+' km')+'</b></div><div><span>Eccentricity</span><b>'+escapeHtml(els.eccentricity==null?'n/a':String(els.eccentricity))+'</b></div><div><span>Dry mass</span><b>'+escapeHtml(sc.dryMassKg==null?'n/a':Number(sc.dryMassKg).toFixed(1)+' kg')+'</b></div></div>'+(lastResult.explanation?'<div class="panel-copy">'+escapeHtml(lastResult.explanation)+'</div>':'')+(lastResult.explanationSource==='fallback'?'<div class="result-note"><span>o </span>Automatic summary (the AI explainer was unavailable).</div>':'');}
+    if(lastResult){const els=expEls();const sc=(lastResult.experiment&&lastResult.experiment.spacecraft)||{};const propU=(lastResult.experiment&&lastResult.experiment.propagation)||{};const mansU=(lastResult.experiment&&lastResult.experiment.maneuvers)||[];const fmU=(lastResult.experiment&&lastResult.experiment.forceModel)||{};h+='<div class="result-note"><span>o </span>Latest run</div><div class="physics-values"><div><span>Central body</span><b>'+escapeHtml((lastResult.experiment&&lastResult.experiment.centralBody)||'n/a')+'</b></div><div><span>Semi-major axis</span><b>'+escapeHtml(els.semiMajorAxisKm==null?'n/a':fmt1(els.semiMajorAxisKm)+' km')+'</b></div><div><span>Eccentricity</span><b>'+escapeHtml(els.eccentricity==null?'n/a':String(els.eccentricity))+'</b></div><div><span>Dry mass</span><b>'+escapeHtml(sc.dryMassKg==null?'n/a':Number(sc.dryMassKg).toFixed(1)+' kg')+'</b></div></div><div class="physics-values"><div><span>Duration</span><b>'+escapeHtml(stopText(propU))+'</b></div><div><span>Maneuvers</span><b>'+escapeHtml(manText(mansU))+'</b></div><div><span>Forces</span><b>'+escapeHtml(forceText(fmU))+'</b></div></div>'+(lastResult.explanation?'<div class="panel-copy">'+escapeHtml(lastResult.explanation)+'</div>':'')+(lastResult.explanationSource==='fallback'?'<div class="result-note"><span>o </span>Automatic summary (the AI explainer was unavailable).</div>':'');}
     return h;
   }
   return null;
 }
+/* ---- Real-run rendering (main card, drawing, replay, titles). ---- */
+function visEl(){try{return document.querySelector('#orbitVisual');}catch(e){return null;}}
+function sampleDecoHidden(hide){const vis=visEl();if(!vis)return;vis.querySelectorAll('.orbit-path,.orbit-label,.distance-line,.distance-label,.earth-planet,.mars-planet,.sun-glow,.sun-core,.orbit-axis,.scale-label,#venusPlanet').forEach(el=>{try{el.style.display=hide?'none':'';}catch(e){}});}
+function clearRunDrawing(){try{const vis=visEl();if(!vis)return;['runOrbit','noTraj'].forEach(id=>{const el=vis.querySelector('#'+id);if(el)el.remove();});}catch(e){}}
+function stopText(prop){try{const s=prop&&prop.stopCondition;if(!s||!s.type)return 'n/a';return s.value==null?String(s.type):(s.type+' '+s.value);}catch(e){return 'n/a';}}
+function manText(mans){try{if(!Array.isArray(mans)||!mans.length)return 'none';return mans.slice(0,4).map(m=>{const t=m&&(m.type||'maneuver');const tr=m&&(m.trigger&&m.trigger.condition);let d=String(t);if(tr)d+=' @'+tr;try{const tgt=m&&(m.targetObjectives&&m.targetObjectives.targetOrbitRadiusKm);if(tgt!=null)d+=' to '+fmtKm(tgt,1)+' km';}catch(e){}try{const v=m&&(m.burnVector&&m.burnVector.deltaVVectorKmS);if(Array.isArray(v)&&v.length===3){const n=v.map(Number);if(n.every(isFinite))d+=' dv '+Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]).toFixed(3)+' km/s';}}catch(e){}return d;}).join('; ');}catch(e){return 'n/a';}}
+function forceText(fm){try{if(!fm||typeof fm!=='object')return 'n/a';const p=[];if(fm.gravityDegree!=null&&fm.gravityOrder!=null)p.push(fm.gravityDegree+'x'+fm.gravityOrder);if(Array.isArray(fm.pointMasses)&&fm.pointMasses.length)p.push(fm.pointMasses.slice(0,4).join('+'));try{if(fm.atmosphericDrag)p.push('drag '+(fm.atmosphericDrag.enabled?'on':'off'));}catch(e){}if(fm.solarRadiationPressure===true)p.push('SRP on');else if(fm.solarRadiationPressure===false)p.push('SRP off');return p.length?p.join(', '):'n/a';}catch(e){return 'n/a';}}
+function runBodyName(){try{const b=lastResult&&lastResult.experiment&&lastResult.experiment.centralBody;return (typeof b==='string'&&b)?b:'unknown';}catch(e){return 'unknown';}}
+function applyRunTitles(body){
+ try{document.querySelectorAll('.breadcrumbs b').forEach(el=>{el.textContent=body+' orbit';});}catch(e){}
+ try{const h=document.querySelector('.welcome-row h1');if(h)h.innerHTML=escapeHtml(body)+' in <span>Motion</span>';const lead=document.querySelector('.welcome-row p');if(lead)lead.textContent='Live results: a spacecraft path around '+body+'.';}catch(e){}
+ try{const sub=document.querySelector('.card-subtitle');if(sub)sub.textContent='Live run · spacecraft around '+body;}catch(e){}
+ try{
+  const chips=document.querySelectorAll('.suggestion');
+  const defs=[['What keeps the spacecraft in orbit around '+body+'?','What keeps the spacecraft in orbit around '+body+'?'],['What if the spacecraft moved twice as fast?','What would happen if the spacecraft around '+body+' moved twice as fast?'],['How does eccentricity change the orbit?','How does orbital eccentricity change the path around '+body+'?']];
+  chips.forEach((c,i)=>{if(i<defs.length){c.setAttribute('data-prompt',defs[i][1]);const tx=c.childNodes;c.innerHTML='<span>'+(i===0?'✧':i===1?'↗':'◎')+'</span> '+escapeHtml(defs[i][0]);}});
+ }catch(e){}
+ try{const tl=document.querySelector('.card-topline');if(tl){let b=tl.querySelector('#runBadge');if(!b){b=document.createElement('span');b.id='runBadge';b.className='result-badge';const tg=tl.querySelector('.view-toggle');if(tg)tg.before(b);else tl.appendChild(b);}b.textContent='LIVE DATA';}}catch(e){}
+}
+function renderStatCards(body,info,els,stats,aKm){
+ try{
+  const row=document.querySelector('.telemetry-row');if(!row)return;
+  row.style.gridTemplateColumns='repeat(5,1fr)';
+  const ecc=(els&&els.eccentricity==null)?'n/a':String(els?els.eccentricity:'n/a');
+  const inc=(els&&els.inclinationDeg==null)?'n/a':(Number(els.inclinationDeg).toFixed(2)+'°');
+  row.innerHTML='<div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(aKm,info.muKm3S2))+'</b></div><div><small>PERIAPSIS ALT</small><b>'+escapeHtml(stats.minAlt==null?'n/a':fmtKm(stats.minAlt,1)+' km')+'</b></div><div><small>APOAPSIS ALT</small><b>'+escapeHtml(stats.maxAlt==null?'n/a':fmtKm(stats.maxAlt,1)+' km')+'</b></div><div><small>ECCENTRICITY</small><b>'+escapeHtml(ecc)+'</b></div><div><small>INCLINATION</small><b>'+escapeHtml(inc)+'</b></div>';
+ }catch(e){}
+}
+function renderRealRun(){
+ const vis=visEl();if(!vis||!lastResult)return;
+ clearRunDrawing();
+ sampleDecoHidden(true);
+ const body=runBodyName(),info=bodyInfo(body),pts=trajPts();
+ const exp=lastResult.experiment||{},els=(exp.initialOrbit&&exp.initialOrbit.elements)||{};
+ const aKm=smaForDisplay(exp,pts);
+ runBodyR=info.radiusKm;runStats=trajectoryStats(pts,runBodyR);
+ runFit=fitOrbit(pts,300,200,16);
+ applyRunTitles(body);
+ renderStatCards(body,info,els,runStats,aKm);
+ animT=0;animPlaying=pts.length>0;curAlt=null;curSpeed=null;syncPlayBtn();
+ if(!runFit){
+  const d=document.createElement('div');d.id='noTraj';d.className='result-note';d.style.cssText='position:absolute;inset:auto 9px 30px 9px;text-align:center;';d.textContent='no trajectory returned';
+  vis.appendChild(d);
+ }else{
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.id='runOrbit';svg.setAttribute('viewBox','0 0 300 200');svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.setAttribute('role','img');svg.setAttribute('aria-label','Spacecraft trajectory around '+body);
+  svg.style.cssText='position:absolute;inset:0;width:100%;height:100%;';
+  const discR=Math.max(5,Math.min(30,(Math.min(300,200)/2-16)*(info.radiusKm&&runFit.maxR?info.radiusKm/runFit.maxR:0)||6));
+  const halo=document.createElementNS(NS,'circle');
+  halo.setAttribute('cx',runFit.cx);halo.setAttribute('cy',runFit.cy);halo.setAttribute('r',discR+5);halo.setAttribute('fill','none');halo.setAttribute('stroke',info.hi);halo.setAttribute('stroke-opacity','0.25');halo.setAttribute('stroke-width','1.5');
+  const disc=document.createElementNS(NS,'circle');
+  disc.setAttribute('cx',runFit.cx);disc.setAttribute('cy',runFit.cy);disc.setAttribute('r',discR);disc.setAttribute('fill',info.color);disc.setAttribute('fill-opacity','0.9');
+  svg.appendChild(halo);svg.appendChild(disc);
+  if(runFit.line.length>1){
+   const pl=document.createElementNS(NS,'polyline');
+   pl.setAttribute('points',runFit.line.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' '));
+   pl.setAttribute('fill','none');pl.setAttribute('stroke','#6faaff');pl.setAttribute('stroke-width','1.5');
+   svg.appendChild(pl);
+  }else{
+   const dot=document.createElementNS(NS,'circle');
+   dot.setAttribute('cx',runFit.line[0][0]);dot.setAttribute('cy',runFit.line[0][1]);dot.setAttribute('r','2.5');dot.setAttribute('fill','#6faaff');
+   svg.appendChild(dot);
+  }
+  const craft=document.createElementNS(NS,'circle');
+  craft.id='runCraft';craft.setAttribute('r','3');craft.setAttribute('fill','#ffffff');craft.setAttribute('stroke','#6faaff');craft.setAttribute('stroke-width','1.5');
+  svg.appendChild(craft);
+  vis.appendChild(svg);
+ }
+ try{const cap=document.querySelector('.visual-caption span:not(.caption-dot)');if(cap)cap.textContent=body.toUpperCase();}catch(e){}
+ drawCraft();updateTelemetry();
+}
+function drawCraft(){
+ try{
+  const svg=document.querySelector('#runOrbit');const pts=trajPts();
+  if(!svg||!runFit||!pts.length){curAlt=null;curSpeed=null;return;}
+  const span=trajSpan();const t=Math.max(0,Math.min(span,animT));
+  let i=0;while(i<pts.length-1){const nt=+pts[i+1].elapsed_secs;if(!(nt<=t))break;i++;}
+  const a=pts[i],b=pts[Math.min(i+1,pts.length-1)];
+  const t0=(+a.elapsed_secs)||0,t1=(+b.elapsed_secs)||0;
+  const f=(t1>t0)?Math.max(0,Math.min(1,(t-t0)/(t1-t0))):0;
+  const x=(+a.x_km||0)+(((+b.x_km||0)-(+a.x_km||0))*f),y=(+a.y_km||0)+(((+b.y_km||0)-(+a.y_km||0))*f);
+  const vx=(+a.vx_km_s||0)+(((+b.vx_km_s||0)-(+a.vx_km_s||0))*f),vy=(+a.vy_km_s||0)+(((+b.vy_km_s||0)-(+a.vy_km_s||0))*f),vz=(+a.vz_km_s||0)+(((+b.vz_km_s||0)-(+a.vz_km_s||0))*f);
+  const craft=svg.querySelector('#runCraft');
+  if(craft){craft.setAttribute('cx',(runFit.cx+x*runFit.scale).toFixed(1));craft.setAttribute('cy',(runFit.cy-y*runFit.scale).toFixed(1));}
+  const r=Math.sqrt(x*x+y*y);
+  curAlt=(r>0&&runBodyR>0)?(r-runBodyR):(pointAltKm(a,runBodyR));
+  const v=Math.sqrt(vx*vx+vy*vy+vz*vz);curSpeed=isFinite(v)?v:pointSpeedKms(a);
+  const cap=document.querySelector('#captionSpeed');if(cap)cap.textContent=(curSpeed==null?'n/a':fmt1(curSpeed)+' km/s');
+  const st=document.querySelector('#simTime');if(st)st.textContent=fmtSecs(t);
+  try{const fr=span>0?(t/span):0;const tf=document.querySelector('#timelineFill'),tk=document.querySelector('#timelineKnob');if(tf)tf.style.width=Math.max(fr*100,2)+'%';if(tk)tk.style.left=Math.max(fr*100,2)+'%';}catch(e2){}
+ }catch(e){}
+}
+function syncPlayBtn(){try{const b=document.querySelector('#playBtn');if(b){b.textContent=animPlaying?'Ⅱ':'▶';b.setAttribute('aria-label',animPlaying?'Pause trajectory replay':'Play trajectory replay');}const rt=document.querySelector('#runText');if(rt)rt.textContent=animPlaying?'RUNNING':'PAUSED';}catch(e){}}
 function runScenarioMock(prompt){const lower=String(prompt).toLowerCase();let velocity='35.0',period='224.7',shape='Near circular',outcome='Stable orbit';if(/twice|double|faster|speed up|2x/.test(lower)){velocity='70.0';period='112.4';shape='Highly elliptical';outcome='Wider orbit';if(/escape|escape velocity/.test(lower))outcome='Escape trajectory'}else if(/slower|half|reduce|less speed/.test(lower)){velocity='17.5';period='449.4';shape='Tight spiral';outcome='Falls toward Sun'}else if(/gravity|stronger|increase/.test(lower)){velocity='35.0';period='158.9';shape='Tighter orbit';outcome='Stable, closer orbit'}else if(/earth|compare/.test(lower)){velocity='29.8';period='365.3';shape='Near circular';outcome='Earth: stable orbit'}lastScenario={prompt,velocity,period,shape,outcome};renderTab('Chat');completeObjective();panel.scrollTop=panel.scrollHeight;showToast('Scenario simulated · Results updated')}
 document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>renderTab(btn.dataset.tab)));
 function setLiveStatusSafe(t){try{setLiveStatus(t);}catch(e){}}
-function updateTelemetry(){if(!lastResult)return;const pts=trajPts(),els=expEls(),sp=meanSpeed(pts),rr=meanRadiusKm(pts);const cells=document.querySelectorAll('.telemetry-row > div');if(cells&&cells.length>=4){const set=(i,txt)=>{const b=cells[i].querySelector('b');if(b)b.textContent=txt;};set(0,'n/a');set(1,rr===null?'n/a':(rr/1e6).toFixed(1)+' million km');set(2,sp===null?'n/a':sp.toFixed(1)+' km/s');set(3,els.eccentricity==null?'n/a':String(els.eccentricity));}const cap=document.querySelector('#captionSpeed');if(cap)cap.textContent=(sp===null?'n/a':sp.toFixed(1)+' km/s');}
+function updateTelemetry(){
+ if(!lastResult)return;
+ const cap=document.querySelector('#captionSpeed');
+ if(cap)cap.textContent=(curSpeed==null?'n/a':fmt1(curSpeed)+' km/s');
+ const st=document.querySelector('#simTime');
+ if(st)st.textContent=(trajPts().length?fmtSecs(animT):'n/a');
+ const sm=document.querySelector('#speedMetric');
+ if(sm)sm.innerHTML=(curSpeed==null?'n/a':fmt1(curSpeed)+' <span>km/s</span>');
+}
 function runScenario(prompt){
   if(useMock()){runScenarioMock(prompt);return;}
   if(runActive)return;
   const text=String(prompt==null?'':prompt).trim();
   if(!text){showToast('Please describe a mission first');const pi=document.querySelector('#promptInput');if(pi)pi.focus();return;}
+  const prevResult=lastResult;
   lastResult=null;lastError=null;runEvents=[];runActive=true;runFinished=false;runSlow=false;
+  runFit=null;runStats=null;animT=0;animPlaying=false;curAlt=null;curSpeed=null;syncPlayBtn();clearRunDrawing();
   setBusy(true);setLiveStatusSafe('SIMULATION RUNNING');
   clearTimeout(runTimer);
   runTimer=setTimeout(()=>{if(!runFinished){runSlow=true;if(activeTab==='Chat')renderTab('Chat');showToast('Still simulating - this can take a few minutes');}},60000);
   const adapter=globalThis.OrbitLabAdapter;
-  const finish=ok=>{runFinished=true;runActive=false;clearTimeout(runTimer);setBusy(false);setLiveStatusSafe(ok?'SIMULATION COMPLETE':'RUN FAILED');renderTab(activeTab);updateTelemetry();refreshExportState();if(ok)completeObjective();};
+  const finish=ok=>{runFinished=true;runActive=false;clearTimeout(runTimer);setBusy(false);setLiveStatusSafe(ok?'SIMULATION COMPLETE':'RUN FAILED');if(ok&&lastResult)renderRealRun();renderTab(activeTab);updateTelemetry();refreshExportState();if(ok)completeObjective();};
   adapter.runExperiment(text,ev=>{runEvents.push(ev);if(activeTab==='Chat')renderTab('Chat');})
-    .then(out=>{if(out&&out.error){lastError=out.error;showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
+    .then(out=>{if(out&&out.error){lastError=out.error;if(prevResult){lastResult=prevResult;renderRealRun();}showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
     .catch(()=>{const base=(adapter&&adapter.getApiBase)?adapter.getApiBase():'the configured address';lastError={stage:'unknown',code:'cannot_reach',message:'Cannot reach the server at '+base+' - is the backend running?'};showToast('Cannot reach the server');finish(false);});
 }
 document.querySelector('#chatForm').addEventListener('submit',e=>{e.preventDefault();const prompt=promptInput.value.trim();if(!prompt){runScenario('');return;}runScenario(prompt);promptInput.value=''});
 document.querySelectorAll('.suggestion').forEach(btn=>btn.addEventListener('click',()=>runScenario(btn.dataset.prompt)));
-document.querySelector('#playBtn').addEventListener('click',()=>{setRunning(!running);if(running)completeObjective()});
-document.querySelector('#resetBtn').addEventListener('click',()=>{simDay=0;renderTime();setRunning(false);showToast('Simulation reset')});
+document.querySelector('#playBtn').addEventListener('click',()=>{if(lastResult&&trajPts().length){animPlaying=!animPlaying;if(animPlaying)completeObjective();syncPlayBtn();showToast(animPlaying?'Trajectory replay running':'Trajectory replay paused');return;}setRunning(!running);if(running)completeObjective()});
+document.querySelector('#resetBtn').addEventListener('click',()=>{if(lastResult&&trajPts().length){animT=0;animPlaying=false;syncPlayBtn();drawCraft();updateTelemetry();showToast('Trajectory replay reset');return;}simDay=0;renderTime();setRunning(false);showToast('Simulation reset')});
 document.querySelector('#speedBtn').addEventListener('click',()=>{speedIndex=(speedIndex+1)%speedOptions.length;speed=speedOptions[speedIndex];document.querySelector('#speedBtn').innerHTML=`${speed}× <span>⌄</span>`;showToast(`Simulation speed: ${speed}×`)});
-document.querySelector('#timelineKnob').parentElement.addEventListener('click',e=>{const rect=e.currentTarget.getBoundingClientRect();simDay=Math.max(0,Math.min(224.7,((e.clientX-rect.left)/rect.width)*224.7));renderTime()});
+document.querySelector('#timelineKnob').parentElement.addEventListener('click',e=>{const rect=e.currentTarget.getBoundingClientRect();const f=Math.max(0,Math.min(1,((e.clientX-rect.left)/rect.width)));if(lastResult&&trajSpan()>0){animT=f*trajSpan();drawCraft();updateTelemetry();return;}simDay=Math.max(0,Math.min(224.7,f*224.7));renderTime()});
 document.querySelectorAll('.view-toggle button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.toggle('active',b===btn));document.querySelector('#orbitVisual').classList.toggle('view-3d',btn.dataset.view==='3D')}));
 function exportSampleCSV(){const rows=[['day','venus_distance_au','orbital_speed_km_s','simulation_speed','mission'],...Array.from({length:16},(_,i)=>{const day=+(i*224.7/15).toFixed(2);const distance=+(0.723*(1-0.007*Math.cos(i/15*Math.PI*2))).toFixed(4);return[day,distance,35.0,speed,'Venus in Motion']})];const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='orbitlab-venus-telemetry.csv';a.click();URL.revokeObjectURL(url);showToast('Telemetry CSV downloaded')}
 function downloadCsv(text,name){try{const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);}catch(e){}}
@@ -150,5 +355,9 @@ panel.addEventListener('click',e=>{const sug=e.target.closest('.suggestion');if(
 document.querySelector('#exportBtn').setAttribute('title','Download sample Venus orbit telemetry as CSV');
 const globalDate=document.querySelector('#globalDate');
 function renderGlobalDate(){const now=new Date();globalDate.children[0].textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);globalDate.children[1].textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(now);}
+try{(function(){const tl=document.querySelector('.card-topline');if(!tl||tl.querySelector('#runBadge'))return;const b=document.createElement('span');b.id='runBadge';b.className='result-badge';b.textContent='SAMPLE';const tg=tl.querySelector('.view-toggle');if(tg)tg.before(b);else tl.appendChild(b);})();}catch(e){}
+try{(function(){let q='';try{q=(typeof location!=='undefined'&&location.search)||'';}catch(e){}if(/(^|[?&])fixture=1(&|$)/.test(q)&&!useMock()){fetch('/sample-result').then(r=>{if(!r.ok)throw new Error('sample '+r.status);return r.json();}).then(job=>{const res=job&&(job.result||job);if(!res||!res.experiment)throw new Error('bad sample');lastResult=res;runFinished=true;setLiveStatusSafe('SIMULATION COMPLETE');renderRealRun();renderTab(activeTab);updateTelemetry();refreshExportState();showToast('Sample run loaded - Results updated');}).catch(err=>{showToast('Could not load sample result');});}})();}catch(e){}
 renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 setInterval(renderGlobalDate,60000);
+/* Node test hook (browser ignores this: no `module` global). */
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,escapeHtml:escapeHtml,liveBody:liveBody,__test__:{setResult:function(r){lastResult=r;},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;}}};}}catch(e){}
