@@ -7,10 +7,27 @@ from orbitlab_backend.clients.extractor_client import normalize_extracted, OpenA
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 
 
+class _FakeClient:
+    """Stand-in for a model client: returns a RAW model-shaped dict."""
+
+    def __init__(self, raw):
+        import copy
+        self._raw = copy.deepcopy(raw)
+
+    async def extract(self, user_text):
+        import copy
+        return copy.deepcopy(self._raw)
+
+    def extract_sync(self, user_text):
+        import copy
+        return copy.deepcopy(self._raw)
+
+
 def _convert(raw, text="dummy probe text"):
-    ext = FrontStepExtractor()
-    normed = normalize_extracted(raw)
-    return ext.deterministic_convert(normed, text)
+    """Same pipeline path as production: process() -> normalize -> convert."""
+    import asyncio
+    from orbitlab_backend.frontstep.extractor import FrontStepExtractor
+    return asyncio.run(FrontStepExtractor(extractor_client=_FakeClient(raw)).process(text))
 
 
 # ---------- Step 6a: observed tolerant shapes ----------
@@ -229,3 +246,28 @@ async def test_prompt_mode_sends_no_response_format(monkeypatch):
     finally:
         ec.httpx.AsyncClient = real
     assert "response_format" not in seen["body"]
+
+
+def test_null_duration_needs_clarification():
+    res = _convert({"centralBody": "Earth", "dryMassKg": 500,
+                    "orbit": {"quantity": "altitude", "valueKm": 400, "eccentricity": None},
+                    "duration": None}, "test")
+    assert res.status == "needs_clarification"
+    assert res.missing == ["duration"]
+
+
+def test_unknown_keys_ignored():
+    res = _convert({"centralBody": "Earth", "dryMassKg": 500, "spacecraft": "X",
+                    "orbit": {"quantity": "altitude", "valueKm": 400, "eccentricity": None, "extra": 1},
+                    "duration": {"value": 2, "unit": "hours"}, "mystery": [1, 2]}, "test")
+    assert res.status == "ok"
+    assert res.data["semiMajorAxisKm"] == pytest.approx(6778.136, abs=1e-3)
+
+
+def test_process_sync_path_uses_normalizer():
+    from orbitlab_backend.frontstep.extractor import FrontStepExtractor
+    raw = {"centralBody": "Earth", "dryMassKg": 500,
+           "orbit": {"kind": "circular", "values": 400}, "duration": 1}
+    res = FrontStepExtractor(extractor_client=_FakeClient(raw)).process_sync("test")
+    assert res.status == "needs_clarification"
+    assert res.missing == ["orbit.quantity (is it an altitude or a radius?)"]
