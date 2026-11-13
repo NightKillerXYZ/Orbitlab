@@ -52,6 +52,8 @@ if HAS_PYDANTIC_SETTINGS:
         ORBITLAB_CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000")
         # If true, use mock interpreter instead of real HTTP
         ORBITLAB_USE_MOCK_INTERPRETER: bool = Field(default=False)
+        # Demo mode: deterministic local extractor/interpreter, real GMAT. No keys needed.
+        ORBITLAB_DEMO_MODE: bool = Field(default=False)
         ORBITLAB_RUN_DIR: Optional[str] = Field(default=None)
         ORBITLAB_RUN_RETENTION_HOURS: float = Field(default=24.0)
 
@@ -87,6 +89,7 @@ else:
             self.GMAT_TIMEOUT_S = float(os.getenv("GMAT_TIMEOUT_S", "30"))
             self.ORBITLAB_CORS_ORIGINS = os.getenv("ORBITLAB_CORS_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000")
             self.ORBITLAB_USE_MOCK_INTERPRETER = os.getenv("ORBITLAB_USE_MOCK_INTERPRETER", "false").lower() in ("1", "true", "yes")
+            self.ORBITLAB_DEMO_MODE = os.getenv("ORBITLAB_DEMO_MODE", "false").lower() in ("1", "true", "yes")
             self.ORBITLAB_RUN_DIR = os.getenv("ORBITLAB_RUN_DIR")
             self.ORBITLAB_RUN_RETENTION_HOURS = float(os.getenv("ORBITLAB_RUN_RETENTION_HOURS", "24"))
 
