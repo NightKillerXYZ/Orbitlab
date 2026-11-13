@@ -169,7 +169,9 @@ def test_api_carries_code_and_explanation(monkeypatch):
     import httpx
     from fastapi.testclient import TestClient
     from orbitlab_backend import config as cfg
-    from orbitlab_backend.api.app import create_app
+    from orbitlab_backend.api import app as app_module
+    from orbitlab_backend.api.store import JobStore
+    from orbitlab_backend.orchestrator.pipeline import Pipeline as RealPipeline
 
     async def handler(request):
         raise httpx.ReadTimeout("cold model")
@@ -179,8 +181,12 @@ def test_api_carries_code_and_explanation(monkeypatch):
     monkeypatch.setenv("EXTRACTOR_API_KEY", "k")
     monkeypatch.setenv("EXTRACTOR_MODEL", "m")
     cfg.reset_settings()
+    # Other e2e modules rebind app_module.Pipeline globally; pin the real one.
+    orig_pipeline, orig_store = app_module.Pipeline, app_module.store
+    app_module.Pipeline = RealPipeline
+    app_module.store = JobStore()
     try:
-        client = TestClient(create_app())
+        client = TestClient(app_module.create_app())
         jid = client.post("/api/experiments", json={"text": UNREADABLE}).json()["id"]
         job = None
         for _ in range(40):
@@ -195,4 +201,6 @@ def test_api_carries_code_and_explanation(monkeypatch):
         assert "starting up or unreachable" in err["message"]
         assert "starting up or unreachable" in (err.get("explanation") or "")
     finally:
+        app_module.Pipeline = orig_pipeline
+        app_module.store = orig_store
         cfg.reset_settings()
