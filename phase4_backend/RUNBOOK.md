@@ -102,3 +102,15 @@ The physics explainer shares the extractor's endpoint variables
   automatic summary and `explanationSource` is `"fallback"` (vs `"model"`).
   The explain stage never fails a run that simulated fine; the UI shows
   "Automatic summary (the AI explainer was unavailable)" in that case.
+
+## Extractor cold starts
+
+The first request after the extractor endpoint went idle can take ~90 s
+(cold start). `EXTRACTOR_TIMEOUT_S` (default 150) controls the wait for both
+the extractor and the explainer; the extractor retries once on timeout or
+HTTP 502/503/504. If the model is still unreachable after the retry and the
+regex fallback cannot read the request either, the run fails at `extract`
+with code `extractor_unavailable` ("...starting up or unreachable. Please try
+again in a minute.") instead of a misleading `needs_clarification`.
+To keep containers warm on Modal, set `min_containers=1` on the extractor
+(and explainer) app and remove it after the demo to stop the charge.
