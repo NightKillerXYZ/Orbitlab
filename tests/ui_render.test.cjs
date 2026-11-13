@@ -165,6 +165,9 @@ add(doc.root, 'button', { id: 'resultsExport' });
 const gdate = add(doc.root, 'time', { id: 'globalDate' });
 add(gdate, 'span', { text: '' });
 add(gdate, 'span', { text: '' });
+const topbar = add(doc.root, 'div', { cls: 'topbar' });
+const topActions = add(topbar, 'div', { cls: 'top-actions' });
+add(topActions, 'span', { cls: 'live-status', text: 'SIMULATION READY' });
 
 global.document = doc;
 global.window = global;
@@ -262,6 +265,22 @@ test('failure banner shows the extractor_unavailable message and explanation', (
   assert.ok(chat.includes('Please try again in a minute'), 'explanation shown');
   assert.ok(!chat.includes('More information needed'), 'not the clarification banner');
   app.__test__.setError(null);
+});
+
+test('demo badge shows only in demo mode', () => {
+  app.updateDemoBadge(false);
+  assert.equal(doc.querySelectorAll('#demoBadge').length, 0);
+  app.updateDemoBadge(true);
+  const badge = doc.querySelector('#demoBadge');
+  assert.ok(badge, 'badge added');
+  assert.equal(badge.textContent, 'DEMO MODE');
+  app.updateDemoBadge(false);
+  assert.equal(doc.querySelectorAll('#demoBadge').length, 0, 'badge removed');
+  app.__test__.setResult(Object.assign({}, fix.result, { mode: 'demo' }));
+  app.updateDemoBadge(!!(app.__test__.getResult() && app.__test__.getResult().mode === 'demo'));
+  assert.equal(doc.querySelectorAll('#demoBadge').length, 1, 'result mode drives badge');
+  app.updateDemoBadge(false);
+  app.__test__.setResult(null);
 });
 
 test('clearRunDrawing removes the overlay for a fresh draw', () => {
