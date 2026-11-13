@@ -183,27 +183,48 @@ class FrontStepExtractor:
         prompt=build_canonical_prompt(normalized)
         return ExtractionResult("ok", data=normalized, prompt=prompt, extracted=extracted)
     async def process(self, user_text: str) -> ExtractionResult:
+        extractor_failed=False
         if self.extractor_client:
             try:
                 extracted=await self.extractor_client.extract(user_text)
                 _log_extractor_ok(extracted)
             except Exception as e:
                 _log_extractor_failure(e)
+                extractor_failed=self._is_real_extractor()
                 extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
         from orbitlab_backend.clients.extractor_client import normalize_extracted
-        return self.deterministic_convert(normalize_extracted(extracted), user_text)
+        res=self.deterministic_convert(normalize_extracted(extracted), user_text)
+        if extractor_failed and res.status!="ok":
+            from orbitlab_backend.orchestrator.errors import ExtractorUnavailable
+            raise ExtractorUnavailable()
+        return res
     def process_sync(self, user_text: str) -> ExtractionResult:
+        extractor_failed=False
         if self.extractor_client and hasattr(self.extractor_client, 'extract_sync'):
             try:
                 extracted=self.extractor_client.extract_sync(user_text)
                 _log_extractor_ok(extracted)
             except Exception as e:
                 _log_extractor_failure(e)
+                extractor_failed=self._is_real_extractor()
                 extracted=self._fallback_extract(user_text)
         else: extracted=self._fallback_extract(user_text)
         from orbitlab_backend.clients.extractor_client import normalize_extracted
-        return self.deterministic_convert(normalize_extracted(extracted), user_text)
+        res=self.deterministic_convert(normalize_extracted(extracted), user_text)
+        if extractor_failed and res.status!="ok":
+            from orbitlab_backend.orchestrator.errors import ExtractorUnavailable
+            raise ExtractorUnavailable()
+        return res
+    @staticmethod
+    def _is_real_extractor_static(client) -> bool:
+        try:
+            from orbitlab_backend.clients.extractor_client import OpenAIExtractor
+            return isinstance(client, OpenAIExtractor)
+        except Exception:
+            return False
+    def _is_real_extractor(self) -> bool:
+        return self._is_real_extractor_static(self.extractor_client)
     def _fallback_extract(self, text: str) -> Dict[str,Any]:
         low=text.lower(); body=None
         for b in ["Earth","Moon","Mars","Mercury","Venus","Jupiter","Sun"]:

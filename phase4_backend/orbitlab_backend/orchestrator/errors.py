@@ -21,6 +21,11 @@ class ExtractionError(PipelineError):
     def __init__(self, msg, details=None):
         super().__init__(stage="extract", code="extraction_error", message=msg, details=details)
 
+class ExtractorUnavailable(PipelineError):
+    def __init__(self, msg=None, details=None):
+        message = msg or "The language model that reads your request is starting up or unreachable. Please try again in a minute."
+        super().__init__(stage="extract", code="extractor_unavailable", message=message, details={"explanation": message, **(details or {})})
+
 class InterpreterUnavailable(PipelineError):
     def __init__(self, msg, details=None):
         super().__init__(stage="interpret", code="interpreter_unavailable", message=msg, details=details)

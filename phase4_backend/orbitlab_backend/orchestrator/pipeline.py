@@ -72,6 +72,10 @@ class Pipeline:
                 raise NeedsClarification(ex_res.missing, details={"explanation": "This request needs more details before it can run: missing %s. Add them and send again." % (ex_res.missing,)})
             await emit(PipelineEvent("stage_completed","extract",dur,"Extraction completed"))
             sent_data=ex_res.data; prompt=ex_res.prompt
+        except ExtractorUnavailable as e:
+            dur=time.perf_counter()-t0
+            await emit(PipelineEvent("stage_failed","extract",dur,f"Extractor unavailable: {e}"))
+            raise
         except PipelineError:
             raise
         except Exception as e:
