@@ -103,6 +103,30 @@ The physics explainer shares the extractor's endpoint variables
   The explain stage never fails a run that simulated fine; the UI shows
   "Automatic summary (the AI explainer was unavailable)" in that case.
 
+## Demo mode
+
+No language models, no keys: the deterministic local extractor, interpreter
+and fallback explainer run the full pipeline with real GMAT. Set
+`ORBITLAB_DEMO_MODE=true` (default `false`; also listed in `.env.example`).
+`GET /api/health` then returns `{"status":"ok","mode":"demo"}` and results
+carry `"mode":"demo"` (the UI shows a "DEMO MODE" badge).
+
+```powershell
+$env:ORBITLAB_DEMO_MODE='true'
+$env:PYTHONPATH='phase4_backend'
+$env:GMAT_PATH='<path-to>\GmatConsole.exe'
+python -m uvicorn orbitlab_backend.api.app:app --port 8000
+```
+
+```bash
+export ORBITLAB_DEMO_MODE=true
+export GMAT_PATH='<path-to>/GmatConsole'
+PYTHONPATH=phase4_backend python -m uvicorn orbitlab_backend.api.app:app --port 8000
+```
+
+No `EXTRACTOR_*` / `ORBITLAB_MODEL_*` variables are needed in demo mode.
+Unset the flag (or restart without it) to return to model mode.
+
 ## Extractor cold starts
 
 The first request after the extractor endpoint went idle can take ~90 s
