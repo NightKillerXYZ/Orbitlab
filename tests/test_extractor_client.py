@@ -85,7 +85,7 @@ async def test_timeout_raises(monkeypatch):
     try:
         with pytest.raises(Exception):
             await client.extract("anything")
-        assert calls[0] == 1
+        assert calls[0] == 2
     finally:
         ec.httpx.AsyncClient = real
 
