@@ -248,6 +248,22 @@ test('tabs carry real data with units', () => {
   assert.ok(phys.includes('circular orbit around Earth'));
 });
 
+test('failure banner shows the extractor_unavailable message and explanation', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({
+    stage: 'extract',
+    code: 'extractor_unavailable',
+    message: 'The language model that reads your request is starting up or unreachable. Please try again in a minute.',
+    details: { explanation: 'The language model that reads your request is starting up or unreachable. Please try again in a minute.' },
+  });
+  const chat = app.liveBody('Chat');
+  assert.ok(chat.includes('Run failed at extract'), 'failure banner stage');
+  assert.ok(chat.includes('starting up or unreachable'), 'failure message shown');
+  assert.ok(chat.includes('Please try again in a minute'), 'explanation shown');
+  assert.ok(!chat.includes('More information needed'), 'not the clarification banner');
+  app.__test__.setError(null);
+});
+
 test('clearRunDrawing removes the overlay for a fresh draw', () => {
   app.__test__.setResult(fix.result);
   app.__test__.render();
