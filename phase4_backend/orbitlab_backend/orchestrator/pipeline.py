@@ -26,12 +26,13 @@ class Pipeline:
     def __init__(self, extractor=None, interpreter=None, explainer=None, gmat_runner=None, cache=None):
         if extractor is None:
             try:
-                from orbitlab_backend.clients.extractor_client import get_extractor, OpenAIExtractor
+                from orbitlab_backend.clients.extractor_client import get_extractor, MockExtractor
                 _cli = get_extractor()
-                # Only a real configured endpoint changes behavior; without env
-                # vars get_extractor() yields an empty MockExtractor, so keep the
-                # deterministic regex fallback as the default.
-                extractor = FrontStepExtractor(extractor_client=_cli if isinstance(_cli, OpenAIExtractor) else None)
+                # Only a real configured endpoint (or demo mode) changes
+                # behavior; without env vars get_extractor() yields an empty
+                # MockExtractor, so keep the deterministic regex fallback as
+                # the default.
+                extractor = FrontStepExtractor(extractor_client=None if isinstance(_cli, MockExtractor) else _cli)
             except Exception:
                 extractor = FrontStepExtractor()
         self.extractor=extractor
@@ -366,6 +367,12 @@ class Pipeline:
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready (automatic summary)"))
         result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"explanationSource": explanation_source,"prompt": prompt}
+        try:
+            from orbitlab_backend.frontstep.demo import demo_enabled
+            if demo_enabled():
+                result["mode"]="demo"
+        except Exception:
+            pass
         if cache_key:
             # Failed infrastructure runs raise, so only successes reach here.
             self.cache[cache_key]=result

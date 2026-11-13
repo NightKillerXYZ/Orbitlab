@@ -42,6 +42,12 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     async def health():
+        try:
+            from orbitlab_backend.frontstep.demo import demo_enabled
+            if demo_enabled():
+                return {"status":"ok","mode":"demo"}
+        except Exception:
+            pass
         return {"status":"ok"}
 
     @app.post("/api/experiments")
