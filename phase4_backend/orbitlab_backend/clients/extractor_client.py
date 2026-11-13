@@ -435,6 +435,12 @@ class OpenAIExtractor(IFieldExtractor):
 def get_extractor() -> IFieldExtractor:
     s=get_settings()
     try:
+        from orbitlab_backend.frontstep.demo import demo_enabled, DemoExtractor
+        if demo_enabled():
+            return DemoExtractor()
+    except Exception:
+        pass
+    try:
         return OpenAIExtractor()
     except RuntimeError:
         return MockExtractor()

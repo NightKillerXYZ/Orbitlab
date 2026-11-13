@@ -155,6 +155,9 @@ class HttpInterpreterClient(IExperimentInterpreter):
         raise InterpreterUnavailableError("Interpreter unavailable")
 def get_interpreter_client():
     s=get_settings()
+    if getattr(s, "ORBITLAB_DEMO_MODE", False):
+        from orbitlab_backend.frontstep.demo import DemoInterpreter
+        return DemoInterpreter()
     if s.ORBITLAB_USE_MOCK_INTERPRETER:
         return MockInterpreterClient()
     try:

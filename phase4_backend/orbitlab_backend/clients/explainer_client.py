@@ -367,6 +367,8 @@ class OpenAIExplainer(IPhysicsExplainer):
 
 def get_explainer()->IPhysicsExplainer:
     s=get_settings()
+    if getattr(s, "ORBITLAB_DEMO_MODE", False):
+        return MockExplainer()
     try:
         return OpenAIExplainer()
     except RuntimeError:
