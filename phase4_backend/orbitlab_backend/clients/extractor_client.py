@@ -1,6 +1,8 @@
 """IFieldExtractor interface with mock and OpenAI-compatible impl."""
 from __future__ import annotations
+import asyncio
 import json
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from orbitlab_backend.config import get_settings
@@ -8,7 +10,10 @@ try:
     import httpx
     HAS_HTTPX=True
 except ImportError:
+    httpx=None  # type: ignore
     HAS_HTTPX=False
+
+logger = logging.getLogger("orbitlab.extractor")
 
 SYSTEM_PROMPT = """You are an OrbitLab experiment extractor. Read the user's orbital-simulation request and output ONE JSON object matching the schema below. Copy numbers exactly as written. Never compute, never convert units except by writing the unit field. Use null for anything the user did not state. Never invent values.
 
@@ -356,7 +361,10 @@ class OpenAIExtractor(IFieldExtractor):
         self.api_key=api_key or s.EXTRACTOR_API_KEY
         self.model=model or s.EXTRACTOR_MODEL
         self.json_mode=(json_mode if json_mode is not None else getattr(s, "EXTRACTOR_JSON_MODE", "prompt") or "prompt").strip().lower()
-        self.timeout_s=float(timeout_s) if timeout_s is not None else 30.0
+        try:
+            self.timeout_s=float(timeout_s) if timeout_s is not None else float(getattr(s, "EXTRACTOR_TIMEOUT_S", 150.0) or 150.0)
+        except (TypeError, ValueError):
+            self.timeout_s=150.0
         self.last_raw = None
         self.last_parsed = None
         if not self.base_url or not str(self.base_url).strip():
@@ -376,14 +384,44 @@ class OpenAIExtractor(IFieldExtractor):
             payload["response_format"]={"type":"json_object"}
         elif self.json_mode=="json_schema":
             payload["response_format"]={"type":"json_schema","json_schema":{"name":"orbitlab_extraction","strict":True,"schema":EXTRACTOR_JSON_SCHEMA}}
-        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
-            r=await client.post(url, json=payload, headers=headers)
-            r.raise_for_status()
-            data=r.json()
-            content=data["choices"][0]["message"]["content"]
-            if not isinstance(content, str):
-                raise ValueError("Unexpected content type: %s" % type(content))
-            return content
+        retried=False
+        # Retry ONCE, only on timeouts or HTTP 502/503/504 (1 s pause, same
+        # timeout). All other errors propagate immediately. Final failure logs
+        # ONE warning line (exception class + first 200 chars; never headers
+        # or keys), with "after retry" when a retry happened.
+        try:
+            for attempt in range(2):
+                try:
+                    async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+                        r=await client.post(url, json=payload, headers=headers)
+                    if r.status_code in (502,503,504):
+                        last=RuntimeError(f"extractor returned HTTP {r.status_code}")
+                        if attempt==0:
+                            retried=True
+                            await asyncio.sleep(1)
+                            continue
+                        break
+                    r.raise_for_status()
+                    data=r.json()
+                    content=data["choices"][0]["message"]["content"]
+                    if not isinstance(content, str):
+                        raise ValueError("Unexpected content type: %s" % type(content))
+                    return content
+                except httpx.TimeoutException as e:
+                    last=e
+                    if attempt==0:
+                        retried=True
+                        await asyncio.sleep(1)
+                        continue
+                    break
+                except Exception:
+                    raise
+            if last is None:
+                last=RuntimeError("extractor unavailable")
+            raise last
+        except Exception as e:
+            logger.warning("extractor request failed%s: %s: %s", " after retry" if retried else "", type(e).__name__, str(e)[:200])
+            raise
     async def extract(self, user_text: str) -> Dict[str, Any]:
         raw = await self.extract_raw(user_text)
         self.last_raw = raw
