@@ -136,6 +136,29 @@ test('formatters use thousands separators and never invent', () => {
   assert.equal(app.fmtSecs(45), 'T+00:00:45');
 });
 
+test('apoapsis eccentricity from radii', () => {
+  // Hohmann 7000 -> 9000 km circular start around Earth (R = 6378.137 km):
+  // ra = 9000, rp = 7000  =>  e = (9000-7000)/(9000+7000) = 2000/16000 = 0.125
+  const e = app.apoapsisEccentricity(2621.863, 621.863, 6378.137);
+  assert.ok(Math.abs(e - 0.125) < 1e-9, 'got ' + e);
+  assert.equal(app.apoapsisEccentricity(400, 400, 6378.137), 0);
+  assert.equal(app.apoapsisEccentricity(null, 100, 6378.137), null);
+  assert.equal(app.apoapsisEccentricity(100, 100, null), null);
+  assert.equal(app.apoapsisEccentricity(-9000, 100, 6378.137), null);
+});
+
+test('inclination from r x v samples', () => {
+  // r=(7000,0,0) km, v=(0,1.7320508,1) km/s:
+  // h = r x v = (0,-7000,12124.3556), |h| = 14000,
+  // cos i = 12124.3556/14000 = 0.8660254  =>  i = 30 deg
+  const pts = [{ x_km: 7000, y_km: 0, z_km: 0, vx_km_s: 0, vy_km_s: 1.7320508, vz_km_s: 1 }];
+  const i = app.telemetryInclinationDeg(pts);
+  assert.ok(Math.abs(i - 30) < 0.01, 'got ' + i);
+  assert.equal(app.telemetryInclinationDeg([]), null);
+  assert.equal(app.telemetryInclinationDeg([{ x_km: 1 }]), null);
+  assert.equal(app.telemetryInclinationDeg([{ x_km: 0, y_km: 0, z_km: 0, vx_km_s: 0, vy_km_s: 0, vz_km_s: 0 }]), null);
+});
+
 test('sma falls back to telemetry mean for Cartesian echoes', () => {
   const exp = { initialOrbit: { type: 'Keplerian', elements: { semiMajorAxisKm: 6778.136 } } };
   assert.equal(app.smaForDisplay(exp, []), 6778.136);

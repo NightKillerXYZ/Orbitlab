@@ -204,7 +204,10 @@ test('renderRealRun draws the Earth run and clears sample decor', () => {
   assert.ok(trow.innerHTML.includes('1.54 hours'), 'period cell: ' + trow.innerHTML);
   assert.ok(trow.innerHTML.includes('PERIAPSIS ALT'), 'periapsis cell');
   assert.ok(/3\d\d\.\d km/.test(trow.innerHTML), 'periapsis value ~380s km');
-  assert.ok(trow.innerHTML.includes('0.00'), 'inclination cell');
+  assert.ok(trow.innerHTML.includes('ECCENTRICITY'), 'eccentricity cell');
+  assert.ok(trow.innerHTML.includes('0.001'), 'stats-derived e=0.001: ' + trow.innerHTML);
+  assert.ok(trow.innerHTML.includes('INCLINATION'), 'inclination cell');
+  assert.ok(trow.innerHTML.includes('0.01'), 'telemetry-derived i=0.01: ' + trow.innerHTML);
 });
 
 test('drawCraft moves the marker and updates live numbers', () => {
