@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from orbitlab_backend.config import get_settings
@@ -73,6 +73,24 @@ def create_app() -> FastAPI:
         if job.error:
             resp["error"]=job.error
         return resp
+
+    @app.get("/api/experiments/{jid}/script", include_in_schema=False)
+    async def experiment_script(jid: str):
+        # jid is validated against known runs; the filesystem path is built
+        # only from the server-side job id plus a fixed file name, so client
+        # text can never become a path.
+        if not isinstance(jid, str) or not jid or "/" in jid or "\\" in jid or ".." in jid:
+            raise HTTPException(404, "script not found")
+        job=store.get(jid)
+        if not job:
+            raise HTTPException(404, "script not found")
+        try:
+            _path=get_run_root(getattr(settings, 'ORBITLAB_RUN_DIR', None)) / job.id / "experiment.script"
+        except Exception:
+            raise HTTPException(404, "script not found")
+        if not _path.is_file():
+            raise HTTPException(404, "script not found")
+        return PlainTextResponse(_path.read_text(encoding="utf-8"), media_type="text/plain; charset=utf-8")
 
     @app.websocket("/ws/experiments/{jid}")
     async def ws_experiments(ws: WebSocket, jid: str):
@@ -177,6 +195,17 @@ async def run_job(jid: str, text: str):
 
     try:
         result=await pipeline.run(text, event_cb=cb)
+        try:
+            _script=result.get("script") if isinstance(result, dict) else None
+            if isinstance(_script, str) and _script:
+                _s=get_settings()
+                _root=get_run_root(getattr(_s, 'ORBITLAB_RUN_DIR', None))
+                _jobdir=_root / jid
+                _jobdir.mkdir(parents=True, exist_ok=True)
+                (_jobdir / "experiment.script").write_text(_script, encoding="utf-8")
+                result["hasScript"]=True
+        except Exception:
+            logger.warning(f"job {jid} script persist skipped")
         store.update(jid, status="success", result=result)
         store.add_event(jid, {"type":"final","result":result})
     except NeedsClarification as e:
