@@ -366,7 +366,7 @@ class Pipeline:
             explanation_source="fallback"
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready (automatic summary)"))
-        result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"explanationSource": explanation_source,"prompt": prompt}
+        result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"explanationSource": explanation_source,"prompt": prompt,"script": script}
         try:
             from orbitlab_backend.frontstep.demo import demo_enabled
             if demo_enabled():
