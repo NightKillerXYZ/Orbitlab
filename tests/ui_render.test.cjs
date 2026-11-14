@@ -177,6 +177,7 @@ global.location = { search: '', href: 'http://localhost/', origin: 'http://local
 global.setInterval = () => 0;
 global.clearTimeout = () => {};
 global.setTimeout = () => 0;
+global.Plots = require('../UIUX/OrbitlabUI Main/plots.js');
 
 const app = require('../UIUX/OrbitlabUI Main/app.js');
 const fix = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'real_result_earth.json'), 'utf-8'));
@@ -248,12 +249,38 @@ test('tabs carry real data with units', () => {
   const graph = app.liveBody('Graph');
   assert.ok(graph.includes('ALTITUDE vs TIME'));
   assert.ok(graph.includes('SPEED vs TIME'));
-  assert.equal((graph.match(/<svg/g) || []).length, 2);
+  assert.ok(graph.includes('SEMI-MAJOR AXIS vs TIME (computed from telemetry)'));
+  assert.ok(graph.includes('ECCENTRICITY vs TIME (computed from telemetry)'));
+  assert.equal((graph.match(/<svg/g) || []).length, 4);
+  assert.ok(graph.includes('elapsed time'), 'time axis labelled');
   const und = app.liveBody('Understanding');
   assert.ok(und.includes('ElapsedDays 1'));
   assert.ok(und.includes('4x4'));
   const phys = app.liveBody('Physics');
   assert.ok(phys.includes('circular orbit around Earth'));
+  app.__test__.setResult(fix.result);
+});
+
+test('Results shows a Hohmann maneuver table with analytic estimates', () => {
+  const hoh = JSON.parse(JSON.stringify(fix.result));
+  hoh.experiment.initialOrbit.elements.semiMajorAxisKm = 7000;
+  hoh.experiment.initialOrbit.elements.eccentricity = 0;
+  hoh.experiment.maneuvers = [{
+    id: 'M1', type: 'TargetedHohmannTransfer',
+    trigger: { condition: 'AtPeriapsis' },
+    targetObjectives: { targetOrbitRadiusKm: 9000 },
+  }];
+  app.__test__.setResult(hoh);
+  const html = app.liveBody('Results');
+  assert.ok(html.includes('MANEUVERS'), 'maneuver section');
+  assert.ok(html.includes('M1'), 'maneuver id');
+  assert.ok(html.includes('Hohmann transfer'), 'maneuver type');
+  assert.ok(html.includes('AtPeriapsis'), 'trigger');
+  assert.ok(html.includes('9,000.0 km'), 'target radius');
+  assert.ok(html.includes('analytic estimate'), 'estimates labelled analytic');
+  assert.ok(/Delta-v 1 \(analytic estimate\)/.test(html), 'dv1 row');
+  assert.ok(!html.includes('from simulation'), 'no sim values in this data');
+  app.__test__.setResult(fix.result);
 });
 
 test('failure banner shows the extractor_unavailable message and explanation', () => {
