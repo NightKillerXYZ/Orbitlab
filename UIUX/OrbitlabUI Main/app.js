@@ -305,19 +305,30 @@ function liveBody(tab){
     const rStats=trajectoryStats(trajPts(),rInfo.radiusKm);
     const finTxt=(rStats.finalAlt==null&&rStats.finalSpeed==null)?'n/a':('alt '+fmtKm(rStats.finalAlt,1)+' km, '+fmt1(rStats.finalSpeed)+' km/s');
     const warnList=(warns.length?warns.slice(0,8).map(w=>'<div class="result-note"><span>!</span> '+escapeHtml(String(w))+'</div>').join('')+(warns.length>8?'<div class="result-note">+'+(warns.length-8)+' more</div>':''):'<div class="result-note">No warnings.</div>');
-    return '<div class="result-header"><div class="assistant-avatar">i</div><div><div class="section-kicker">LATEST RUN</div><h3>Run complete</h3></div><span class="result-badge">LIVE DATA</span></div><p class="panel-copy">'+escapeHtml('Backend run finished. Telemetry points: '+trajPts().length+'.')+'</p><div class="result-metrics"><div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(smaForDisplay(lastResult.experiment,trajPts()),rInfo.muKm3S2))+'</b></div><div><small>ORBIT SHAPE</small><b>'+escapeHtml(els.eccentricity==null?'n/a':(+els.eccentricity<0.05?'Near circular':'Elliptical'))+'</b></div><div><small>ORBITAL SPEED</small><b>'+escapeHtml(sp===null?'n/a':fmt1(sp))+' <i>km/s</i></b></div><div><small>OUTCOME</small><b class="outcome">Stable orbit - run complete</b></div></div><div class="result-metrics"><div><small>MIN ALTITUDE</small><b>'+escapeHtml(rStats.minAlt==null?'n/a':fmtKm(rStats.minAlt,1)+' km')+'</b></div><div><small>MAX ALTITUDE</small><b>'+escapeHtml(rStats.maxAlt==null?'n/a':fmtKm(rStats.maxAlt,1)+' km')+'</b></div><div><small>MIN SPEED</small><b>'+escapeHtml(rStats.minSpeed==null?'n/a':fmt1(rStats.minSpeed)+' km/s')+'</b></div><div><small>MAX SPEED</small><b>'+escapeHtml(rStats.maxSpeed==null?'n/a':fmt1(rStats.maxSpeed)+' km/s')+'</b></div></div><div class="result-note"><span>o </span>'+escapeHtml('Final state: '+finTxt+'. Telemetry points: '+trajPts().length+'.')+'</div>'+warnList+'<button class="panel-cta" id="resultsExport">Export run data <span>></span></button>';
+    return '<div class="result-header"><div class="assistant-avatar">i</div><div><div class="section-kicker">LATEST RUN</div><h3>Run complete</h3></div><span class="result-badge">LIVE DATA</span></div><p class="panel-copy">'+escapeHtml('Backend run finished. Telemetry points: '+trajPts().length+'.')+'</p><div class="result-metrics"><div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(smaForDisplay(lastResult.experiment,trajPts()),rInfo.muKm3S2))+'</b></div><div><small>ORBIT SHAPE</small><b>'+escapeHtml(els.eccentricity==null?'n/a':(+els.eccentricity<0.05?'Near circular':'Elliptical'))+'</b></div><div><small>ORBITAL SPEED</small><b>'+escapeHtml(sp===null?'n/a':fmt1(sp))+' <i>km/s</i></b></div><div><small>OUTCOME</small><b class="outcome">Stable orbit - run complete</b></div></div><div class="result-metrics"><div><small>MIN ALTITUDE</small><b>'+escapeHtml(rStats.minAlt==null?'n/a':fmtKm(rStats.minAlt,1)+' km')+'</b></div><div><small>MAX ALTITUDE</small><b>'+escapeHtml(rStats.maxAlt==null?'n/a':fmtKm(rStats.maxAlt,1)+' km')+'</b></div><div><small>MIN SPEED</small><b>'+escapeHtml(rStats.minSpeed==null?'n/a':fmt1(rStats.minSpeed)+' km/s')+'</b></div><div><small>MAX SPEED</small><b>'+escapeHtml(rStats.maxSpeed==null?'n/a':fmt1(rStats.maxSpeed)+' km/s')+'</b></div></div><div class="result-note"><span>o </span>'+escapeHtml('Final state: '+finTxt+'. Telemetry points: '+trajPts().length+'.')+'</div>'+warnList+maneuverSummary()+'<button class="panel-cta" id="resultsExport">Export run data <span>></span></button>';
   }
   if(tab==='Graph'){
     if(!lastResult)return null;
     const pts=trajPts();
     if(!pts.length)return '<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Run trajectory</h3><p>no trajectory returned</p></div><div class="result-note">The backend returned no telemetry points.</div>';
     const gBody=runBodyName(),gInfo=bodyInfo(gBody);
+    const hasPlots=(typeof Plots!=='undefined'&&Plots&&Plots.lineChartSVG);
+    const gMu=hasPlots?Plots.bodyMu(gBody):null;
     const gT=pts.map(p=>+p.elapsed_secs||0);
     const gA=pts.map(p=>pointAltKm(p,gInfo.radiusKm));
     const gS=pts.map(p=>pointSpeedKms(p));
+    const gSma=[],gEcc=[];
+    for(const p of pts){
+      let el=null;
+      try{if(hasPlots&&gMu!=null)el=Plots.orbitalElementsKm(+p.x_km,+p.y_km,+p.z_km,+p.vx_km_s,+p.vy_km_s,+p.vz_km_s,gMu);}catch(e){el=null;}
+      gSma.push(el?el.a:null);gEcc.push(el?el.e:null);
+    }
+    const chart=(title,unit,vals,color)=>hasPlots?Plots.lineChartSVG({title:title,unit:unit,times:gT,vals:vals,color:color}):'<div class="result-note">No data.</div>';
     return '<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Run trajectory · '+escapeHtml(gBody)+'</h3><p>'+escapeHtml(pts.length+' telemetry points')+'</p></div>'
-     +'<div class="section-kicker">ALTITUDE vs TIME</div>'+chartSVG('Altitude vs time','km',gT,gA,'#6faaff')
-     +'<div class="section-kicker">SPEED vs TIME</div>'+chartSVG('Speed vs time','km/s',gT,gS,'#58d4b0')
+     +'<div class="section-kicker">ALTITUDE vs TIME</div>'+chart('Altitude vs time','km',gA,'var(--blue,#6faaff)')
+     +'<div class="section-kicker">SPEED vs TIME</div>'+chart('Speed vs time','km/s',gS,'var(--cyan,#58d4b0)')
+     +'<div class="section-kicker">SEMI-MAJOR AXIS vs TIME (computed from telemetry)</div>'+chart('Semi-major axis vs time','km',gSma,'var(--gold,#ffbd70)')
+     +'<div class="section-kicker">ECCENTRICITY vs TIME (computed from telemetry)</div>'+chart('Eccentricity vs time','',gEcc,'var(--green,#58d4b0)')
      +'<div class="chart-legend"><i></i> Live run <b>'+escapeHtml(pts.length+' points')+'</b></div>';
   }
   if(tab==='Physics'){
@@ -340,6 +351,77 @@ function clearRunDrawing(){try{if(view3d){view3d.dispose();}view3d=null;}catch(e
 function stopText(prop){try{const s=prop&&prop.stopCondition;if(!s||!s.type)return 'n/a';return s.value==null?String(s.type):(s.type+' '+s.value);}catch(e){return 'n/a';}}
 function manText(mans){try{if(!Array.isArray(mans)||!mans.length)return 'none';return mans.slice(0,4).map(m=>{const t=m&&(m.type||'maneuver');const tr=m&&(m.trigger&&m.trigger.condition);let d=String(t);if(tr)d+=' @'+tr;try{const tgt=m&&(m.targetObjectives&&m.targetObjectives.targetOrbitRadiusKm);if(tgt!=null)d+=' to '+fmtKm(tgt,1)+' km';}catch(e){}try{const v=m&&(m.burnVector&&m.burnVector.deltaVVectorKmS);if(Array.isArray(v)&&v.length===3){const n=v.map(Number);if(n.every(isFinite))d+=' dv '+Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]).toFixed(3)+' km/s';}}catch(e){}return d;}).join('; ');}catch(e){return 'n/a';}}
 function forceText(fm){try{if(!fm||typeof fm!=='object')return 'n/a';const p=[];if(fm.gravityDegree!=null&&fm.gravityOrder!=null)p.push(fm.gravityDegree+'x'+fm.gravityOrder);if(Array.isArray(fm.pointMasses)&&fm.pointMasses.length)p.push(fm.pointMasses.slice(0,4).join('+'));try{if(fm.atmosphericDrag)p.push('drag '+(fm.atmosphericDrag.enabled?'on':'off'));}catch(e){}if(fm.solarRadiationPressure===true)p.push('SRP on');else if(fm.solarRadiationPressure===false)p.push('SRP off');return p.length?p.join(', '):'n/a';}catch(e){return 'n/a';}}
+/* Executed delta-v actually present in telemetry points (none in current
+   data): shown labelled "from simulation". Null otherwise. */
+function simDeltaVText(pts){try{
+ if(!Array.isArray(pts))return null;
+ for(const p of pts){
+  if(!p||typeof p!=='object')continue;
+  for(const k of Object.keys(p)){
+   if(!/delta|_dv\b|burn/i.test(k))continue;
+   const v=p[k];
+   if(typeof v==='number'&&isFinite(v))return fmt1(Math.abs(v))+' km/s';
+   if(Array.isArray(v)&&v.length===3){
+    const n=v.map(Number);
+    if(n.every(isFinite))return fmt1(Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]))+' km/s';
+   }
+  }
+ }
+ return null;
+}catch(e){return null;}}
+/* Maneuver summary table rows from experiment.maneuvers (validator-shaped,
+   tolerant of converter-shaped entries). Hohmann rows add analytic estimates
+   (task: from initial orbit radius, target radius, mu); r1 is the initial
+   semi-major axis when the start is near-circular, else the initial
+   periapsis radius. Omitted entirely when there are no maneuvers. */
+function maneuverSummary(){
+ try{
+  const mans=(lastResult&&lastResult.experiment&&lastResult.experiment.maneuvers)||[];
+  if(!mans.length)return '';
+  const els=expEls();
+  const a0=numOrNull(els.semiMajorAxisKm),e0=numOrNull(els.eccentricity);
+  const r1=(a0!=null)?((e0!=null&&e0>=0.05)?a0*(1-e0):a0):null;
+  const mu=(typeof Plots!=='undefined'&&Plots&&Plots.bodyMu)?Plots.bodyMu(runBodyName()):null;
+  const simDv=simDeltaVText(trajPts());
+  let h='<div class="section-kicker">MANEUVERS</div>';
+  mans.forEach(function(m,idx){
+   const id=(m&&m.id)||('M'+(idx+1));
+   const rawType=m&&(m.type||'');
+   const isHoh=(rawType==='TargetedHohmannTransfer'||rawType==='Hohmann');
+   const isImp=(rawType==='ImpulsiveBurn');
+   const typeTxt=isHoh?'Hohmann transfer':(isImp?'Impulsive burn':String(rawType||'maneuver'));
+   const trig=(m&&(m.trigger&&m.trigger.condition))||(m&&(m.trigger||m.apsis))||'n/a';
+   let tgt=null;
+   try{tgt=(m&&(m.targetObjectives&&m.targetObjectives.targetOrbitRadiusKm));}catch(e){}
+   if(tgt==null){try{tgt=m.targetOrbitRadiusKm;}catch(e){}}
+   tgt=numOrNull(tgt);
+   let dv=null;
+   try{
+    const bv=m&&(m.burnVector&&m.burnVector.deltaVVectorKmS);
+    if(Array.isArray(bv)&&bv.length===3){const n=bv.map(Number);if(n.every(isFinite))dv=Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);}
+   }catch(e){}
+   if(dv==null){try{const d=m&&m.deltaV;if(Array.isArray(d)&&d.length===3){const n=d.map(Number);if(n.every(isFinite))dv=Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);}}catch(e){}}
+   let rows='<div><span>Type</span><b>'+escapeHtml(typeTxt)+'</b></div>';
+   rows+='<div><span>Trigger</span><b>'+escapeHtml(String(trig))+'</b></div>';
+   if(tgt!=null)rows+='<div><span>Target radius</span><b>'+escapeHtml(fmtKm(tgt,1)+' km')+'</b></div>';
+   if(dv!=null)rows+='<div><span>Delta-v magnitude</span><b>'+escapeHtml(fmt1(dv)+' km/s')+'</b></div>';
+   if(isHoh&&r1!=null&&tgt!=null&&mu!=null&&typeof Plots!=='undefined'&&Plots&&Plots.hohmannEstimate){
+    let est=null;
+    try{est=Plots.hohmannEstimate(r1,tgt,mu);}catch(e){est=null;}
+    if(est){
+     rows+='<div><span>Delta-v 1 (analytic estimate)</span><b>'+escapeHtml(fmt1(est.dv1)+' km/s')+'</b></div>';
+     rows+='<div><span>Delta-v 2 (analytic estimate)</span><b>'+escapeHtml(fmt1(est.dv2)+' km/s')+'</b></div>';
+     rows+='<div><span>Total delta-v (analytic estimate)</span><b>'+escapeHtml(fmt1(est.total)+' km/s')+'</b></div>';
+     const th=est.transferSecs/3600;
+     rows+='<div><span>Transfer time (analytic estimate)</span><b>'+escapeHtml(th>=48?(th/24).toFixed(2)+' days':th.toFixed(2)+' h')+'</b></div>';
+    }
+   }
+   if(isHoh&&simDv!=null)rows+='<div><span>Delta-v (from simulation)</span><b>'+escapeHtml(simDv)+'</b></div>';
+   h+='<div class="result-note"><span>o </span>'+escapeHtml(id)+'</div><div class="physics-values">'+rows+'</div>';
+  });
+  return h;
+ }catch(e){return '';}
+}
 function runBodyName(){try{const b=lastResult&&lastResult.experiment&&lastResult.experiment.centralBody;return (typeof b==='string'&&b)?b:'unknown';}catch(e){return 'unknown';}}
 function applyRunTitles(body){
  try{document.querySelectorAll('.breadcrumbs b').forEach(el=>{el.textContent=body+' orbit';});}catch(e){}
