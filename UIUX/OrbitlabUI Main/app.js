@@ -56,6 +56,34 @@ function trajectoryStats(pts,bodyRadiusKm){
  }catch(e){}
  return out;
 }
+/* Eccentricity from apoapsis/periapsis ALTITUDES: e=(ra-rp)/(ra+rp) with
+   ra/rp the radii (altitude + body radius). Null when inputs are missing. */
+function apoapsisEccentricity(maxAltKm,minAltKm,bodyRadiusKm){try{
+ var ma=+maxAltKm,mi=+minAltKm,R=+bodyRadiusKm;
+ if(!isFinite(ma)||!isFinite(mi)||!(R>0))return null;
+ var ra=ma+R,rp=mi+R;
+ if(!(ra+rp>0)||ra<0||rp<0)return null;
+ var e=(ra-rp)/(ra+rp);
+ return (isFinite(e)&&e>=0)?e:null;
+}catch(e){return null;}}
+/* Mean inclination from samples: angle between (r x v) and the Z axis.
+   Null when no sample has a finite position and velocity. */
+function telemetryInclinationDeg(pts){try{
+ if(!Array.isArray(pts)||!pts.length)return null;
+ var s=0,n=0;
+ for(var k=0;k<pts.length;k++){
+  var p=pts[k];
+  var rx=+p.x_km,ry=+p.y_km,rz=+p.z_km,vx=+p.vx_km_s,vy=+p.vy_km_s,vz=+p.vz_km_s;
+  if(!isFinite(rx)||!isFinite(ry)||!isFinite(rz)||!isFinite(vx)||!isFinite(vy)||!isFinite(vz))continue;
+  var hx=ry*vz-rz*vy,hy=rz*vx-rx*vz,hz=rx*vy-ry*vx;
+  var h=Math.sqrt(hx*hx+hy*hy+hz*hz);
+  if(!(h>0))continue;
+  var c=hz/h;if(c>1)c=1;if(c<-1)c=-1;
+  s+=Math.acos(c)*180/Math.PI;n++;
+ }
+ if(!n)return null;
+ return s/n;
+}catch(e){return null;}}
 /* ---- End of pure helpers. Everything below touches the DOM. ---- */
 const tabs = ['Chat','Understanding','Results','Graph','Physics'];
 const panel = document.querySelector('#panelContent');
@@ -74,6 +102,44 @@ const BACKEND_STAGES=['extract','interpret','verify','validate','compile','simul
 let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null;
 /* Live trajectory replay state (real runs only). */
 let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=null,curSpeed=null;function trajSpan(){try{if(runStats&&runStats.spanSecs!=null)return runStats.spanSecs;}catch(e){}const s=teleSpan(trajPts());return (s==null?0:s);}
+/* 3D view state. The 2D/3D toggle only flips the view-3d class; view3dOn
+   mirrors it so playback code can drive the 3D scene. */
+let view3d=null,view3dOn=false;
+function is3D(){try{const v=document.querySelector('#orbitVisual');return !!(v&&v.classList&&v.classList.contains('view-3d'));}catch(e){return view3dOn;}}
+function ensureView3D(){
+ try{
+  if(!lastResult||!trajPts().length)return Promise.resolve(null);
+  if(typeof createView3D!=='function')return Promise.resolve(null);
+  if(!view3d){
+   try{view3d=createView3D(document.querySelector('#orbitVisual'));}catch(e){view3d=null;return Promise.resolve(null);}
+  }
+  try{view3d.setResult(trajPts(),runBodyName());}catch(e){}
+  try{const svg=document.querySelector('#runOrbit');if(svg)svg.style.display='none';}catch(e){}
+  const h=view3d;
+  return Promise.resolve(h&&h.ready?h.ready:null).then(function(){return h;}).catch(function(){return h;});
+ }catch(e){return Promise.resolve(null);}
+}
+function showView3D(){
+ ensureView3D().then(function(h){
+  try{
+   if(!h||!is3D())return;
+   const c=document.querySelector('#view3dCanvas');if(c)c.style.display='';
+   const svg=document.querySelector('#runOrbit');if(svg)svg.style.display='none';
+   driveView3D();
+  }catch(e){}
+ });
+}
+function hideView3D(){
+ try{const c=document.querySelector('#view3dCanvas');if(c)c.style.display='none';}catch(e){}
+ try{const svg=document.querySelector('#runOrbit');if(svg)svg.style.display='';}catch(e){}
+}
+function driveView3D(){
+ try{
+  if(!view3d||!is3D())return;
+  const span=trajSpan();
+  view3d.setProgress(span>0?(Math.max(0,Math.min(span,animT))/span):0);
+ }catch(e){}
+}
 function fmt1(x){const n=Number(x);return isFinite(n)?n.toFixed(1):'n/a';}
 function trajPts(){try{const ps=lastResult&&lastResult.trajectory&&lastResult.trajectory.points;return Array.isArray(ps)?ps:[];}catch(e){return[];}}
 function meanSpeed(pts){const v=pts.map(p=>{const vx=+p.vx_km_s||0,vy=+p.vy_km_s||0,vz=+p.vz_km_s||0;return Math.sqrt(vx*vx+vy*vy+vz*vz);}).filter(Number.isFinite);if(!v.length)return null;return v.reduce((a,b)=>a+b,0)/v.length;}
@@ -189,7 +255,7 @@ function liveBody(tab){
 /* ---- Real-run rendering (main card, drawing, replay, titles). ---- */
 function visEl(){try{return document.querySelector('#orbitVisual');}catch(e){return null;}}
 function sampleDecoHidden(hide){const vis=visEl();if(!vis)return;vis.querySelectorAll('.orbit-path,.orbit-label,.distance-line,.distance-label,.earth-planet,.mars-planet,.sun-glow,.sun-core,.orbit-axis,.scale-label,#venusPlanet').forEach(el=>{try{el.style.display=hide?'none':'';}catch(e){}});}
-function clearRunDrawing(){try{const vis=visEl();if(!vis)return;['runOrbit','noTraj'].forEach(id=>{const el=vis.querySelector('#'+id);if(el)el.remove();});}catch(e){}}
+function clearRunDrawing(){try{if(view3d){view3d.dispose();}view3d=null;}catch(e){view3d=null;}try{const vis=visEl();if(!vis)return;['runOrbit','noTraj'].forEach(id=>{const el=vis.querySelector('#'+id);if(el)el.remove();});}catch(e){}}
 function stopText(prop){try{const s=prop&&prop.stopCondition;if(!s||!s.type)return 'n/a';return s.value==null?String(s.type):(s.type+' '+s.value);}catch(e){return 'n/a';}}
 function manText(mans){try{if(!Array.isArray(mans)||!mans.length)return 'none';return mans.slice(0,4).map(m=>{const t=m&&(m.type||'maneuver');const tr=m&&(m.trigger&&m.trigger.condition);let d=String(t);if(tr)d+=' @'+tr;try{const tgt=m&&(m.targetObjectives&&m.targetObjectives.targetOrbitRadiusKm);if(tgt!=null)d+=' to '+fmtKm(tgt,1)+' km';}catch(e){}try{const v=m&&(m.burnVector&&m.burnVector.deltaVVectorKmS);if(Array.isArray(v)&&v.length===3){const n=v.map(Number);if(n.every(isFinite))d+=' dv '+Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]).toFixed(3)+' km/s';}}catch(e){}return d;}).join('; ');}catch(e){return 'n/a';}}
 function forceText(fm){try{if(!fm||typeof fm!=='object')return 'n/a';const p=[];if(fm.gravityDegree!=null&&fm.gravityOrder!=null)p.push(fm.gravityDegree+'x'+fm.gravityOrder);if(Array.isArray(fm.pointMasses)&&fm.pointMasses.length)p.push(fm.pointMasses.slice(0,4).join('+'));try{if(fm.atmosphericDrag)p.push('drag '+(fm.atmosphericDrag.enabled?'on':'off'));}catch(e){}if(fm.solarRadiationPressure===true)p.push('SRP on');else if(fm.solarRadiationPressure===false)p.push('SRP off');return p.length?p.join(', '):'n/a';}catch(e){return 'n/a';}}
@@ -209,8 +275,10 @@ function renderStatCards(body,info,els,stats,aKm){
  try{
   const row=document.querySelector('.telemetry-row');if(!row)return;
   row.style.gridTemplateColumns='repeat(5,1fr)';
-  const ecc=(els&&els.eccentricity==null)?'n/a':String(els?els.eccentricity:'n/a');
-  const inc=(els&&els.inclinationDeg==null)?'n/a':(Number(els.inclinationDeg).toFixed(2)+'°');
+  const eTele=apoapsisEccentricity(stats.maxAlt,stats.minAlt,info.radiusKm);
+  const ecc=(eTele==null)?((els&&els.eccentricity==null)?'n/a':String(els.eccentricity)):eTele.toFixed(3);
+  const teleInc=telemetryInclinationDeg(trajPts());
+  const inc=(teleInc==null)?((els&&els.inclinationDeg==null)?'n/a':('initial '+Number(els.inclinationDeg).toFixed(2)+'°')):(teleInc.toFixed(2)+'°');
   row.innerHTML='<div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(aKm,info.muKm3S2))+'</b></div><div><small>PERIAPSIS ALT</small><b>'+escapeHtml(stats.minAlt==null?'n/a':fmtKm(stats.minAlt,1)+' km')+'</b></div><div><small>APOAPSIS ALT</small><b>'+escapeHtml(stats.maxAlt==null?'n/a':fmtKm(stats.maxAlt,1)+' km')+'</b></div><div><small>ECCENTRICITY</small><b>'+escapeHtml(ecc)+'</b></div><div><small>INCLINATION</small><b>'+escapeHtml(inc)+'</b></div>';
  }catch(e){}
 }
@@ -258,6 +326,7 @@ function renderRealRun(){
  }
  try{const cap=document.querySelector('.visual-caption span:not(.caption-dot)');if(cap)cap.textContent=body.toUpperCase();}catch(e){}
  drawCraft();updateTelemetry();
+ if(is3D())showView3D();
 }
 function drawCraft(){
  try{
@@ -278,6 +347,7 @@ function drawCraft(){
   const cap=document.querySelector('#captionSpeed');if(cap)cap.textContent=(curSpeed==null?'n/a':fmt1(curSpeed)+' km/s');
   const st=document.querySelector('#simTime');if(st)st.textContent=fmtSecs(t);
   try{const fr=span>0?(t/span):0;const tf=document.querySelector('#timelineFill'),tk=document.querySelector('#timelineKnob');if(tf)tf.style.width=Math.max(fr*100,2)+'%';if(tk)tk.style.left=Math.max(fr*100,2)+'%';}catch(e2){}
+  try{if(view3d&&is3D())driveView3D();}catch(e2b){}
  }catch(e){}
 }
 function syncPlayBtn(){try{const b=document.querySelector('#playBtn');if(b){b.textContent=animPlaying?'Ⅱ':'▶';b.setAttribute('aria-label',animPlaying?'Pause trajectory replay':'Play trajectory replay');}const rt=document.querySelector('#runText');if(rt)rt.textContent=animPlaying?'RUNNING':'PAUSED';}catch(e){}}
@@ -316,7 +386,7 @@ document.querySelector('#playBtn').addEventListener('click',()=>{if(lastResult&&
 document.querySelector('#resetBtn').addEventListener('click',()=>{if(lastResult&&trajPts().length){animT=0;animPlaying=false;syncPlayBtn();drawCraft();updateTelemetry();showToast('Trajectory replay reset');return;}simDay=0;renderTime();setRunning(false);showToast('Simulation reset')});
 document.querySelector('#speedBtn').addEventListener('click',()=>{speedIndex=(speedIndex+1)%speedOptions.length;speed=speedOptions[speedIndex];document.querySelector('#speedBtn').innerHTML=`${speed}× <span>⌄</span>`;showToast(`Simulation speed: ${speed}×`)});
 document.querySelector('#timelineKnob').parentElement.addEventListener('click',e=>{const rect=e.currentTarget.getBoundingClientRect();const f=Math.max(0,Math.min(1,((e.clientX-rect.left)/rect.width)));if(lastResult&&trajSpan()>0){animT=f*trajSpan();drawCraft();updateTelemetry();return;}simDay=Math.max(0,Math.min(224.7,f*224.7));renderTime()});
-document.querySelectorAll('.view-toggle button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.toggle('active',b===btn));document.querySelector('#orbitVisual').classList.toggle('view-3d',btn.dataset.view==='3D')}));
+document.querySelectorAll('.view-toggle button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.toggle('active',b===btn));const on3d=btn.dataset.view==='3D';view3dOn=on3d;document.querySelector('#orbitVisual').classList.toggle('view-3d',on3d);if(on3d){showView3D();}else{hideView3D();}}));
 function exportSampleCSV(){const rows=[['day','venus_distance_au','orbital_speed_km_s','simulation_speed','mission'],...Array.from({length:16},(_,i)=>{const day=+(i*224.7/15).toFixed(2);const distance=+(0.723*(1-0.007*Math.cos(i/15*Math.PI*2))).toFixed(4);return[day,distance,35.0,speed,'Venus in Motion']})];const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='orbitlab-venus-telemetry.csv';a.click();URL.revokeObjectURL(url);showToast('Telemetry CSV downloaded')}
 function downloadCsv(text,name){try{const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);}catch(e){}}
 function exportCSV(){
@@ -362,4 +432,4 @@ renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge}};}}catch(e){}
