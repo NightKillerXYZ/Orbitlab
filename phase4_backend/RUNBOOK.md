@@ -138,3 +138,18 @@ with code `extractor_unavailable` ("...starting up or unreachable. Please try
 again in a minute.") instead of a misleading `needs_clarification`.
 To keep containers warm on Modal, set `min_containers=1` on the extractor
 (and explainer) app and remove it after the demo to stop the charge.
+
+## 3D view and textures
+
+The "Orbital view" panel has a 2D/3D toggle. 3D renders the real trajectory
+with three.js r160 vendored at `UIUX/OrbitlabUI Main/vendor/three/`
+(`three.module.min.js` + `OrbitControls.js` + LICENSE, no CDN at run time).
+Planet surfaces come from `UIUX/OrbitlabUI Main/assets/textures/<body>.jpg`
+(lowercase body name; see `assets/textures/README.md` for the file list,
+equirectangular requirement and credits) when the files exist, otherwise a
+plain shaded sphere in the body's colour is used and nothing throws.
+Drag to orbit, scroll to zoom (OrbitControls with damping); play/pause/speed
+and the time slider drive the 3D marker exactly like the 2D one. Re-vendoring:
+`npm install three@0.160.0` in a temp folder outside the repo, copy the two
+files above, fix the `from 'three'` import in `OrbitControls.js` to
+`./three.module.min.js`, copy the LICENSE. Never commit `node_modules`.
