@@ -225,9 +225,9 @@
         function pollOnce(onMissing) {
           getExperiment(created.id).then(function (job) {
             if (job && job.status === 'success' && job.result) {
-              done({ events: events, result: job.result });
+              done({ events: events, result: job.result, id: created.id });
             } else if (job && job.status === 'failed' && job.error) {
-              done({ events: events, error: job.error });
+              done({ events: events, error: job.error, id: created.id });
             } else if (onMissing) {
               onMissing();
             }
@@ -238,8 +238,8 @@
             events.push(ev);
             try { if (onEvent) onEvent(ev); } catch (e) {}
             if (ev && ev.type === 'final') {
-              if (ev.error) done({ events: events, error: ev.error });
-              else done({ events: events, result: ev.result });
+              if (ev.error) done({ events: events, error: ev.error, id: created.id });
+              else done({ events: events, result: ev.result, id: created.id });
             }
           }, function () {
             // WS failed: poll immediately, then keep polling below.
