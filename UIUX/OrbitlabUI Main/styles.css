@@ -47,6 +47,8 @@ html,body{height:100%;overflow:hidden}
 .understanding-card{display:flex;align-items:center;gap:10px;margin:0 0 11px}
 .understanding-card h3,.result-header h3{font:600 14px 'Space Grotesk',sans-serif;margin:4px 0 0;color:#e9f1ff}
 .panel-copy{font:400 10px/1.65 'DM Sans',sans-serif;color:#aab8d0;margin:10px 0 13px}
+.json-block{font:400 9px/1.6 ui-monospace,Consolas,monospace;color:#c4d3ea;background:rgba(9,16,30,.85);border:1px solid rgba(113,151,207,.16);border-radius:7px;padding:9px 10px;margin:6px 0 4px;max-height:220px;overflow:auto;white-space:pre}
+.app-footer{font:600 7px/1.5 'DM Sans',sans-serif;letter-spacing:.08em;color:#697a9d;text-align:center;padding:8px 12px;border-top:1px solid var(--line)}
 .mini-diagram{height:118px;position:relative;overflow:hidden;margin:12px 0 14px;border:1px solid rgba(113,151,207,.14);border-radius:8px;background:radial-gradient(ellipse at center,rgba(27,57,96,.42),rgba(10,18,32,.94) 72%)}
 .mini-orbit{position:absolute;left:50%;top:50%;width:148px;height:70px;transform:translate(-50%,-50%) rotate(-18deg);border:1px solid rgba(97,157,240,.65);border-radius:50%;box-shadow:0 0 14px rgba(70,131,220,.1)}
 .mini-sun{position:absolute;left:50%;top:50%;width:20px;height:20px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff1c9,#ffad54 55%,#d86540);box-shadow:0 0 18px 5px rgba(255,164,76,.25);z-index:1}

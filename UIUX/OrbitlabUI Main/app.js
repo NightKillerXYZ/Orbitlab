@@ -85,7 +85,7 @@ function telemetryInclinationDeg(pts){try{
  return s/n;
 }catch(e){return null;}}
 /* ---- End of pure helpers. Everything below touches the DOM. ---- */
-const tabs = ['Chat','Understanding','Results','Graph','Physics'];
+const tabs = ['Chat','Understanding','Results','Graph','Physics','Details'];
 const panel = document.querySelector('#panelContent');
 const composer = document.querySelector('#chatComposer');
 const promptInput = document.querySelector('#promptInput');
@@ -99,7 +99,7 @@ let toastTimer;
    mock mode (?mock=1) or when the adapter script is absent. */
 function useMock(){try{if(typeof globalThis!=='undefined'&&globalThis.OrbitLabAdapter&&globalThis.OrbitLabAdapter.isMockMode)return globalThis.OrbitLabAdapter.isMockMode();}catch(e){}return true;}
 const BACKEND_STAGES=['extract','interpret','verify','validate','compile','simulate','parse','explain'];
-let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null;
+let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null,lastJobId=null,lastScript=null;
 /* Live trajectory replay state (real runs only). */
 let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=null,curSpeed=null;function trajSpan(){try{if(runStats&&runStats.spanSecs!=null)return runStats.spanSecs;}catch(e){}const s=teleSpan(trajPts());return (s==null?0:s);}
 /* 3D view state. The 2D/3D toggle only flips the view-3d class; view3dOn
@@ -153,6 +153,58 @@ function stageCard(){const st=stageStates();const done=BACKEND_STAGES.filter(k=>
 function setBusy(on){const inp=document.querySelector('#promptInput');const btn=document.querySelector('#chatForm .send-btn');[inp,btn].forEach(el=>{if(el){try{el.disabled=!!on;}catch(e){}}});}
 function setLiveStatus(text){const el=document.querySelector('.live-status');if(el)el.innerHTML='<i></i> '+escapeHtml(text);}
 function updateDemoBadge(show){try{let bar=null;try{bar=document.querySelector('.topbar .top-actions')||document.querySelector('.topbar');}catch(e){}if(!bar)return;let has=false;try{has=document.querySelectorAll('#demoBadge').length>0;}catch(e){}if(show){if(!has){const b=document.createElement('span');b.id='demoBadge';b.className='result-badge';b.textContent='DEMO MODE';let ls=null;try{ls=bar.querySelector('.live-status');}catch(e){}if(ls&&ls.after)ls.after(b);else bar.appendChild(b);}}else if(has){try{const olds=document.querySelectorAll('#demoBadge');for(let i=0;i<olds.length;i++){if(olds[i]&&olds[i].remove)olds[i].remove();}}catch(e){}}}catch(e){}}
+function loadScript(jobId){
+ try{
+  if(!jobId)return Promise.resolve(null);
+  if(lastScript&&lastScript.jobId===jobId)return Promise.resolve(lastScript.text!=null?lastScript.text:null);
+  if(typeof fetch==='undefined')return Promise.resolve(null);
+  return fetch('/api/experiments/'+encodeURIComponent(jobId)+'/script').then(r=>{
+    if(!r.ok)throw new Error('script '+r.status);
+    return r.text();
+  }).then(t=>{
+    lastScript={jobId:jobId,text:t};
+    try{if(activeTab==='Details')renderTab('Details');}catch(e){}
+    return t;
+  }).catch(err=>{
+    lastScript={jobId:jobId,text:null};
+    try{if(activeTab==='Details')renderTab('Details');}catch(e){}
+    return null;
+  });
+ }catch(e){return Promise.resolve(null);}
+}
+function fallbackCopy(text){
+ try{
+  const ta=document.createElement('textarea');
+  ta.value=String(text);ta.setAttribute('readonly','');
+  ta.style.cssText='position:fixed;opacity:0;';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');showToast('Copied to clipboard');}
+  catch(e){showToast('Copy failed — select the text manually.');}
+  ta.remove();
+ }catch(e){try{showToast('Copy failed — select the text manually.');}catch(e2){}}
+}
+function copyToClipboard(text){
+ try{
+  if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
+   return navigator.clipboard.writeText(String(text)).then(function(){showToast('Copied to clipboard');}).catch(function(){fallbackCopy(text);});
+  }
+ }catch(e){}
+ fallbackCopy(text);
+ return Promise.resolve();
+}
+function handleCopyClick(e){
+ try{
+  const b=e&&e.target&&e.target.closest?e.target.closest('[data-copy]'):null;
+  if(!b)return false;
+  const kind=b.getAttribute('data-copy');
+  let txt=null;
+  if(kind==='experiment'&&lastResult&&lastResult.experiment)txt=JSON.stringify(lastResult.experiment,null,2);
+  else if(kind==='script'&&lastScript&&lastScript.text!=null)txt=lastScript.text;
+  if(txt==null){showToast('Nothing to copy yet.');return true;}
+  copyToClipboard(txt);
+  return true;
+ }catch(err){return false;}
+}
 function refreshExportState(){const has=trajPts().length>0;const tip=has?'Download run telemetry as CSV':'Run a scenario first - no telemetry yet';const top=document.querySelector('#exportBtn');if(top){try{top.disabled=!has;}catch(e){}top.setAttribute('title',tip);}const re=document.querySelector('#resultsExport');if(re){try{re.disabled=!has;}catch(e){}re.setAttribute('title',tip);}}
 
 function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2400)}
@@ -171,7 +223,8 @@ const content={
  Understanding:`<div class="understanding-card"><div class="assistant-avatar">✦</div><div><div class="section-kicker">THE BIG IDEA</div><h3>Falling around the Sun</h3></div></div><p class="panel-copy">An orbit is a continuous fall. Venus moves forward while the Sun’s gravity pulls it inward, so its path bends into a loop instead of a straight line.</p><div class="mini-diagram"><div class="mini-sun"></div><div class="mini-orbit"></div><div class="mini-venus"></div><span>forward motion</span><span>gravity</span></div><div class="fact-block"><span class="fact-number">01</span><p><b>Inertia</b><br>Venus keeps moving forward through space.</p></div><div class="fact-block"><span class="fact-number">02</span><p><b>Gravity</b><br>The Sun continuously changes Venus’s direction.</p></div><button class="panel-cta" data-tab="Chat">Ask a follow-up <span>↗</span></button>`,
  Results:`<div class="result-header"><div class="assistant-avatar">✦</div><div><div class="section-kicker">LATEST RUN</div><h3>${lastScenario?'Scenario complete':'Baseline orbit'}</h3></div><span class="result-badge">${lastScenario?'SIMULATED':'READY'}</span></div><p class="panel-copy">${lastScenario?escapeHtml(lastScenario.prompt):'Venus is following a stable, nearly circular orbit around the Sun.'}</p><div class="result-metrics"><div><small>ORBITAL PERIOD</small><b>${lastScenario?lastScenario.period:'224.7'} <i>days</i></b></div><div><small>ORBIT SHAPE</small><b>${lastScenario?lastScenario.shape:'Near circular'}</b></div><div><small>ORBITAL SPEED</small><b>${lastScenario?lastScenario.velocity:'35.0'} <i>km/s</i></b></div><div><small>OUTCOME</small><b class="outcome">${lastScenario?lastScenario.outcome:'Stable orbit'}</b></div></div><div class="result-note"><span>✧</span> ${lastScenario?'Try changing one variable at a time to compare outcomes.':'Run a scenario in Chat to see how changing speed or gravity affects the orbit.'}</div><button class="panel-cta" id="resultsExport">Export run data <span>↧</span></button>`,
  Graph:`<div class="graph-heading"><div class="section-kicker">ORBITAL DATA</div><h3>Distance from the Sun</h3><p>Distance (AU) across one Venus year</p></div><div class="chart-wrap"><div class="chart-y"><span>0.74</span><span>0.72</span><span>0.70</span></div><svg class="chart" viewBox="0 0 260 150" role="img" aria-label="Distance from the Sun remains nearly constant throughout Venus's orbit"><defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#579bff" stop-opacity=".25"/><stop offset="1" stop-color="#579bff" stop-opacity="0"/></linearGradient></defs><path d="M0 29H260M0 75H260M0 121H260" stroke="#25344d" stroke-dasharray="3 4"/><path d="M0 72 C22 63 42 69 62 74 S102 84 124 75 S166 65 188 72 S230 82 260 68 L260 130 L0 130Z" fill="url(#chartFill)"/><path d="M0 72 C22 63 42 69 62 74 S102 84 124 75 S166 65 188 72 S230 82 260 68" fill="none" stroke="#6faaff" stroke-width="2"/><circle cx="124" cy="75" r="3" fill="#d8e9ff"/></svg></div><div class="chart-x"><span>DAY 0</span><span>DAY 56</span><span>DAY 112</span><span>DAY 169</span><span>DAY 225</span></div><div class="chart-legend"><i></i> Venus · Sun distance <b>0.72 AU avg.</b></div><div class="result-note"><span>✧</span> Venus’s low eccentricity means its distance changes very little.</div>`,
- Physics:`<div class="section-kicker">THE PHYSICS</div><h3 class="physics-title">A balance of motion</h3><p class="panel-copy">Gravity supplies the inward acceleration that continually turns Venus’s velocity toward the Sun.</p><div class="equation-card"><small>NEWTON’S LAW OF GRAVITATION</small><div class="equation">F <span>=</span> G <span class="fraction"><i>m₁m₂</i><b>r²</b></span></div><p>Force grows with mass and decreases with the square of distance.</p></div><div class="physics-values"><div><span>Sun’s mass</span><b>1.989 × 10³⁰ kg</b></div><div><span>Mean orbital radius</span><b>108.2 million km</b></div><div><span>Orbital velocity</span><b>35.0 km/s</b></div></div><div class="result-note"><span>✧</span> If Venus moved faster at the same distance, its path would stretch outward.</div>`
+ Physics:`<div class="section-kicker">THE PHYSICS</div><h3 class="physics-title">A balance of motion</h3><p class="panel-copy">Gravity supplies the inward acceleration that continually turns Venus’s velocity toward the Sun.</p><div class="equation-card"><small>NEWTON’S LAW OF GRAVITATION</small><div class="equation">F <span>=</span> G <span class="fraction"><i>m₁m₂</i><b>r²</b></span></div><p>Force grows with mass and decreases with the square of distance.</p></div><div class="physics-values"><div><span>Sun’s mass</span><b>1.989 × 10³⁰ kg</b></div><div><span>Mean orbital radius</span><b>108.2 million km</b></div><div><span>Orbital velocity</span><b>35.0 km/s</b></div></div><div class="result-note"><span>✧</span> If Venus moved faster at the same distance, its path would stretch outward.</div>`,
+  Details:`<div class="result-header"><div class="assistant-avatar">✦</div><div><div class="section-kicker">LATEST RUN</div><h3>Run details</h3></div><span class="result-badge">READY</span></div><p class="panel-copy">Run a scenario in Chat to inspect the generated experiment and GMAT script here.</p>`
 };
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function scenarioMarkup(run){return `<div class="chat-result"><strong>Scenario simulated</strong>Changing Venus’s orbital speed gives a ${run.outcome.toLowerCase()}.<div class="result-chips"><span>${run.velocity} km/s</span><span>${run.period} day period</span></div></div>`}
@@ -206,6 +259,34 @@ function chartSVG(title,unit,times,vals,color){
 }
 function liveBody(tab){
   if(!lastResult&&!lastError&&!runActive)return null;
+  if(tab==='Details'){
+    let h='<div class="result-header"><div class="assistant-avatar">✦</div><div><div class="section-kicker">LATEST RUN</div><h3>Run details</h3></div><span class="result-badge">'+(lastResult?'LIVE DATA':'READY')+'</span></div>';
+    h+='<div class="section-kicker">EXPERIMENT JSON</div>';
+    if(lastResult&&lastResult.experiment){
+      h+='<pre class="json-block">'+escapeHtml(JSON.stringify(lastResult.experiment,null,2))+'</pre>';
+      h+='<button class="panel-cta" data-copy="experiment">Copy experiment JSON <span>⧉</span></button>';
+    }else{
+      h+='<div class="result-note">No experiment yet — run a scenario first.</div>';
+    }
+    h+='<div class="section-kicker">GMAT SCRIPT</div>';
+    if(lastResult&&lastJobId){
+      if(lastScript&&lastScript.jobId===lastJobId){
+        if(lastScript.text!=null){
+          h+='<pre class="json-block">'+escapeHtml(lastScript.text)+'</pre>';
+          h+='<button class="panel-cta" data-copy="script">Copy GMAT script <span>⧉</span></button>';
+        }else{
+          h+='<div class="result-note">No script available for this run.</div>';
+        }
+      }else{
+        h+='<div class="result-note">Loading GMAT script…</div>';
+        loadScript(lastJobId);
+      }
+    }else{
+      h+='<div class="result-note">No script available for this run.</div>';
+    }
+    h+='<div class="result-note"><span>o </span>Generated by an AI model, then checked by the verify step and the validator. Review before relying on it.</div>';
+    return h;
+  }
   if(tab==='Chat'){
     let h=stageCard();
     if(lastResult){const els=expEls();const sp=meanSpeed(trajPts());const span=teleSpan(trajPts());h+='<div class="chat-result"><strong>Run complete</strong> '+escapeHtml(((lastResult.experiment&&lastResult.experiment.centralBody)||'Orbit')+' orbit'+(els.semiMajorAxisKm!=null?', a '+fmt1(els.semiMajorAxisKm)+' km':'')+(els.eccentricity!=null?', e '+els.eccentricity:''))+'.<div class="result-chips"><span>'+(sp===null?'n/a':fmt1(sp)+' km/s')+'</span><span>'+(span===null?'n/a':Math.round(span)+' s telemetry')+'</span></div></div>';}
@@ -369,7 +450,9 @@ function runScenario(prompt){
   const text=String(prompt==null?'':prompt).trim();
   if(!text){showToast('Please describe a mission first');const pi=document.querySelector('#promptInput');if(pi)pi.focus();return;}
   const prevResult=lastResult;
+  const prevJobId=lastJobId,prevScript=lastScript;
   lastResult=null;lastError=null;runEvents=[];runActive=true;runFinished=false;runSlow=false;
+  lastJobId=null;lastScript=null;
   runFit=null;runStats=null;animT=0;animPlaying=false;curAlt=null;curSpeed=null;syncPlayBtn();clearRunDrawing();
   setBusy(true);setLiveStatusSafe('SIMULATION RUNNING');
   clearTimeout(runTimer);
@@ -377,7 +460,7 @@ function runScenario(prompt){
   const adapter=globalThis.OrbitLabAdapter;
   const finish=ok=>{runFinished=true;runActive=false;clearTimeout(runTimer);setBusy(false);setLiveStatusSafe(ok?'SIMULATION COMPLETE':'RUN FAILED');updateDemoBadge(!!(lastResult&&lastResult.mode==='demo'));if(ok&&lastResult)renderRealRun();renderTab(activeTab);updateTelemetry();refreshExportState();if(ok)completeObjective();};
   adapter.runExperiment(text,ev=>{runEvents.push(ev);if(activeTab==='Chat')renderTab('Chat');})
-    .then(out=>{if(out&&out.error){lastError=out.error;if(prevResult){lastResult=prevResult;renderRealRun();}showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
+    .then(out=>{if(out&&out.id)lastJobId=out.id;if(out&&out.error){lastError=out.error;if(prevResult){lastResult=prevResult;lastJobId=prevJobId;lastScript=prevScript;renderRealRun();}showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
     .catch(()=>{const base=(adapter&&adapter.getApiBase)?adapter.getApiBase():'the configured address';lastError={stage:'unknown',code:'cannot_reach',message:'Cannot reach the server at '+base+' - is the backend running?'};showToast('Cannot reach the server');finish(false);});
 }
 document.querySelector('#chatForm').addEventListener('submit',e=>{e.preventDefault();const prompt=promptInput.value.trim();if(!prompt){runScenario('');return;}runScenario(prompt);promptInput.value=''});
@@ -422,7 +505,7 @@ const pageData={
 function showAppPage(page){const isMission=page==='missions',config=pageData[page]||pageData.home;appShell.classList.toggle('alt-page',!isMission);appShell.classList.remove('simulation-maximized');document.querySelectorAll('.nav-item').forEach(a=>a.classList.toggle('active',a.getAttribute('href')===`#${page}`));const crumb=page==='home'?'Home':page==='missions'?'My missions':config.title;document.querySelector('.breadcrumbs span:first-child').textContent=crumb;document.querySelector('.breadcrumbs .crumb-slash').style.display=isMission?'':'none';document.querySelector('.breadcrumbs b').textContent=isMission?'Venus in Motion':'';if(!isMission)secondaryPage.innerHTML=`<div class="page-intro"><div><div class="section-kicker">${config.kicker}</div><h1>${config.title}</h1><p>${config.lead}</p></div><div class="page-date"><span class="live-dot"></span> YOUR ORBIT IS LOOKING GOOD</div></div>${config.body}`;secondaryPage.scrollTop=0}
 document.querySelectorAll('.nav-item').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showAppPage(a.getAttribute('href').slice(1))}));
 secondaryPage.addEventListener('click',e=>{const action=e.target.closest('[data-action]')?.dataset.action;if(action==='missions')showAppPage('missions');else if(action==='coming')showToast('This activity is a sample preview and is easy to customize')});
-panel.addEventListener('click',e=>{const sug=e.target.closest('.suggestion');if(sug&&sug.dataset.prompt){renderTab('Chat');runScenario(sug.dataset.prompt);return;}const tab=e.target.closest('[data-tab]');if(tab)renderTab(tab.dataset.tab);if(e.target.closest('#resultsExport'))exportCSV()});
+panel.addEventListener('click',e=>{if(handleCopyClick(e))return;const sug=e.target.closest('.suggestion');if(sug&&sug.dataset.prompt){renderTab('Chat');runScenario(sug.dataset.prompt);return;}const tab=e.target.closest('[data-tab]');if(tab)renderTab(tab.dataset.tab);if(e.target.closest('#resultsExport'))exportCSV()});
 document.querySelector('#exportBtn').setAttribute('title','Download sample Venus orbit telemetry as CSV');
 const globalDate=document.querySelector('#globalDate');
 function renderGlobalDate(){const now=new Date();globalDate.children[0].textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);globalDate.children[1].textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(now);}
@@ -432,4 +515,4 @@ renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge}};}}catch(e){}
