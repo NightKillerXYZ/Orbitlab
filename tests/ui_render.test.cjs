@@ -173,6 +173,7 @@ add(topActions, 'span', { cls: 'live-status', text: 'SIMULATION READY' });
 
 global.document = doc;
 global.window = global;
+global.GroundTrack = require('../UIUX/OrbitlabUI Main/groundtrack.js');
 global.location = { search: '', href: 'http://localhost/', origin: 'http://localhost' };
 global.setInterval = () => 0;
 global.clearTimeout = () => {};
@@ -312,6 +313,40 @@ test('demo badge shows only in demo mode', () => {
   app.updateDemoBadge(!!(app.__test__.getResult() && app.__test__.getResult().mode === 'demo'));
   assert.equal(doc.querySelectorAll('#demoBadge').length, 1, 'result mode drives badge');
   app.updateDemoBadge(false);
+  app.__test__.setResult(null);
+});
+
+test('Graph tab shows an approximate ground track canvas for Earth runs', () => {
+  app.__test__.setResult(fix.result);
+  const html = app.liveBody('Graph');
+  assert.ok(html.includes('<canvas id="groundTrack"'), 'canvas present');
+  assert.ok(html.includes('GROUND TRACK (APPROXIMATE)'), 'approx label');
+  const calls = [];
+  const cv = add(doc.root, 'canvas', { id: 'groundTrack' });
+  cv.getContext = () => ({
+    set fillStyle(v) {}, set strokeStyle(v) {}, set font(v) {}, set textAlign(v) {},
+    set lineWidth(v) {},
+    fillRect(x, y, w, h) { calls.push('bg'); },
+    beginPath() {}, moveTo(x, y) { calls.push('move'); }, lineTo(x, y) { calls.push('line'); },
+    stroke() { calls.push('stroke'); }, arc() { calls.push('arc'); }, fill() {},
+    fillText(t) { calls.push('label:' + t); },
+  });
+  app.__test__.paint();
+  assert.ok(calls.includes('bg'), 'map background painted');
+  assert.ok(calls.includes('stroke'), 'track stroked');
+  assert.ok(calls.some((c) => String(c).startsWith('label:') && c.includes('°')), 'degree labels');
+  assert.ok(calls.filter((c) => c === 'arc').length >= 2, 'start and end markers');
+  cv.remove();
+  app.__test__.setResult(null);
+});
+
+test('Graph tab shows the non-Earth message for other bodies', () => {
+  const mars = JSON.parse(JSON.stringify(fix.result));
+  mars.experiment.centralBody = 'Mars';
+  app.__test__.setResult(mars);
+  const html = app.liveBody('Graph');
+  assert.ok(!html.includes('<canvas id="groundTrack"'), 'no canvas for Mars');
+  assert.ok(html.includes('Ground track is available for Earth runs'), 'non-Earth message');
   app.__test__.setResult(null);
 });
 
