@@ -259,6 +259,11 @@ async def run_job(jid: str, text: str):
     try:
         result=await pipeline.run(text, event_cb=cb)
         try:
+            if isinstance(result, dict):
+                result["jobId"]=jid
+        except Exception:
+            pass
+        try:
             _script=result.get("script") if isinstance(result, dict) else None
             if isinstance(_script, str) and _script:
                 _s=get_settings()

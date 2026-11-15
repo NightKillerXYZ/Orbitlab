@@ -89,7 +89,9 @@ class Pipeline:
                 cached=self.cache[cache_key]
                 if cached.get("status")!="failed_infra":
                     logger.info(f"cache hit for {cache_key}")
-                    return cached
+                    hit=dict(cached)
+                    hit["fromCache"]=True
+                    return hit
         # interpret
         t0=time.perf_counter()
         await emit(PipelineEvent("stage_started","interpret",0,"Calling interpreter"))
@@ -370,6 +372,11 @@ class Pipeline:
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","explain",dur,"Explanation ready (automatic summary)"))
         result={"status":"success","experiment": experiment_json,"warnings": warnings_all,"trajectory": {"full_count": len(trajectory_data.full) if trajectory_data else 0, "visualization_count": len(trajectory_data.visualization) if trajectory_data else 0, "points": [p.__dict__ if hasattr(p,'__dict__') else p for p in (trajectory_data.visualization if trajectory_data else [])]},"telemetry": {"points": len(trajectory_data.visualization) if trajectory_data else 0},"explanation": explanation,"explanationSource": explanation_source,"prompt": prompt,"script": script}
+        result["fromCache"]=False
+        try:
+            result["elapsedSeconds"]=float(time.perf_counter()-start_all)
+        except Exception:
+            result["elapsedSeconds"]=0.0
         try:
             from orbitlab_backend.frontstep.demo import demo_enabled
             if demo_enabled():
