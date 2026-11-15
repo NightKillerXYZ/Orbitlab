@@ -465,3 +465,38 @@ test('openInGmat posts only the job id and reports the outcome', async () => {
   assert.equal(await app.openInGmat(), null);
   app.__test__.setResult(fix.result);
 });
+
+test('replay constants reveal about 200 samples per second at 1x', () => {
+  assert.equal(app.REPLAY_TICK_MS, 100, '100ms update interval');
+  assert.equal(app.REPLAY_SAMPLES_PER_SEC, 200, '200 samples/sec at 1x');
+  const pts = fix.result.trajectory.points;
+  const span = pts[pts.length - 1].elapsed_secs - pts[0].elapsed_secs;
+  assert.equal(span, 86400, 'fixture spans one day');
+  const perTick = app.__test__.replay(span, pts.length, 1);
+  const samplesPerTick = (perTick / span) * (pts.length - 1);
+  assert.ok(Math.abs(samplesPerTick - 20) < 1e-9, '20 samples per 100ms tick: ' + samplesPerTick);
+  assert.ok(Math.abs(app.__test__.replay(span, pts.length, 2) - 2 * perTick) < 1e-9, 'scales with speed');
+  assert.equal(app.__test__.replay(0, pts.length, 1), 0, 'zero span advances nothing');
+});
+
+test('epoch overlay shows frame plus advancing epoch; dataset names wired', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  assert.equal(vis.dataset.spacecraftName, 'SC_Put', 'spacecraft name for the 3D label');
+  assert.equal(vis.dataset.bodyName, 'Earth', 'body name for the 3D label');
+  assert.equal(app.__test__.frame(), 'EarthMJ2000Eq', 'coordinate frame name');
+  assert.equal(app.__test__.craftName(), 'SC_Put', 'spacecraft name helper');
+  const raw = fix.result.experiment.epoch.value;
+  assert.equal(app.__test__.fmtEpoch(GroundTrack.parseGmatEpoch(raw)), raw, 'epoch formats back identically');
+  app.__test__.anim(0);
+  app.__test__.draw();
+  const ov = doc.querySelector('#epochOverlay');
+  assert.ok(ov, 'overlay element exists');
+  assert.ok(ov.textContent.includes('EarthMJ2000Eq'), 'frame line: ' + ov.textContent);
+  assert.ok(ov.textContent.includes('Epoch: 01 Jan 2026 12:00:00.000'), 'start epoch: ' + ov.textContent);
+  app.__test__.anim(43200);
+  app.__test__.draw();
+  assert.ok(ov.textContent.includes('Epoch: 02 Jan 2026 00:00:00.000'), 'epoch advances with replay: ' + ov.textContent);
+  assert.ok(String(ov.style.cssText).includes('bottom'), 'pinned to the bottom-left');
+  app.__test__.setResult(fix.result);
+});

@@ -102,6 +102,9 @@ const BACKEND_STAGES=['extract','interpret','verify','validate','compile','simul
 let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null,lastJobId=null,lastScript=null,openGmatOn=false;
 /* Live trajectory replay state (real runs only). */
 let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=null,curSpeed=null;function trajSpan(){try{if(runStats&&runStats.spanSecs!=null)return runStats.spanSecs;}catch(e){}const s=teleSpan(trajPts());return (s==null?0:s);}
+/* Replay pacing: the ticker below reveals about 200 samples per second of wall time at 1x. */
+const REPLAY_TICK_MS=100,REPLAY_SAMPLES_PER_SEC=200;
+function replayAdvance(spanSecs,nPts,speed){try{const span=+spanSecs;if(!(span>0))return 0;const n=Math.floor(+nPts);const per=(n>1)?span/(n-1):span;return per*REPLAY_SAMPLES_PER_SEC*(REPLAY_TICK_MS/1000)*(+speed||0);}catch(e){return 0;}}
 /* 3D view state. The 2D/3D toggle only flips the view-3d class; view3dOn
    mirrors it so playback code can drive the 3D scene. */
 let view3d=null,view3dOn=false;
@@ -253,7 +256,7 @@ function renderTime(){
 }
 function setRunning(value){running=value;document.querySelector('#runText').textContent=value?'RUNNING':'PAUSED';document.querySelector('#runIndicator').parentElement.classList.toggle('running',value);document.querySelector('#venusPlanet').classList.toggle('playing',value);document.querySelector('#playBtn').textContent=value?'Ⅱ':'▶';document.querySelector('#playBtn').setAttribute('aria-label',value?'Pause simulation':'Play simulation')}
 function completeObjective(){if(completed)return;completed=true;const ring=document.querySelector('.progress-ring span');if(ring)ring.innerHTML='3<span class="ring-slash">/</span>5';const progressLabel=document.querySelector('.mission-progress>div+div span');if(progressLabel)progressLabel.textContent='3 of 5 steps complete';showToast('Mission progress updated · +50 XP')}
-setInterval(()=>{if(running){simDay+=speed*0.12;if(simDay>=224.7){simDay=0;completeObjective()}renderTime();}if(animPlaying&&lastResult){const span=trajSpan();if(span>0){animT+=span/600*speed;if(animT>=span){animT=span;animPlaying=false;syncPlayBtn();}drawCraft();updateTelemetry();}}},100);
+setInterval(()=>{if(running){simDay+=speed*0.12;if(simDay>=224.7){simDay=0;completeObjective()}renderTime();}if(animPlaying&&lastResult){const span=trajSpan();if(span>0){animT+=replayAdvance(span,trajPts().length,speed);if(animT>=span){animT=span;animPlaying=false;syncPlayBtn();}drawCraft();updateTelemetry();}}},REPLAY_TICK_MS);
 
 const content={
  Chat:`<div class="welcome-assistant"><div class="assistant-avatar">✦</div><div class="assistant-message"><p><b>Welcome back, Alex.</b> Ready to explore?</p><p>Venus takes about 225 Earth days to orbit the Sun. Try a scenario or ask me what you notice.</p></div></div><div class="suggestion-label">QUICK START</div><button class="suggestion" data-prompt="What keeps Venus in orbit around the Sun?"><span>✧</span> What keeps Venus in orbit?</button><button class="suggestion" data-prompt="What would happen if Venus moved twice as fast?"><span>↗</span> What if Venus moved twice as fast?</button><button class="suggestion" data-prompt="Compare Venus's orbit with Earth's orbit."><span>◎</span> Compare Venus and Earth</button>${lastScenario?scenarioMarkup(lastScenario):''}`,
@@ -464,6 +467,14 @@ function maneuverSummary(){
  }catch(e){return '';}
 }
 function runBodyName(){try{const b=lastResult&&lastResult.experiment&&lastResult.experiment.centralBody;return (typeof b==='string'&&b)?b:'unknown';}catch(e){return 'unknown';}}
+function spacecraftName(){try{const n=lastResult&&lastResult.experiment&&lastResult.experiment.spacecraft&&lastResult.experiment.spacecraft.name;return (typeof n==='string'&&n)?n:'Spacecraft';}catch(e){return 'Spacecraft';}}
+function frameName(){try{const io=lastResult&&lastResult.experiment&&lastResult.experiment.initialOrbit;const c=io&&io.coordinateSystem;if(typeof c==='string'&&c)return c;}catch(e){}try{const b=runBodyName();if(b&&b!=='unknown')return b+'MJ2000Eq';}catch(e){}return 'MJ2000Eq';}
+/* Julian date -> "01 Jan 2026 12:00:00.000" (inverse of GroundTrack.parseGmatEpoch). */
+function formatGmatEpoch(jd){try{jd=+jd;if(!isFinite(jd))return null;const ms=Math.round((jd-2440587.5)*86400000);if(!isFinite(ms))return null;const d=new Date(ms);const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const p2=n=>{n=Math.floor(n);return (n<10?'0':'')+n;};const p3=n=>{n=Math.floor(n);return (n<100?(n<10?'00':'0'):'')+n;};return p2(d.getUTCDate())+' '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear()+' '+p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())+':'+p2(d.getUTCSeconds())+'.'+p3(d.getUTCMilliseconds());}catch(e){return null;}}
+/* GMAT-style epoch line at replay time tSecs: start epoch + elapsed telemetry time. */
+function epochTextAt(tSecs){try{const exp=(lastResult&&lastResult.experiment)||{};const raw=exp&&exp.epoch&&exp.epoch.value;let jd=null;try{if(typeof GroundTrack!=='undefined'&&GroundTrack&&GroundTrack.parseGmatEpoch)jd=GroundTrack.parseGmatEpoch(raw);}catch(e){jd=null;}const tt=Math.max(0,+tSecs||0);if(jd==null)return 'Epoch: '+(raw||'n/a');const s=formatGmatEpoch(jd+tt/86400);return 'Epoch: '+(s||raw||'n/a');}catch(e){return 'Epoch: n/a';}}
+function ensureEpochOverlay(){try{const vis=visEl();if(!vis)return null;let el=null;try{el=vis.querySelector('#epochOverlay');}catch(e){el=null;}if(el)return el;el=document.createElement('div');el.id='epochOverlay';el.style.cssText='position:absolute;left:8px;bottom:6px;z-index:4;pointer-events:none;font:400 11px ui-monospace,Menlo,Consolas,monospace;color:#ffe14d;text-shadow:0 0 2px #000,0 0 4px #000;white-space:pre;text-align:left;';vis.appendChild(el);return el;}catch(e){return null;}}
+function updateEpochOverlay(tSecs){try{const el=ensureEpochOverlay();if(!el)return;el.textContent=frameName()+'\n'+epochTextAt(tSecs);}catch(e){}}
 function applyRunTitles(body){
  try{document.querySelectorAll('.breadcrumbs b').forEach(el=>{el.textContent=body+' orbit';});}catch(e){}
  try{const h=document.querySelector('.welcome-row h1');if(h)h.innerHTML=escapeHtml(body)+' in <span>Motion</span>';const lead=document.querySelector('.welcome-row p');if(lead)lead.textContent='Live results: a spacecraft path around '+body+'.';}catch(e){}
@@ -496,6 +507,7 @@ function renderRealRun(){
  runBodyR=info.radiusKm;runStats=trajectoryStats(pts,runBodyR);
  runFit=fitOrbit(pts,300,200,16);
  applyRunTitles(body);
+ try{vis.dataset.spacecraftName=spacecraftName();vis.dataset.bodyName=body;}catch(e){}
  renderStatCards(body,info,els,runStats,aKm);
  animT=0;animPlaying=pts.length>0;curAlt=null;curSpeed=null;syncPlayBtn();
  if(!runFit){
@@ -551,6 +563,7 @@ function drawCraft(){
   const cap=document.querySelector('#captionSpeed');if(cap)cap.textContent=(curSpeed==null?'n/a':fmt1(curSpeed)+' km/s');
   const st=document.querySelector('#simTime');if(st)st.textContent=fmtSecs(t);
   try{const fr=span>0?(t/span):0;const tf=document.querySelector('#timelineFill'),tk=document.querySelector('#timelineKnob');if(tf)tf.style.width=Math.max(fr*100,2)+'%';if(tk)tk.style.left=Math.max(fr*100,2)+'%';}catch(e2){}
+  try{updateEpochOverlay(t);}catch(e2c){}
   try{if(view3d&&is3D())driveView3D();}catch(e2b){}
  }catch(e){}
 }
@@ -638,4 +651,4 @@ renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));openGmatOn=!!(h&&h.openInGmat);}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,REPLAY_TICK_MS:REPLAY_TICK_MS,REPLAY_SAMPLES_PER_SEC:REPLAY_SAMPLES_PER_SEC,replayAdvance:replayAdvance,formatGmatEpoch:formatGmatEpoch,frameName:frameName,epochTextAt:epochTextAt,spacecraftName:spacecraftName,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack,epoch:function(tt){updateEpochOverlay(tt);},frame:frameName,epochText:epochTextAt,fmtEpoch:formatGmatEpoch,craftName:spacecraftName,replay:replayAdvance}};}}catch(e){}
