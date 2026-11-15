@@ -295,6 +295,10 @@ async def run_job(jid: str, text: str):
     except PipelineError as e:
         err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details}
         try:
+            logger.warning("job %s failed at %s (%s): %s | details=%s", jid, e.stage, e.code, e.message, e.details)
+        except Exception:
+            pass
+        try:
             expl=(e.details or {}).get("explanation")
             if expl:
                 err={"stage": e.stage, "code": e.code, "message": e.message, "details": e.details, "explanation": expl}
