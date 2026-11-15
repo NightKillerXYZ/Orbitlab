@@ -245,8 +245,14 @@ def create_app() -> FastAPI:
 
 async def run_job(jid: str, text: str):
     pipeline=Pipeline()
+    last_stage={"name": None}
     # event callback pushes to store
     async def cb(event):
+        try:
+            st=getattr(event, "stage", None)
+            if st: last_stage["name"]=st
+        except Exception:
+            pass
         ev={"type": event.type, "stage": event.stage, "duration": event.duration, "message": event.message, "details": event.details}
         if event.type == "progress" and isinstance(event.details, dict):
             for _k in ("elapsedSecs", "estimateSecs"):
@@ -296,8 +302,20 @@ async def run_job(jid: str, text: str):
             pass
         store.update(jid, status="failed", error=err)
         store.add_event(jid, {"type":"final","error":err})
-    except Exception as e:
-        err={"stage":"unknown","code":"unknown","message":str(e)}
+    except Exception:
+        # Safety net: any unexpected exception in any stage becomes a typed
+        # internal error. The full traceback goes to the server log only;
+        # the user gets a short plain message with no Python internals.
+        try:
+            logger.exception("job %s failed with unexpected error at stage %s", jid, last_stage.get("name"))
+        except Exception:
+            pass
+        stg=last_stage.get("name") or "unknown"
+        if stg=="extract":
+            msg="Something went wrong while reading your request (stage: extract). Please try rephrasing."
+        else:
+            msg="Something went wrong while running this step (stage: %s). Please try again or rephrase the request." % stg
+        err={"stage":stg,"code":"internal_error","message":msg}
         store.update(jid, status="failed", error=err)
         store.add_event(jid, {"type":"final","error":err})
     finally:

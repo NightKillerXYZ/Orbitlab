@@ -92,15 +92,33 @@ def build_canonical_prompt(data: Dict[str, Any]) -> str:
                     sent+="."
             prompt += sent
         elif mtype=="ImpulsiveBurn":
-            # Determine elapsed vs apsis
+            # Determine elapsed vs apsis. A burn specified by apsis/target
+            # only carries deltaV=None (the verifier skips the vector check
+            # for those), so never unpack it blindly and never invent a
+            # vector: describe the burn without one in that case.
+            def _dv_vec(mm):
+                dv=mm.get("deltaV")
+                if isinstance(dv,(list,tuple)) and len(dv)>=3:
+                    try:
+                        v,n,b=float(dv[0]),float(dv[1]),float(dv[2])
+                        return "[%s, %s, %s] km/s" % (_fmt_num(v),_fmt_num(n),_fmt_num(b))
+                    except (TypeError,ValueError):
+                        pass
+                return ""
             if m.get("trigger")=="ElapsedTimeSecs":
                 sec=_fmt_num(m.get("elapsedSecs",0))
-                v,n,b = m.get("deltaV",[0,0,0])
-                prompt+= f" Give it a small prograde/radial/normal impulse once {sec} sec have elapsed: LocalVNB components [{v}, {n}, {b}] km/s."
+                vec=_dv_vec(m)
+                if vec:
+                    prompt+= f" Give it a small prograde/radial/normal impulse once {sec} sec have elapsed: LocalVNB components {vec}."
+                else:
+                    prompt+= f" Give it a small prograde/radial/normal impulse once {sec} sec have elapsed."
             else:
                 apsis=m.get("apsis","apoapsis")
-                v,n,b = m.get("deltaV",[0,0,0])
-                prompt+= f" At the next {apsis}, apply the LocalVNB burn with V-N-B delta-v [{v}, {n}, {b}] km/s."
+                vec=_dv_vec(m)
+                if vec:
+                    prompt+= f" At the next {apsis}, apply the LocalVNB burn with V-N-B delta-v {vec}."
+                else:
+                    prompt+= f" At the next {apsis}, apply the LocalVNB burn."
         else:
             # generic
             prompt+= f" Maneuver {m.get('id')}: {mtype}."
