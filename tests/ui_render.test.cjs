@@ -168,6 +168,7 @@ speedSel.value = '0.5';
 const speedCustom = add(doc.root, 'input', { id: 'speedCustom' });
 speedCustom.value = '0.5'; speedCustom.hidden = true;
 add(doc.root, 'span', { id: 'speedReadout' });
+add(doc.root, 'div', { id: 'toast' });
 add(doc.root, 'button', { id: 'exportBtn' });
 add(doc.root, 'button', { id: 'resultsExport' });
 const gdate = add(doc.root, 'time', { id: 'globalDate' });
@@ -804,4 +805,60 @@ test('internal errors show the plain message without raw Python text', () => {
   assert.ok(chat.includes('Something went wrong while running this step'), 'plain simulate message shown');
   assert.ok(chat.includes('simulate'), 'stage named');
   app.__test__.setError(null);
+});
+
+test('burn-size missing field uses Add it and explains target-altitude limits', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({ stage: 'extract', code: 'needs_clarification',
+    message: 'Missing required fields: deltaV.',
+    details: { missing: ['deltaV'] } });
+  const chat = app.liveBody('Chat');
+  assert.ok(chat.includes('To run this I still need: the burn size (delta-V in m/s and direction).'), 'burn-size ask');
+  assert.ok(chat.includes('Add it to your message'), 'singular Add it');
+  assert.ok(chat.includes("aren&#39;t supported"), 'target-altitude note');
+  assert.ok(app.__test__.missingText(['deltaV']).indexOf('burn size') >= 0, 'translator covers deltaV');
+  app.__test__.setError({ stage: 'extract', code: 'needs_clarification',
+    message: 'Missing required fields.',
+    details: { missing: ['centralBody', 'deltaV'] } });
+  const chat2 = app.liveBody('Chat');
+  assert.ok(chat2.includes('Add them to your message'), 'plural Add them for several items');
+  assert.ok(chat2.includes("aren&#39;t supported"), 'target-altitude note kept with others');
+  app.__test__.setError(null);
+});
+
+test('schema errors hide raw pydantic text and keep validator messages intact', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({ stage: 'validate', code: 'schema_error',
+    message: '1 validation error for OrbitLabExperiment: value is not valid',
+    details: {} });
+  const chat = app.liveBody('Chat');
+  assert.ok(chat.includes("didn&#39;t fit the mission format"), 'friendly schema message');
+  assert.ok(chat.indexOf('validation error for') < 0, 'no raw pydantic text');
+  assert.ok(chat.indexOf('OrbitLabExperiment') < 0, 'no schema paths');
+  app.__test__.setError({ stage: 'validate', code: 'validation_failed',
+    message: 'Periapsis 50 km is below the 100 km minimum.' });
+  const chat2 = app.liveBody('Chat');
+  assert.ok(chat2.includes('Periapsis 50 km is below the 100 km minimum'), 'validator message preserved');
+  assert.ok(chat2.includes('physics check'), 'physics header kept');
+  app.__test__.setError(null);
+});
+
+test('schema failure toast avoids raw pydantic text', async () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  globalThis.OrbitLabAdapter = {
+    isMockMode: () => false,
+    runExperiment: () => Promise.resolve({ error: { stage: 'validate', code: 'schema_error', message: '1 validation error for X' } }),
+  };
+  try {
+    app.__test__.run('doomed prompt');
+    for (let k = 0; k < 20; k++) await Promise.resolve();
+    const toast = doc.querySelector('#toast');
+    assert.ok(toast, 'toast element exists');
+    assert.ok(toast.textContent.indexOf('validation error') < 0, 'no raw pydantic in toast');
+    assert.ok(toast.textContent.indexOf('mission format') >= 0, 'friendly toast text');
+  } finally {
+    delete globalThis.OrbitLabAdapter;
+  }
+  app.__test__.setResult(fix.result);
 });
