@@ -31,3 +31,6 @@ phase3_ai_interpreter/datasets/orbitlab_interpreter_validation.jsonl
 .devswarm-temp/
 .backboard/
 .vscode/
+# Bundled GMAT (large binaries, user-downloaded; never commit)
+tools/gmat/*
+!tools/gmat/README.md
