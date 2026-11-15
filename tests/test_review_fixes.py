@@ -63,7 +63,9 @@ async def test_background_task_failure_marks_job_failed():
         await run_job(job.id, "x")
         got = app_module.store.get(job.id)
         assert got.status == "failed"
-        assert got.error and "boom" in got.error["message"]
+        assert got.error and got.error.get("code") == "internal_error"
+        assert "boom" not in got.error["message"]
+        assert "Traceback" not in got.error.get("message", "")
         assert any(e.get("type") == "final" for e in got.events)
     finally:
         import importlib

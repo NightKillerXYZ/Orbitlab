@@ -791,3 +791,17 @@ test('a failed run clears the previous run everywhere', async () => {
   app.__test__.setResult(fix.result);
 });
 
+test('internal errors show the plain message without raw Python text', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({ stage: 'extract', code: 'internal_error',
+    message: 'Something went wrong while reading your request (stage: extract). Please try rephrasing.' });
+  let chat = app.liveBody('Chat');
+  assert.ok(chat.includes('Something went wrong while reading your request'), 'plain extract message shown');
+  assert.ok(!chat.includes('Run failed at'), 'no raw banner for internal errors');
+  app.__test__.setError({ stage: 'simulate', code: 'internal_error',
+    message: 'Something went wrong while running this step (stage: simulate). Please try again or rephrase the request.' });
+  chat = app.liveBody('Chat');
+  assert.ok(chat.includes('Something went wrong while running this step'), 'plain simulate message shown');
+  assert.ok(chat.includes('simulate'), 'stage named');
+  app.__test__.setError(null);
+});
