@@ -539,6 +539,9 @@ function createView3D(container,deps){
     try{eraw=(container&&container.dataset&&container.dataset.epochValue)||null;}catch(e){eraw=null;}
     if(GT&&GT.gmstDeg)S.gmstFn=GT.gmstDeg;
     if(eraw&&GT&&GT.parseGmatEpoch){var ejd=GT.parseGmatEpoch(eraw);if(isFinite(ejd))S.epochJD=ejd;}
+   /* No epoch on the run: use the schema default (mirrors EpochConfig.value
+      in orbitlab_core/ast/models.py) so the Earth still spins at the right rate. */
+   if(S.epochJD==null&&GT&&GT.parseGmatEpoch){try{var djd=GT.parseGmatEpoch('01 Jan 2026 12:00:00.000');if(isFinite(djd))S.epochJD=djd;}catch(e){}}
    }catch(e){S.epochJD=null;S.gmstFn=null;}
    try{
     var ds=null;

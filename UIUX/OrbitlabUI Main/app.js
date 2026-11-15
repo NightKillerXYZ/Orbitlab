@@ -99,7 +99,9 @@ let toastTimer;
    mock mode (?mock=1) or when the adapter script is absent. */
 function useMock(){try{if(typeof globalThis!=='undefined'&&globalThis.OrbitLabAdapter&&globalThis.OrbitLabAdapter.isMockMode)return globalThis.OrbitLabAdapter.isMockMode();}catch(e){}return true;}
 const BACKEND_STAGES=['extract','interpret','verify','validate','compile','simulate','parse','explain'];
-let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,activeTab='Chat',runTimer=null,lastJobId=null,lastScript=null,openGmatOn=false;
+let lastResult=null,lastError=null,runEvents=[],runActive=false,runFinished=false,runSlow=false,
+lastRunMeta=null, /* {origin:'live'|'cache'|'sample'|'mock',elapsedSecs,jobId} for the provenance caption */
+activeTab='Chat',runTimer=null,lastJobId=null,lastScript=null,openGmatOn=false;
 /* Live trajectory replay state (real runs only). */
 let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=null,curSpeed=null;function trajSpan(){try{if(runStats&&runStats.spanSecs!=null)return runStats.spanSecs;}catch(e){}const s=teleSpan(trajPts());return (s==null?0:s);}
 /* Replay pacing: the ticker below reveals about 200 samples per second of wall time at 1x. */
@@ -109,6 +111,11 @@ function replayAdvance(spanSecs,nPts,speed){try{const span=+spanSecs;if(!(span>0
    mirrors it so playback code can drive the 3D scene. */
 let view3d=null,view3dOn=false;
 function is3D(){try{const v=document.querySelector('#orbitVisual');return !!(v&&v.classList&&v.classList.contains('view-3d'));}catch(e){return view3dOn;}}
+/* Provenance caption under the Orbital view: which kind of result this is. */
+function metaFromResult(res){try{if(!res||typeof res!=='object')return {origin:'sample',elapsedSecs:null,jobId:null};if(res.mock)return {origin:'sample',elapsedSecs:null,jobId:null};if(res.fromCache)return {origin:'cache',elapsedSecs:(isFinite(+res.elapsedSeconds)?+res.elapsedSeconds:null),jobId:(res.jobId||null)};return {origin:'live',elapsedSecs:(isFinite(+res.elapsedSeconds)?+res.elapsedSeconds:null),jobId:(res.jobId||null)};}catch(e){return {origin:'sample',elapsedSecs:null,jobId:null};}}
+function provenanceText(){try{const m=lastRunMeta||{};if(m.origin==='mock'||m.origin==='sample')return 'Sample data (not a run)';if(m.origin==='cache')return 'Result from cache (same input as an earlier run)';if(m.origin==='live')return 'Live GMAT run'+((m.elapsedSecs==null)?'':' - '+Number(m.elapsedSecs).toFixed(1)+' s');return 'Sample data (not a run)';}catch(e){return 'Sample data (not a run)';}}
+function ensureProvenanceCaption(){try{let el=null;try{el=document.querySelector('#runProvenance');if(!el||!el.getAttribute||el.getAttribute('id')!=='runProvenance')el=null;}catch(e){el=null;}if(!el){el=document.createElement('div');el.id='runProvenance';el.style.cssText='font:400 10px sans-serif;color:#8fa6c8;margin:6px 2px 0;text-align:left;';}const vis=visEl();if(vis){const vp=vis.parentElement||vis.parentNode;const ep=el.parentElement||el.parentNode;if(vp&&ep!==vp){try{if(vis.after)vis.after(el);else vp.appendChild(el);}catch(e){try{vp.appendChild(el);}catch(ee){}}}}return el;}catch(e){return null;}}
+function updateProvenanceCaption(){try{const el=ensureProvenanceCaption();if(!el)return;el.textContent=provenanceText();}catch(e){}}
 /* Ground track (Graph tab, Earth runs only). Canvas is drawn after the tab
    HTML lands in the panel; without telemetry the tab keeps its message. */
 function paintGroundTrack(){
@@ -118,7 +125,8 @@ function paintGroundTrack(){
   const body=runBodyName();
   if(body!=='Earth')return;
   const exp=lastResult.experiment||{};
-  const jd0=GroundTrack.parseGmatEpoch(exp&&exp.epoch&&exp.epoch.value);
+  let jd0=GroundTrack.parseGmatEpoch(exp&&exp.epoch&&exp.epoch.value);
+  if(jd0==null)jd0=GroundTrack.parseGmatEpoch(DEFAULT_EPOCH_STR);
   if(jd0==null)return;
   const pts=trajPts();
   if(!pts.length)return;
@@ -151,6 +159,7 @@ function showView3D(){
   try{
    if(!h||!is3D())return;
    const c=document.querySelector('#view3dCanvas');if(c)c.style.display='';
+   try{const box=document.querySelector('#view3dUI');if(box)box.style.display='';}catch(e){}
    const svg=document.querySelector('#runOrbit');if(svg)svg.style.display='none';
    driveView3D();
   }catch(e){}
@@ -158,6 +167,7 @@ function showView3D(){
 }
 function hideView3D(){
  try{const c=document.querySelector('#view3dCanvas');if(c)c.style.display='none';}catch(e){}
+ try{const box=document.querySelector('#view3dUI');if(box)box.style.display='none';}catch(e){}
  try{const svg=document.querySelector('#runOrbit');if(svg)svg.style.display='';}catch(e){}
 }
 function driveView3D(){
@@ -472,9 +482,12 @@ function frameName(){try{const io=lastResult&&lastResult.experiment&&lastResult.
 /* Julian date -> "01 Jan 2026 12:00:00.000" (inverse of GroundTrack.parseGmatEpoch). */
 function formatGmatEpoch(jd){try{jd=+jd;if(!isFinite(jd))return null;const ms=Math.round((jd-2440587.5)*86400000);if(!isFinite(ms))return null;const d=new Date(ms);const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const p2=n=>{n=Math.floor(n);return (n<10?'0':'')+n;};const p3=n=>{n=Math.floor(n);return (n<100?(n<10?'00':'0'):'')+n;};return p2(d.getUTCDate())+' '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear()+' '+p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())+':'+p2(d.getUTCSeconds())+'.'+p3(d.getUTCMilliseconds());}catch(e){return null;}}
 /* GMAT-style epoch line at replay time tSecs: start epoch + elapsed telemetry time. */
-function epochTextAt(tSecs){try{const exp=(lastResult&&lastResult.experiment)||{};const raw=exp&&exp.epoch&&exp.epoch.value;let jd=null;try{if(typeof GroundTrack!=='undefined'&&GroundTrack&&GroundTrack.parseGmatEpoch)jd=GroundTrack.parseGmatEpoch(raw);}catch(e){jd=null;}const tt=Math.max(0,+tSecs||0);if(jd==null)return 'Epoch: '+(raw||'n/a');const s=formatGmatEpoch(jd+tt/86400);return 'Epoch: '+(s||raw||'n/a');}catch(e){return 'Epoch: n/a';}}
-function ensureEpochOverlay(){try{const vis=visEl();if(!vis)return null;let el=null;try{el=vis.querySelector('#epochOverlay');}catch(e){el=null;}if(el)return el;el=document.createElement('div');el.id='epochOverlay';el.style.cssText='position:absolute;left:8px;bottom:6px;z-index:4;pointer-events:none;font:400 11px ui-monospace,Menlo,Consolas,monospace;color:#ffe14d;text-shadow:0 0 2px #000,0 0 4px #000;white-space:pre;text-align:left;';vis.appendChild(el);return el;}catch(e){return null;}}
-function updateEpochOverlay(tSecs){try{const el=ensureEpochOverlay();if(!el)return;el.textContent=frameName()+'\n'+epochTextAt(tSecs);}catch(e){}}
+/* Schema default epoch (mirrors EpochConfig.value in orbitlab_core/ast/models.py). */
+const DEFAULT_EPOCH_STR="01 Jan 2026 12:00:00.000";
+function epochParts(tSecs){try{const exp=(lastResult&&lastResult.experiment)||{};const raw=exp&&exp.epoch&&exp.epoch.value;let jd=null;try{if(typeof GroundTrack!=='undefined'&&GroundTrack&&GroundTrack.parseGmatEpoch)jd=GroundTrack.parseGmatEpoch(raw);}catch(e){jd=null;}const tt=Math.max(0,+tSecs||0);let isDefault=false;if(jd==null){try{if(typeof GroundTrack!=='undefined'&&GroundTrack&&GroundTrack.parseGmatEpoch)jd=GroundTrack.parseGmatEpoch(DEFAULT_EPOCH_STR);}catch(e){jd=null;}if(jd!=null)isDefault=true;}if(jd==null)return {text:'Epoch: '+(raw||'n/a'),isDefault:false};const s=formatGmatEpoch(jd+tt/86400);return {text:'Epoch: '+(s||raw||'n/a'),isDefault:isDefault};}catch(e){return {text:'Epoch: n/a',isDefault:false};}}
+function epochTextAt(tSecs){try{return epochParts(tSecs).text;}catch(e){return 'Epoch: n/a';}}
+function ensureEpochOverlay(){try{const vis=visEl();if(!vis)return null;let el=null;try{el=vis.querySelector('#epochOverlay');}catch(e){el=null;}if(el)return el;el=document.createElement('div');el.id='epochOverlay';el.style.cssText='position:absolute;left:8px;top:8px;z-index:4;pointer-events:none;font:400 11px ui-monospace,Menlo,Consolas,monospace;color:#ffe14d;text-shadow:0 0 2px #000,0 0 4px #000;white-space:pre;text-align:left;';vis.appendChild(el);return el;}catch(e){return null;}}
+function updateEpochOverlay(tSecs){try{const el=ensureEpochOverlay();if(!el)return;const p=epochParts(tSecs);el.textContent=frameName()+'\n'+p.text+(p.isDefault?' (default epoch)':'');el.style.display=is3D()?'':'none';}catch(e){}}
 function applyRunTitles(body){
  try{document.querySelectorAll('.breadcrumbs b').forEach(el=>{el.textContent=body+' orbit';});}catch(e){}
  try{const h=document.querySelector('.welcome-row h1');if(h)h.innerHTML=escapeHtml(body)+' in <span>Motion</span>';const lead=document.querySelector('.welcome-row p');if(lead)lead.textContent='Live results: a spacecraft path around '+body+'.';}catch(e){}
@@ -507,6 +520,7 @@ function renderRealRun(){
  runBodyR=info.radiusKm;runStats=trajectoryStats(pts,runBodyR);
  runFit=fitOrbit(pts,300,200,16);
  applyRunTitles(body);
+ try{lastRunMeta=metaFromResult(lastResult);}catch(e){lastRunMeta=null;}
  try{vis.dataset.spacecraftName=spacecraftName();vis.dataset.bodyName=body;vis.dataset.epochValue=(((lastResult.experiment||{}).epoch||{}).value||'');}catch(e){}
  renderStatCards(body,info,els,runStats,aKm);
  animT=0;animPlaying=pts.length>0;curAlt=null;curSpeed=null;syncPlayBtn();
@@ -542,6 +556,7 @@ function renderRealRun(){
  }
  try{const cap=document.querySelector('.visual-caption span:not(.caption-dot)');if(cap)cap.textContent=body.toUpperCase();}catch(e){}
  drawCraft();updateTelemetry();
+ try{updateProvenanceCaption();}catch(e){}
  if(is3D())showView3D();
 }
 function drawCraft(){
@@ -568,7 +583,7 @@ function drawCraft(){
  }catch(e){}
 }
 function syncPlayBtn(){try{const b=document.querySelector('#playBtn');if(b){b.textContent=animPlaying?'Ⅱ':'▶';b.setAttribute('aria-label',animPlaying?'Pause trajectory replay':'Play trajectory replay');}const rt=document.querySelector('#runText');if(rt)rt.textContent=animPlaying?'RUNNING':'PAUSED';}catch(e){}}
-function runScenarioMock(prompt){const lower=String(prompt).toLowerCase();let velocity='35.0',period='224.7',shape='Near circular',outcome='Stable orbit';if(/twice|double|faster|speed up|2x/.test(lower)){velocity='70.0';period='112.4';shape='Highly elliptical';outcome='Wider orbit';if(/escape|escape velocity/.test(lower))outcome='Escape trajectory'}else if(/slower|half|reduce|less speed/.test(lower)){velocity='17.5';period='449.4';shape='Tight spiral';outcome='Falls toward Sun'}else if(/gravity|stronger|increase/.test(lower)){velocity='35.0';period='158.9';shape='Tighter orbit';outcome='Stable, closer orbit'}else if(/earth|compare/.test(lower)){velocity='29.8';period='365.3';shape='Near circular';outcome='Earth: stable orbit'}lastScenario={prompt,velocity,period,shape,outcome};renderTab('Chat');completeObjective();panel.scrollTop=panel.scrollHeight;showToast('Scenario simulated · Results updated')}
+function runScenarioMock(prompt){const lower=String(prompt).toLowerCase();let velocity='35.0',period='224.7',shape='Near circular',outcome='Stable orbit';if(/twice|double|faster|speed up|2x/.test(lower)){velocity='70.0';period='112.4';shape='Highly elliptical';outcome='Wider orbit';if(/escape|escape velocity/.test(lower))outcome='Escape trajectory'}else if(/slower|half|reduce|less speed/.test(lower)){velocity='17.5';period='449.4';shape='Tight spiral';outcome='Falls toward Sun'}else if(/gravity|stronger|increase/.test(lower)){velocity='35.0';period='158.9';shape='Tighter orbit';outcome='Stable, closer orbit'}else if(/earth|compare/.test(lower)){velocity='29.8';period='365.3';shape='Near circular';outcome='Earth: stable orbit'}lastScenario={prompt,velocity,period,shape,outcome};renderTab('Chat');completeObjective();panel.scrollTop=panel.scrollHeight;try{lastRunMeta={origin:'mock',elapsedSecs:null,jobId:null};updateProvenanceCaption();}catch(e){}showToast('Scenario simulated · Results updated')}
 document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>renderTab(btn.dataset.tab)));
 function setLiveStatusSafe(t){try{setLiveStatus(t);}catch(e){}}
 function updateTelemetry(){
@@ -646,9 +661,9 @@ document.querySelector('#exportBtn').setAttribute('title','Download sample Venus
 const globalDate=document.querySelector('#globalDate');
 function renderGlobalDate(){const now=new Date();globalDate.children[0].textContent=new Intl.DateTimeFormat(undefined,{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(now);globalDate.children[1].textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(now);}
 try{(function(){const tl=document.querySelector('.card-topline');if(!tl||tl.querySelector('#runBadge'))return;const b=document.createElement('span');b.id='runBadge';b.className='result-badge';b.textContent='SAMPLE';const tg=tl.querySelector('.view-toggle');if(tg)tg.before(b);else tl.appendChild(b);})();}catch(e){}
-try{(function(){let q='';try{q=(typeof location!=='undefined'&&location.search)||'';}catch(e){}if(/(^|[?&])fixture=1(&|$)/.test(q)&&!useMock()){fetch('/sample-result').then(r=>{if(!r.ok)throw new Error('sample '+r.status);return r.json();}).then(job=>{const res=job&&(job.result||job);if(!res||!res.experiment)throw new Error('bad sample');lastResult=res;runFinished=true;setLiveStatusSafe('SIMULATION COMPLETE');renderRealRun();renderTab(activeTab);updateTelemetry();refreshExportState();showToast('Sample run loaded - Results updated');}).catch(err=>{showToast('Could not load sample result');});}})();}catch(e){}
+try{(function(){let q='';try{q=(typeof location!=='undefined'&&location.search)||'';}catch(e){}if(/(^|[?&])fixture=1(&|$)/.test(q)&&!useMock()){fetch('/sample-result').then(r=>{if(!r.ok)throw new Error('sample '+r.status);return r.json();}).then(job=>{const res=job&&(job.result||job);if(!res||!res.experiment)throw new Error('bad sample');lastResult=res;runFinished=true;setLiveStatusSafe('SIMULATION COMPLETE');renderRealRun();try{lastRunMeta={origin:'sample',elapsedSecs:null,jobId:null};updateProvenanceCaption();}catch(e){}renderTab(activeTab);updateTelemetry();refreshExportState();showToast('Sample run loaded - Results updated');}).catch(err=>{showToast('Could not load sample result');});}})();}catch(e){}
 renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));openGmatOn=!!(h&&h.openInGmat);}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,REPLAY_TICK_MS:REPLAY_TICK_MS,REPLAY_SAMPLES_PER_SEC:REPLAY_SAMPLES_PER_SEC,replayAdvance:replayAdvance,formatGmatEpoch:formatGmatEpoch,frameName:frameName,epochTextAt:epochTextAt,spacecraftName:spacecraftName,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack,epoch:function(tt){updateEpochOverlay(tt);},frame:frameName,epochText:epochTextAt,fmtEpoch:formatGmatEpoch,craftName:spacecraftName,replay:replayAdvance}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,REPLAY_TICK_MS:REPLAY_TICK_MS,REPLAY_SAMPLES_PER_SEC:REPLAY_SAMPLES_PER_SEC,replayAdvance:replayAdvance,formatGmatEpoch:formatGmatEpoch,frameName:frameName,epochTextAt:epochTextAt,spacecraftName:spacecraftName,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack,epochParts:epochParts,provText:provenanceText,prov:updateProvenanceCaption,meta:function(m){lastRunMeta=m;},metaFrom:metaFromResult,hide:hideView3D,show:showView3D,epoch:function(tt){updateEpochOverlay(tt);},frame:frameName,epochText:epochTextAt,fmtEpoch:formatGmatEpoch,craftName:spacecraftName,replay:replayAdvance}};}}catch(e){}
