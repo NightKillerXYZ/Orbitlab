@@ -428,3 +428,40 @@ test('index page has Details tab and research footer', () => {
   assert.ok(html.includes('research and education tool'), 'footer text');
   assert.ok(html.includes('Not for flight operations'), 'footer warning');
 });
+
+test('Open in GMAT button shows only when enabled with a job', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.setJob(null);
+  app.__test__.setOpenGmat(true);
+  assert.ok(!app.liveBody('Results').includes('data-open-gmat'), 'no button without job');
+  app.__test__.setJob('job-1');
+  assert.ok(app.liveBody('Results').includes('data-open-gmat'), 'button when enabled + job');
+  app.__test__.setOpenGmat(false);
+  assert.ok(!app.liveBody('Results').includes('data-open-gmat'), 'no button when disabled');
+  app.__test__.setJob(null);
+  app.__test__.setResult(fix.result);
+});
+
+test('openInGmat posts only the job id and reports the outcome', async () => {
+  const calls = [];
+  global.fetch = async (url, opts) => {
+    calls.push([url, opts]);
+    return { ok: true, status: 200, json: async () => ({ status: 'started' }) };
+  };
+  try {
+    app.__test__.setJob('job-9');
+    assert.equal(await app.openInGmat(), true);
+    assert.deepEqual(calls, [['/api/experiments/job-9/open-in-gmat', { method: 'POST' }]]);
+  } finally {
+    delete global.fetch;
+  }
+  global.fetch = async () => ({ ok: false, status: 403, json: async () => ({ detail: 'denied' }) });
+  try {
+    assert.equal(await app.openInGmat(), false);
+  } finally {
+    delete global.fetch;
+  }
+  app.__test__.setJob(null);
+  assert.equal(await app.openInGmat(), null);
+  app.__test__.setResult(fix.result);
+});
