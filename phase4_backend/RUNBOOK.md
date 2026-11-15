@@ -8,7 +8,7 @@ $env:PYTHONPATH='phase4_backend'
 python -m uvicorn orbitlab_backend.api.app:app --port 8000
 ```
 
-Open http://localhost:8000/ (live page) or http://localhost:8000/orbitlab-live.html.
+Open http://localhost:8000/ (redirects to the Main UI) or http://localhost:8000/main.
 Health: http://localhost:8000/api/health. `?mock=1` forces mock mode (no network).
 
 Backend tests (run from inside `phase4_backend/`):

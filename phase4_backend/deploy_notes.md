@@ -1,8 +1,12 @@
 # Deploy notes — Phase 5 UI wiring
 
 - The API serves the static `UIUX/` folder at `/` (FastAPI `StaticFiles`,
-  mounted after `/api` and `/ws`, so API routes keep priority). `/` returns
-  `orbitlab-live.html`; `/ui_adapter.js` serves the backend adapter file.
+  mounted after `/api` and `/ws`, so API routes keep priority). `/` redirects
+  to `/OrbitlabUI%20Main/` (the Main UI); `/main` does the same;
+  `/ui_adapter.js` serves the backend adapter file. Later additions not
+  covered here: `/sample-result` (fixture), `/api/experiments/{id}/script`
+  (read-only script), `/api/experiments/{id}/open-in-gmat` (local-only,
+  flagged), and the `mode` / `openInGmat` health fields — see RUNBOOK.
 - The UI uses same-origin relative URLs (no hard-coded localhost port). To
   point the UI elsewhere without code changes, set
   `window.ORBITLAB_API_BASE` before the adapter script loads.
