@@ -159,6 +159,29 @@ The endpoint only accepts local connections (`127.0.0.1`/`::1`) and launches
 `GMAT.exe --run <stored script>` without waiting. Do not expose a backend
 with this flag on to a network: anyone who can reach it can start programs.
 
+## Getting GMAT
+
+GMAT is optional: without it the pipeline returns a synthetic trajectory.
+To use the real simulator, either set `GMAT_PATH` to your `GmatConsole(.exe)`,
+or drop a build into `tools/gmat/` (explicit `GMAT_PATH` always wins):
+
+```powershell
+.\scripts\setup_gmat.ps1 -Url '<paste-the-release-zip-link>' [-Sha256 '<hex>']
+$env:GMAT_PATH='C:\GMAT\R2024a\bin\GmatConsole.exe'  # optional when bundled
+$env:PYTHONPATH='phase4_backend'
+python scripts/e2e_all.py
+```
+
+```bash
+./scripts/setup_gmat.sh --url '<paste-the-release-zip-link>' [--sha256 <hex>]
+GMAT_PATH='<path-to>/bin/GmatConsole' PYTHONPATH=phase4_backend python scripts/e2e_all.py
+```
+
+The setup script downloads only the URL you give it (no token, no headers),
+verifies the optional SHA-256, extracts into `tools/gmat/`, and prints the
+resolved console path. `tools/gmat/` is git-ignored (binaries are never
+committed); only `tools/gmat/README.md` is tracked.
+
 ## 3D view and textures
 
 The "Orbital view" panel has a 2D/3D toggle. 3D renders the real trajectory
