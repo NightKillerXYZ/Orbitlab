@@ -46,6 +46,11 @@ PYTHONPATH=phase4_backend python -m uvicorn orbitlab_backend.api.app --port 8000
 ```
 
 Open http://127.0.0.1:8000/main, describe an orbit in Chat, and watch it run.
+
+Prefer a desktop window over a browser tab: `python -m pip install -r
+requirements-desktop.txt`, then `.\scripts\start_desktop.ps1 [-Demo]` —
+same backend and Main UI in a resizable 1400x900 `OrbitLab` window
+(127.0.0.1 only); see `phase4_backend/RUNBOOK.md` → "Desktop window".
 Demo mode uses a deterministic local extractor and interpreter (no network,
 no keys) with the real GMAT simulator when `GMAT_PATH` is set. Unset
 `ORBITLAB_DEMO_MODE` (or restart without it) to return to model mode.

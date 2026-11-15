@@ -236,3 +236,33 @@ and the time slider drive the 3D marker exactly like the 2D one. Re-vendoring:
 `npm install three@0.160.0` in a temp folder outside the repo, copy the two
 files above, fix the `from 'three'` import in `OrbitControls.js` to
 `./three.module.min.js`, copy the LICENSE. Never commit `node_modules`.
+
+## Desktop window
+
+Run the same backend + Main UI in its own desktop window (Edge WebView2, no
+browser). First install the optional extra (core requirements are unchanged):
+
+```powershell
+python -m pip install -r requirements-desktop.txt
+```
+
+Then, from the repo root:
+
+```powershell
+.\scripts\start_desktop.ps1 [-Demo] [-Port <n>]
+```
+
+`-Demo` sets `ORBITLAB_DEMO_MODE=true` before starting. The script sets
+`PYTHONPATH=phase4_backend` itself and picks up `GMAT_PATH` from a bundled
+`tools/gmat/**/bin/GmatConsole(.exe)` only when `GMAT_PATH` is not already
+set (explicit `GMAT_PATH` always wins). The launcher binds 127.0.0.1 only
+(`--port` overrides the free-port pick), waits up to 30 s for
+`GET /api/health`, opens the `OrbitLab` window at `/main` (1400x900,
+resizable), and stops the server when the window closes. Without pywebview
+it prints the install command and exits 1. Direct equivalent without the
+`.ps1`:
+
+```powershell
+$env:PYTHONPATH='phase4_backend'
+python scripts/desktop_app.py [--demo] [--port <n>]
+```
