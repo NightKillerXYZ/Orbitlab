@@ -162,3 +162,43 @@ renders so any future append-without-clear regresses loudly.
 - `Epoch: n/a` seen on demo Hohmann runs is pre-existing backend content
   (no epoch in those experiments), not a UI bug; with this change the overlay
   now shows the schema default instead, tagged as default.
+## Addendum — failed-run clearing + chat failure messages (v1-ui-fixes)
+
+- Failed runs no longer restore the previous run: the `prevResult` /
+  `prevJobId` / `prevScript` restore in `runScenario` was removed. On every
+  failure (extract/interpret/verify/validate/compile/simulate, plus the
+  cannot-reach path) `clearRunDisplay()` runs: disposes the 3D view, removes
+  the track/marker svg, resets stat cards and live numbers to `n/a`, clears
+  the epoch overlay text, and hides the provenance caption. Results/Details/
+  Graph/Chat tabs derive from `lastResult=null` + the error, so they show
+  failure/empty states instead of stale content (the Graph tab keeps its
+  static sample charts, which are not previous-run data; the Details tab
+  shows "No experiment/script available" since `lastJobId` is nulled).
+- Chat now explains every failure in plain words: missing fields are listed
+  as "which body it orbits, the spacecraft mass, how long to run it" with an
+  explicit ask; `extractor_unavailable` says the mission reader is down and to
+  retry with those details; `verify`/`interpreter_mismatch` says the AI's
+  answer was checked and did not match what was asked; `validate` failures
+  show the validator message; other stages keep the `Run failed at <stage>`
+  banner with the backend message/explanation. The toast stays as the short
+  notice.
+- Node tests added: field translation incl. unknown/dedupe/empty cases;
+  per-stage chat wording; an end-to-end failed run (fake adapter) asserting
+  no `#runOrbit`, n/a stat cells/caption/speed/metric, cleared overlay,
+  hidden provenance, `lastResult === null`, and the assistant message —
+  with no stale "Run complete" card; plus a probe that exposed and fixed a
+  real bug found along the way (`ensureProvenanceCaption` used
+  `parentNode`, which the harness fake lacks — switched to `parentElement`
+  with fallback, matching the real DOM too).
+
+## Final counts (v1-ui-fixes)
+
+- Node (existing invocation, all files): **77 passed, 0 fail**
+  (74 pre-existing + 3 new failure tests).
+- Backend from `phase4_backend` (`python -m pytest ../tests -q`):
+  **243 passed, 0 failed** (no backend changes in this task).
+- `scripts/e2e_all.py` from the repo root (`GMAT_PATH` from the shell only,
+  never logged or committed): tests/e2e **49**, tests **194**,
+  orbitlab_core **48**, simulation_engine **23** —
+  **314 passed, total failed+errors 0**.
+- No `git stash` used; no merges; no secrets printed, logged or committed.
