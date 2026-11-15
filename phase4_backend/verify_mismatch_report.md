@@ -58,3 +58,34 @@ stand as observed.
   sync extractor inside the async loop and only proved the endpoint was
   reachable; all numbers in this report come from the final async
   `process()` + `interpret_prompt()` path, identical to the pipeline's.
+
+## Verification (item 4 follow-up + item 5)
+
+- The crash is fixed at its root in `prompt_builder.py`: burns with
+  `deltaV: None` (or malformed vectors) are described without an invented
+  vector instead of being unpacked. Pre-existing vector-present output is
+  byte-identical (existing `test_prompt_builder.py` vector assertions pass
+  unchanged).
+- New regression tests (`tests/test_maneuver_no_deltav.py`, 5 tests): the
+  exact recorded maneuver shape through the async-equivalent sync path ends
+  `status == "ok"` with an apoapsis sentence and no `"None"` text; elapsed
+  burns without vectors, malformed vectors, and the unaffected Venus
+  semi-major-axis case are covered.
+- Safety net (`api/app.py::run_job`): any unexpected exception in any stage
+  becomes `{"code": "internal_error", "stage": <last seen stage>|"unknown",
+  "message": <plain sentence>}`; the traceback goes to the server log only
+  via `logger.exception`. New `tests/test_internal_error.py` forces a raw
+  `RuntimeError` in each of the 8 stages plus the no-event case and asserts
+  the typed shape and the absence of raw text.
+- Updated one pre-existing assertion that locked in the old raw-message
+  contract (`test_review_fixes.py::test_background_task_failure_marks_job_failed`
+  now expects `internal_error` without the raw message).
+- Counts: backend **257 passed, 0 failed** (incl. 14 new);
+  Node (existing invocation, all files) **78 passed, 0 fail** (incl. 4 new:
+  3 failure-chat/failed-run tests + 1 internal_error chat test);
+  `scripts/e2e_all.py` (GMAT_PATH from the shell only): tests/e2e **49**,
+  tests **208**, orbitlab_core **48**, simulation_engine **23** —
+  **328 passed, total failed+errors 0**.
+- The desktop UI chat shows the plain internal_error sentence verbatim
+  (`app.js` branch added; no "Run failed at" prefix since the message is
+  already complete).
