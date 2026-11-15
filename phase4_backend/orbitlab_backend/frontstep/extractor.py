@@ -25,6 +25,41 @@ def _log_extractor_ok(extracted):
     _logger.info("extractor ok; fields: %s", ",".join(names))
 
 
+def _usable_delta_v(m):
+    """True when a normalized maneuver carries a usable 3-component delta-V."""
+    try:
+        dv = m.get("deltaV") if isinstance(m, dict) else None
+    except AttributeError:
+        return False
+    if not isinstance(dv, (list, tuple)) or len(dv) < 3:
+        return False
+    try:
+        return all(float(x) == float(x) for x in dv[:3])
+    except (TypeError, ValueError):
+        return False
+
+
+def _missing_burn_size(maneuvers):
+    """ImpulsiveBurn entries without a usable delta-V cannot run.
+
+    Burns defined by a target radius/altitude alone carry deltaV=None
+    (which verify.py treats as "do not check the vector"), so the front
+    step stops here with a missing-field result instead of letting the
+    prompt builder invent numbers. Hohmann transfers need no delta-V.
+    """
+    try:
+        mans = maneuvers if isinstance(maneuvers, list) else []
+    except Exception:
+        return []
+    for m in mans:
+        if not isinstance(m, dict):
+            continue
+        mtype = m.get("type")
+        if isinstance(mtype, str) and mtype.lower() == "impulsiveburn" and not _usable_delta_v(m):
+            return ["deltaV"]
+    return []
+
+
 class ExtractionResult:
     def __init__(self, status: str, data: Optional[Dict[str,Any]]=None, missing: Optional[List[str]]=None, prompt: Optional[str]=None, extracted: Optional[Dict]=None):
         self.status=status; self.data=data; self.missing=missing or []; self.prompt=prompt; self.extracted=extracted
@@ -175,6 +210,9 @@ class FrontStepExtractor:
         integrator=extracted.get("integrator","RungeKutta89")
         if integrator not in ("RungeKutta89","PrinceDormand78"): integrator="RungeKutta89"
         forces=extracted.get("forces"); maneuvers=extracted.get("maneuvers",[])
+        man_missing=_missing_burn_size(maneuvers)
+        if man_missing:
+            return ExtractionResult("needs_clarification", missing=man_missing)
         # Names are owned by Python, never by the model: any model-provided
         # spacecraftName/experimentName keys are ignored and generated instead.
         exp_name, sc_name = self._safe_defaults(user_text, central_body)
