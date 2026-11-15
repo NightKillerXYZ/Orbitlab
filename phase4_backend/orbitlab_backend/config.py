@@ -47,6 +47,8 @@ if HAS_PYDANTIC_SETTINGS:
         # GMAT
         GMAT_PATH: Optional[str] = Field(default=None)
         GMAT_TIMEOUT_S: float = Field(default=30.0)
+        ORBITLAB_GMAT_GUI_PATH: Optional[str] = Field(default=None)
+        ORBITLAB_ALLOW_OPEN_GMAT: bool = Field(default=False)
 
         # API / CORS
         ORBITLAB_CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000")
@@ -87,6 +89,8 @@ else:
             self.EXTRACTOR_TIMEOUT_S = float(os.getenv("EXTRACTOR_TIMEOUT_S", "150"))
             self.GMAT_PATH = os.getenv("GMAT_PATH")
             self.GMAT_TIMEOUT_S = float(os.getenv("GMAT_TIMEOUT_S", "30"))
+            self.ORBITLAB_GMAT_GUI_PATH = os.getenv("ORBITLAB_GMAT_GUI_PATH")
+            self.ORBITLAB_ALLOW_OPEN_GMAT = os.getenv("ORBITLAB_ALLOW_OPEN_GMAT", "false").lower() in ("1", "true", "yes")
             self.ORBITLAB_CORS_ORIGINS = os.getenv("ORBITLAB_CORS_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000")
             self.ORBITLAB_USE_MOCK_INTERPRETER = os.getenv("ORBITLAB_USE_MOCK_INTERPRETER", "false").lower() in ("1", "true", "yes")
             self.ORBITLAB_DEMO_MODE = os.getenv("ORBITLAB_DEMO_MODE", "false").lower() in ("1", "true", "yes")
