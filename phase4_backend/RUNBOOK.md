@@ -139,6 +139,26 @@ again in a minute.") instead of a misleading `needs_clarification`.
 To keep containers warm on Modal, set `min_containers=1` on the extractor
 (and explainer) app and remove it after the demo to stop the charge.
 
+## Open in GMAT
+
+The Results tab can open the run's generated script in the full GMAT desktop
+app on the same PC as the backend (off by default; read-only inspection is
+always available in the Details tab):
+
+```powershell
+$env:ORBITLAB_ALLOW_OPEN_GMAT='true'
+$env:ORBITLAB_GMAT_GUI_PATH='C:\GMAT\R2024a\bin\GMAT.exe'
+$env:PYTHONPATH='phase4_backend'
+python -m uvicorn orbitlab_backend.api.app --port 8000
+```
+
+If `ORBITLAB_GMAT_GUI_PATH` is unset, `GMAT.exe` next to `GMAT_PATH`
+(`GmatConsole.exe`) is used when that file exists. `GET /api/health` then
+reports `"openInGmat": true`, which is the only thing that shows the button.
+The endpoint only accepts local connections (`127.0.0.1`/`::1`) and launches
+`GMAT.exe --run <stored script>` without waiting. Do not expose a backend
+with this flag on to a network: anyone who can reach it can start programs.
+
 ## 3D view and textures
 
 The "Orbital view" panel has a 2D/3D toggle. 3D renders the real trajectory
