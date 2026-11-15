@@ -288,8 +288,8 @@ function makeRichTHREE(log) {
     Float32BufferAttribute: function (arr, n) { this.array = arr; this.count = arr.length / n; },
     LineBasicMaterial: function (o) { this.o = o || {}; log.materials.push({ kind: 'line', o: this.o }); },
     PointsMaterial: function (o) { this.o = o || {}; log.materials.push({ kind: 'points', o: this.o }); },
-    MeshStandardMaterial: function (o) { this.o = o || {}; log.materials.push({ kind: 'std', o: this.o }); },
-    MeshBasicMaterial: function (o) { this.o = o || {}; log.materials.push({ kind: 'basic', o: this.o }); },
+    MeshStandardMaterial: function (o) { this.o = o || {}; this.kind = 'std'; log.materials.push({ kind: 'std', o: this.o }); },
+    MeshBasicMaterial: function (o) { this.o = o || {}; this.kind = 'basic'; log.materials.push({ kind: 'basic', o: this.o }); },
     SpriteMaterial: function (o) { this.o = o || {}; log.materials.push({ kind: 'sprite', o: this.o }); },
     Line: function (g, m) { this.geometry = g; this.material = m; this.visible = true; log.lines.push(this); },
     Points: function (g, m) {
@@ -299,12 +299,13 @@ function makeRichTHREE(log) {
     },
     Mesh: function (g, m) {
       this.geometry = g; this.material = m;
+      this.rotation = { x: 0, y: 0, z: 0 };
       const pv = new V3(0, 0, 0);
       pv.set = (x, y, z) => { log.craftPos = [x, y, z]; log.pos = [x, y, z]; pv.x = x; pv.y = y; pv.z = z; return pv; };
       this.position = pv; this.scale = new V3(1, 1, 1); this.visible = true;
       log.meshes.push(this);
     },
-    SphereGeometry: function (r) { log.spheres.push(r); this.dispose = () => {}; },
+    SphereGeometry: function (r) { log.spheres.push(r); this.dispose = () => {}; this.rotateX = (a) => { log.rotateX.push(a); }; },
     Group: function () {
       this.kids = []; this.position = new V3(0, 0, 0); this.scale = new V3(1, 1, 1);
       this.add = (o) => this.kids.push(o);
@@ -337,10 +338,11 @@ function makeRichOC(log) {
 function richLog() {
   return {
     renders: 0, disposed: [], geos: [], materials: [], lines: [], points: [],
-    meshes: [], sprites: [], arrows: [], spheres: [], pos: null, craftPos: null, textureFile: null,
+    meshes: [], sprites: [], arrows: [], spheres: [], rotateX: [], pos: null, craftPos: null, textureFile: null,
     camera: null, canvas: null, canvasHandlers: {},
   };
 }
+const GT = require('../UIUX/OrbitlabUI Main/groundtrack.js');
 function elevenSamples() {
   const pts = [];
   for (let i = 0; i <= 10; i++) pts.push({ x_km: 6778 + i, y_km: 0, z_km: 0, elapsed_secs: i });
@@ -351,7 +353,7 @@ async function readyScene(opts) {
   log.canvas = makeCanvasStub(log);
   installRichDom(log);
   const THREE = makeRichTHREE(log);
-  const deps = { THREE, OrbitControls: makeRichOC(log) };
+  const deps = { THREE, OrbitControls: makeRichOC(log), GroundTrack: GT };
   if (opts && opts.tds) deps.TDSLoader = opts.tds;
   const container = makeRichContainer();
   if (opts && opts.dataset) Object.assign(container.dataset, opts.dataset);
@@ -360,6 +362,7 @@ async function readyScene(opts) {
   // The empty init scene is fully replaced by setResult below; scope the logs to it.
   log.sprites.length = 0; log.lines.length = 0; log.arrows.length = 0;
   log.materials.length = 0; log.geos.length = 0; log.points.length = 0;
+  log.rotateX.length = 0; log.meshes.length = 0; log.spheres.length = 0;
   h.setResult(opts && opts.tele ? opts.tele : elevenSamples(), (opts && opts.body) || 'Earth');
   await new Promise((r) => setTimeout(r, 50));
   return { log, container, h };
@@ -505,5 +508,57 @@ test('garbage model data keeps the simple marker', async () => {
   assert.deepEqual(log.craftPos, [6788, 0, 0], 'marker still driven');
   const craft = log.meshes[log.meshes.length - 1];
   assert.ok(craft && craft.visible !== false, 'simple marker kept');
+  h.dispose();
+});
+
+test('earth spin equals GMST at sampled times; sidereal closure within 0.01 deg', () => {
+  const jd0 = GT.parseGmatEpoch('01 Jan 2026 12:00:00.000');
+  assert.ok(isFinite(jd0), 'fixture epoch parses');
+  for (const t of [0, 1, 3600, 21600, 43200, 86399]) {
+    assert.equal(v3.earthSpinDeg(jd0 + t / 86400, GT.gmstDeg), GT.gmstDeg(jd0 + t / 86400), 't=' + t);
+  }
+  assert.equal(v3.earthSpinDeg(jd0, null), null, 'no helper, no spin');
+  assert.equal(v3.earthSpinDeg(NaN, GT.gmstDeg), null, 'bad jd, no spin');
+  const d0 = v3.earthSpinDeg(jd0, GT.gmstDeg);
+  const d1 = v3.earthSpinDeg(jd0 + 86164.0905 / 86400, GT.gmstDeg);
+  let dd = Math.abs(d1 - d0) % 360;
+  if (dd > 180) dd = 360 - dd;
+  assert.ok(dd <= 0.01, 'one sidereal day later, back within 0.01 deg: ' + dd);
+});
+
+test('at GMST 0 the prime meridian faces +X (texture offset logic, no GPU)', () => {
+  // Verified against the vendored SphereGeometry source: u=0.5 (lon 0) -> phi=PI
+  // -> +X, so the needed offset is exactly zero.
+  assert.equal(v3.EARTH_TEX_OFFSET_DEG, 0);
+  assert.equal(v3.earthTexAngleDeg(0), 0, 'lon 0 on +X');
+  assert.equal(v3.earthTexAngleDeg(90), 90, 'lon 90E on +Y');
+  assert.equal(v3.earthTexAngleDeg(-180), 180, 'lon 180 on -X');
+  assert.equal(v3.earthTexAngleDeg('bad'), null);
+});
+
+test('Earth mesh rotates with the replay; geometry baked Z-up', async () => {
+  const epoch = '01 Jan 2026 12:00:00.000';
+  const jd0 = GT.parseGmatEpoch(epoch);
+  const { log, h } = await readyScene({ dataset: { epochValue: epoch, spacecraftName: 'SC_Put', bodyName: 'Earth' } });
+  const bodyMesh = log.meshes.find((m) => m.material && m.material.kind === 'std');
+  assert.ok(bodyMesh, 'body mesh built');
+  assert.deepEqual(log.rotateX, [Math.PI / 2], 'Earth poles baked to +Z/-Z');
+  const expect = (f) => v3.earthSpinDeg(jd0 + (10 * f) / 86400, GT.gmstDeg) * Math.PI / 180;
+  for (const f of [0, 0.25, 0.5, 1]) {
+    h.setProgress(f);
+    assert.ok(Math.abs(bodyMesh.rotation.z - expect(f)) < 1e-12, 'spin at progress ' + f + ': ' + bodyMesh.rotation.z);
+  }
+  h.dispose();
+});
+
+test('non-Earth bodies stay static (no spin, no pole fix)', async () => {
+  const { log, h } = await readyScene({ body: 'Moon', dataset: { epochValue: '01 Jan 2026 12:00:00.000', bodyName: 'Moon' } });
+  const bodyMesh = log.meshes.find((m) => m.material && m.material.kind === 'std');
+  assert.ok(bodyMesh, 'moon mesh built');
+  h.setProgress(0);
+  h.setProgress(1);
+  assert.equal(bodyMesh.rotation.z, 0, 'Moon never spins, even with an epoch');
+  assert.deepEqual(log.rotateX, [], 'no pole fix for other bodies');
+  assert.deepEqual(log.spheres, [135.76, 1737.4], 'marker then true Moon radius');
   h.dispose();
 });

@@ -11,6 +11,21 @@ var BODY_RADII_KM={Earth:6378.137,Moon:1737.4,Mars:3396.2,Mercury:2439.7,Venus:6
 var BODY_COLORS={Earth:0x4d8dff,Moon:0x9aa3b2,Mars:0xd4694e,Mercury:0x9c8d7d,Venus:0xe0a05e,Jupiter:0xd8b083,Sun:0xffb14e};
 var TRACK_COLOR=0xff0000;
 var LABEL_FRAC=0.04; /* label sprites are rescaled every frame to this fraction of camera distance (screen-fixed text) */
+/* Earth texture alignment. Verified against the vendored three.js r160 SphereGeometry
+   source (x = -r*cos(u*2PI)*sinT, y = r*cosT, z = r*sin(u*2PI)*sinT, uv = (u,1-v)):
+   u = 0.5 is the equirectangular image centre = longitude 0, giving phi = PI and
+   x = +r*sinT, i.e. longitude 0 faces +X at zero mesh rotation. The geometry is
+   additionally baked with rotateX(+PI/2) for Earth only (three spheres are Y-up;
+   the scene is Z-up), which maps +Y to +Z while leaving lon 0 on +X (lon 90E maps
+   to +Y, matching atan2(y,x)). Hence no angular offset is needed: */
+var EARTH_TEX_OFFSET_DEG=0;
+function norm360(d){try{d=Number(d);if(!isFinite(d))return 0;d=d%360;if(d<0)d+=360;return d;}catch(e){return 0;}}
+/* Texture longitude (deg, equirectangular) -> mesh-frame angle from +X (deg). */
+function earthTexAngleDeg(lonDeg){try{var l=+lonDeg;if(!isFinite(l))return null;return norm360(l+EARTH_TEX_OFFSET_DEG);}catch(e){return null;}}
+/* Inertial-frame spin of the Earth mesh (deg): GMST at the epoch plus elapsed
+   telemetry time, so the texture agrees with the ground track's eciToLatLon
+   (lon = atan2(y,x) - GMST). gmstDegFn is GroundTrack.gmstDeg (same helper). */
+function earthSpinDeg(jd,gmstDegFn){try{jd=+jd;if(!isFinite(jd))return null;var g=(typeof gmstDegFn==='function')?gmstDegFn(jd):null;if(g==null||!isFinite(+g))return null;return norm360(+g+EARTH_TEX_OFFSET_DEG);}catch(e){return null;}}
 var FAINT_OPACITY=0.22;
 var MAX_LINE_POINTS=5000;
 var STAR_COUNT=400;
@@ -117,7 +132,7 @@ function createView3D(container,deps){
         THREE:null,Orbit:null,TDSLoader:null,renderer:null,scene:null,camera:null,controls:null,
         world:null,craft:null,craftLabel:null,bodyLabel:null,bodyMesh:null,single:null,
         model:null,modelBase:0,modelLoading:false,loadToken:0,stars:null,
-        showFull:false,spacecraftName:'',bodyName:'',curPos:null,labels:[],uiBox:null,canvasEl:null,ro:null,onWinResize:null};
+        showFull:false,spacecraftName:'',bodyName:'',curPos:null,labels:[],epochJD:null,gmstFn:null,uiBox:null,canvasEl:null,ro:null,onWinResize:null};
  function clearRunObjects(){
  try{
   if(S.world&&S.scene){
@@ -291,13 +306,16 @@ function createView3D(container,deps){
     return Promise.resolve(matP).then(function(mat){
      if(S.dead||!S.world)return;
      if(mat){
-      S.bodyMesh=new THREE.Mesh(new THREE.SphereGeometry(R,48,32),mat);
+            var bgeo=new THREE.SphereGeometry(R,48,32);
+       try{if(body==='Earth'&&bgeo&&bgeo.rotateX)bgeo.rotateX(Math.PI/2);}catch(e){}
+       S.bodyMesh=new THREE.Mesh(bgeo,mat);
       try{world.add(S.bodyMesh);}catch(e){}
       try{
        var lbl=makeTextSprite(THREE,S.bodyName||body||'body','#00FF00',Math.max(maxR*0.04,0.001));
        if(lbl){lbl.position.set(R*1.25,R*0.15,0);world.add(lbl);S.bodyLabel=lbl;S.labels.push(lbl);}
       }catch(e){}
      }
+     try{applyProgress();}catch(e){}
      try{render();}catch(e){}
     }).catch(function(){});
    })();
@@ -406,7 +424,21 @@ function createView3D(container,deps){
     try{render();}catch(e){}
    }).catch(function(){S.modelLoading=false;});
   }catch(e){S.modelLoading=false;}
- }
+ }  /* Earth-only spin: rotates the Earth mesh about +Z by GMST(epoch + replay
+     time). Other bodies stay static. Safe when the mesh, epoch or helper is
+     missing (renders exactly as before). */
+  function spinBody(tSecs){
+   try{
+    if(S.body!=='Earth'||!S.bodyMesh||S.epochJD==null||!S.gmstFn)return;
+    var gd=earthSpinDeg(S.epochJD+(+tSecs||0)/86400,S.gmstFn);
+    if(gd==null)return;
+    var rad=gd*Math.PI/180;
+    try{
+     var rt=S.bodyMesh.rotation;
+     if(rt){if(rt.set)rt.set(rt.x||0,rt.y||0,rad);else rt.z=rad;}
+    }catch(e){}
+   }catch(e){}
+  }
  function applyProgress(){
   if(!S.ready||S.dead||!S.THREE)return;
   var f=clamp01(S.frac);
@@ -438,6 +470,7 @@ function createView3D(container,deps){
    }
    S.curPos=p||S.curPos||null;
   }catch(e){}
+  try{spinBody(t);}catch(e){}
  }
  function render(){
   try{if(!S.renderer||!S.scene||!S.camera)return;
@@ -497,6 +530,16 @@ function createView3D(container,deps){
     S.lineTimes=lt;
    }
    S.body=(typeof centralBody==='string'&&centralBody)?centralBody:'';
+   S.epochJD=null;S.gmstFn=null;
+   try{
+    var GT=null;
+    try{GT=(deps&&deps.GroundTrack)||null;}catch(e){GT=null;}
+    if(!GT){try{GT=(typeof GroundTrack!=='undefined')?GroundTrack:null;}catch(e){GT=null;}}
+    var eraw=null;
+    try{eraw=(container&&container.dataset&&container.dataset.epochValue)||null;}catch(e){eraw=null;}
+    if(GT&&GT.gmstDeg)S.gmstFn=GT.gmstDeg;
+    if(eraw&&GT&&GT.parseGmatEpoch){var ejd=GT.parseGmatEpoch(eraw);if(isFinite(ejd))S.epochJD=ejd;}
+   }catch(e){S.epochJD=null;S.gmstFn=null;}
    try{
     var ds=null;
     try{ds=(container&&container.dataset)?container.dataset:null;}catch(e){ds=null;}
@@ -533,6 +576,6 @@ function createView3D(container,deps){
  }
  return api;
 }
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_RADII_KM:BODY_RADII_KM,BODY_COLORS:BODY_COLORS,textureFileFor:textureFileFor,modelFileFor:modelFileFor,decimatePoints:decimatePoints,clamp01:clamp01,sampleAtTimes:sampleAtTimes,countAtOrBefore:countAtOrBefore,splitRuns:splitRuns,bodyRadiusKm:bodyRadiusKm,bodyColorHex:bodyColorHex,createView3D:createView3D};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_RADII_KM:BODY_RADII_KM,BODY_COLORS:BODY_COLORS,textureFileFor:textureFileFor,modelFileFor:modelFileFor,decimatePoints:decimatePoints,clamp01:clamp01,sampleAtTimes:sampleAtTimes,countAtOrBefore:countAtOrBefore,splitRuns:splitRuns,bodyRadiusKm:bodyRadiusKm,bodyColorHex:bodyColorHex,EARTH_TEX_OFFSET_DEG:EARTH_TEX_OFFSET_DEG,earthTexAngleDeg:earthTexAngleDeg,earthSpinDeg:earthSpinDeg,createView3D:createView3D};}}catch(e){}
 try{if(typeof globalThis!=='undefined'){globalThis.createView3D=createView3D;}}catch(e){}
 })();
