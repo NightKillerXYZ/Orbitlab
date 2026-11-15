@@ -13,7 +13,9 @@
 
 Rules: files must be equirectangular (2:1) JPGs; when a file is missing the
 view falls back to a plain shaded sphere in the body's colour and keeps
-working — a missing texture never throws.
+working — a missing texture never throws. All seven files below are now
+included in the repo (copied byte for byte from the installed NASA GMAT's
+`data/graphics/texture` folder); per-file provenance is in `CREDITS.md`.
 
 GMAT ships usable equirectangular textures with author credits in the file
 names; suggested sources (credit the authors when you copy them):

@@ -233,7 +233,8 @@ script and results before relying on them. Not for flight operations.
   any bundled copy.
 - Planet textures taken from GMAT's data/graphics/texture folder with their
   original authors named: JPL/Caltech, Bjorn Jonsson, Celestia Motherlode
-  contributors.
+  contributors (per-file provenance in
+  `UIUX/OrbitlabUI Main/assets/textures/CREDITS.md`).
 - Language models Phi-4-mini and Qwen2.5-7B-Instruct used under their own
   licenses (named here; licence terms are not restated).
 - three.js (MIT). The 3D view is our own implementation inspired by GMAT's
