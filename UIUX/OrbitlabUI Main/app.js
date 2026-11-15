@@ -106,6 +106,30 @@ let animT=0,animPlaying=false,runFit=null,runBodyR=null,runStats=null,curAlt=nul
    mirrors it so playback code can drive the 3D scene. */
 let view3d=null,view3dOn=false;
 function is3D(){try{const v=document.querySelector('#orbitVisual');return !!(v&&v.classList&&v.classList.contains('view-3d'));}catch(e){return view3dOn;}}
+/* Ground track (Graph tab, Earth runs only). Canvas is drawn after the tab
+   HTML lands in the panel; without telemetry the tab keeps its message. */
+function paintGroundTrack(){
+ try{
+  const cv=document.querySelector('#groundTrack');
+  if(!cv||!lastResult||typeof GroundTrack==='undefined')return;
+  const body=runBodyName();
+  if(body!=='Earth')return;
+  const exp=lastResult.experiment||{};
+  const jd0=GroundTrack.parseGmatEpoch(exp&&exp.epoch&&exp.epoch.value);
+  if(jd0==null)return;
+  const pts=trajPts();
+  if(!pts.length)return;
+  const idx=GroundTrack.decimateIndices(pts.length,3000);
+  const lats=[],lons=[];
+  for(const k of idx){
+   const p=pts[k];
+   const ll=GroundTrack.eciToLatLon(+p.x_km,+p.y_km,+p.z_km,jd0+(+p.elapsed_secs||0)/86400);
+   if(!ll)continue;
+   lats.push(ll.lat);lons.push(ll.lon);
+  }
+  GroundTrack.drawGroundTrack(cv,lats,lons,{imageUrl:'assets/textures/earth.jpg'});
+ }catch(e){}
+}
 function ensureView3D(){
  try{
   if(!lastResult||!trajPts().length)return Promise.resolve(null);
@@ -228,7 +252,7 @@ const content={
 };
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function scenarioMarkup(run){return `<div class="chat-result"><strong>Scenario simulated</strong>Changing Venus’s orbital speed gives a ${run.outcome.toLowerCase()}.<div class="result-chips"><span>${run.velocity} km/s</span><span>${run.period} day period</span></div></div>`}
-function renderTab(tab){activeTab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));let html=null;if(!useMock())html=liveBody(tab);panel.innerHTML=(html===null||html===undefined)?content[tab]:html;composer.style.display=tab==='Chat'?'block':'none';panel.scrollTop=0;refreshExportState();}
+function renderTab(tab){activeTab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));let html=null;if(!useMock())html=liveBody(tab);panel.innerHTML=(html===null||html===undefined)?content[tab]:html;composer.style.display=tab==='Chat'?'block':'none';panel.scrollTop=0;refreshExportState();if(tab==='Graph'){try{paintGroundTrack();}catch(e){}}}
 function axisTickT(t,span){if(span>=172800)return (t/86400).toFixed(1)+'d';if(span>=7200)return (t/3600).toFixed(1)+'h';return Math.round(t)+'s';}
 function chartSVG(title,unit,times,vals,color){
  const W=260,H=150,L=44,R=8,T=12,B=22;
@@ -329,6 +353,10 @@ function liveBody(tab){
      +'<div class="section-kicker">SPEED vs TIME</div>'+chart('Speed vs time','km/s',gS,'var(--cyan,#58d4b0)')
      +'<div class="section-kicker">SEMI-MAJOR AXIS vs TIME (computed from telemetry)</div>'+chart('Semi-major axis vs time','km',gSma,'var(--gold,#ffbd70)')
      +'<div class="section-kicker">ECCENTRICITY vs TIME (computed from telemetry)</div>'+chart('Eccentricity vs time','',gEcc,'var(--green,#58d4b0)')
+     +'<div class="section-kicker">GROUND TRACK (APPROXIMATE)</div>'
+     +(gBody==='Earth'
+       ?'<canvas id="groundTrack" width="520" height="260" style="width:100%;border:1px solid var(--line,rgba(143,170,220,.12));border-radius:7px;background:#0a1324"></canvas><div class="result-note"><span>o </span>Approximate: spherical Earth, no precession, nutation or polar motion (up to ~0.2° error).</div>'
+       :'<div class="result-note">Ground track is available for Earth runs.</div>')
      +'<div class="chart-legend"><i></i> Live run <b>'+escapeHtml(pts.length+' points')+'</b></div>';
   }
   if(tab==='Physics'){
@@ -597,4 +625,4 @@ renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,paintGroundTrack:paintGroundTrack,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack}};}}catch(e){}
