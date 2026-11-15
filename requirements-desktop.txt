@@ -1,0 +1,3 @@
+# Optional desktop-window extra (not needed for the core backend, tests, or UI).
+# Windows uses the built-in Edge WebView2; no browser download is required.
+pywebview
