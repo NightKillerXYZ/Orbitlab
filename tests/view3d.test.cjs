@@ -562,3 +562,16 @@ test('non-Earth bodies stay static (no spin, no pole fix)', async () => {
   assert.deepEqual(log.spheres, [135.76, 1737.4], 'marker then true Moon radius');
   h.dispose();
 });
+test('Earth without an epoch spins at the schema default epoch', async () => {
+  const jdDefault = GT.parseGmatEpoch('01 Jan 2026 12:00:00.000');
+  assert.ok(isFinite(jdDefault), 'schema default parses');
+  const { log, h } = await readyScene({ dataset: { spacecraftName: 'SC_Put', bodyName: 'Earth' } });
+  const bodyMesh = log.meshes.find((m) => m.material && m.material.kind === 'std');
+  assert.ok(bodyMesh, 'body mesh built');
+  for (const f of [0, 0.5, 1]) {
+    h.setProgress(f);
+    const expected = v3.earthSpinDeg(jdDefault + (10 * f) / 86400, GT.gmstDeg) * Math.PI / 180;
+    assert.ok(Math.abs(bodyMesh.rotation.z - expected) < 1e-12, 'default-epoch spin at progress ' + f);
+  }
+  h.dispose();
+});

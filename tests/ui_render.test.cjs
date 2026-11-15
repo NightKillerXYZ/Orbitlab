@@ -170,6 +170,10 @@ add(gdate, 'span', { text: '' });
 const topbar = add(doc.root, 'div', { cls: 'topbar' });
 const topActions = add(topbar, 'div', { cls: 'top-actions' });
 add(topActions, 'span', { cls: 'live-status', text: 'SIMULATION READY' });
+// Static singletons mirroring index.html (footer, user card, sim controls).
+add(doc.root, 'div', { cls: 'profile' });
+add(doc.root, 'div', { cls: 'simulation-controls' });
+add(doc.root, 'div', { cls: 'app-footer' });
 
 global.document = doc;
 global.window = global;
@@ -497,7 +501,7 @@ test('epoch overlay shows frame plus advancing epoch; dataset names wired', () =
   app.__test__.anim(43200);
   app.__test__.draw();
   assert.ok(ov.textContent.includes('Epoch: 02 Jan 2026 00:00:00.000'), 'epoch advances with replay: ' + ov.textContent);
-  assert.ok(String(ov.style.cssText).includes('bottom'), 'pinned to the bottom-left');
+  assert.ok(String(ov.style.cssText).includes('top:8px'), 'pinned to the top-left, clear of the HUD');
   app.__test__.setResult(fix.result);
 });
 
@@ -507,4 +511,107 @@ test('render wires epoch and names for the 3D view', () => {
   assert.equal(vis.dataset.epochValue, '01 Jan 2026 12:00:00.000', 'epoch for the 3D spin');
   assert.equal(vis.dataset.spacecraftName, 'SC_Put');
   assert.equal(vis.dataset.bodyName, 'Earth');
+});
+
+test('provenance caption explains live, cached and sample results', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  app.__test__.meta({ origin: 'live', elapsedSecs: 3.2, jobId: 'job-1' });
+  app.__test__.prov();
+  let cap = doc.querySelector('#runProvenance');
+  assert.ok(cap, 'caption element exists');
+  assert.equal(cap.textContent, 'Live GMAT run - 3.2 s');
+  app.__test__.meta({ origin: 'live', elapsedSecs: null, jobId: null });
+  app.__test__.prov();
+  assert.equal(doc.querySelector('#runProvenance').textContent, 'Live GMAT run');
+  app.__test__.meta({ origin: 'cache', elapsedSecs: 41.7, jobId: 'job-0' });
+  app.__test__.prov();
+  assert.equal(doc.querySelector('#runProvenance').textContent,
+    'Result from cache (same input as an earlier run)');
+  app.__test__.meta({ origin: 'sample', elapsedSecs: null, jobId: null });
+  app.__test__.prov();
+  assert.equal(doc.querySelector('#runProvenance').textContent, 'Sample data (not a run)');
+  app.__test__.meta({ origin: 'mock', elapsedSecs: null, jobId: null });
+  app.__test__.prov();
+  assert.equal(doc.querySelector('#runProvenance').textContent, 'Sample data (not a run)');
+  assert.equal(app.__test__.provText(), 'Sample data (not a run)');
+  assert.deepEqual(app.__test__.metaFrom({ fromCache: true, elapsedSeconds: 5, jobId: 'j' }),
+    { origin: 'cache', elapsedSecs: 5, jobId: 'j' });
+  assert.deepEqual(app.__test__.metaFrom({ mock: true }),
+    { origin: 'sample', elapsedSecs: null, jobId: null });
+  assert.deepEqual(app.__test__.metaFrom({ elapsedSeconds: 2.5 }),
+    { origin: 'live', elapsedSecs: 2.5, jobId: null });
+  app.__test__.setResult(fix.result);
+});
+
+test('repeated renders stay idempotent: one of each element', () => {
+  app.__test__.setResult(fix.result);
+  const countAll = () => ({
+    footer: doc.querySelectorAll('.app-footer').length,
+    profile: doc.querySelectorAll('.profile').length,
+    simctrl: doc.querySelectorAll('.simulation-controls').length,
+    simTime: doc.querySelectorAll('#simTime').length,
+    runOrbit: doc.querySelectorAll('#runOrbit').length,
+    epoch: doc.querySelectorAll('#epochOverlay').length,
+    prov: doc.querySelectorAll('#runProvenance').length,
+  });
+  app.__test__.render();
+  assert.deepEqual(countAll(),
+    { footer: 1, profile: 1, simctrl: 1, simTime: 1, runOrbit: 1, epoch: 1, prov: 1 });
+  app.__test__.render();
+  app.__test__.render();
+  assert.deepEqual(countAll(),
+    { footer: 1, profile: 1, simctrl: 1, simTime: 1, runOrbit: 1, epoch: 1, prov: 1 },
+    'three consecutive renders still singletons');
+  const row = doc.querySelector('.telemetry-row');
+  assert.equal((row.innerHTML.match(/<div>/g) || []).length, 5, 'stat cells replaced, not appended');
+  app.__test__.setResult(fix.result);
+});
+
+test('epoch overlay is hidden in 2D and shown in 3D', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  app.__test__.anim(100);
+  app.__test__.draw();
+  const ov = doc.querySelector('#epochOverlay');
+  assert.ok(ov, 'overlay element exists');
+  assert.equal(ov.style.display, 'none', 'hidden in 2D mode');
+  const origClassList = vis.classList;
+  vis.classList = { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => true };
+  try {
+    app.__test__.draw();
+    assert.equal(ov.style.display, '', 'shown in 3D mode');
+    assert.ok(ov.textContent.includes('EarthMJ2000Eq'), 'frame line kept');
+  } finally {
+    vis.classList = origClassList;
+  }
+  app.__test__.setResult(fix.result);
+});
+
+test('missing epoch uses the schema default everywhere', () => {
+  const noEpoch = JSON.parse(JSON.stringify(fix.result));
+  delete noEpoch.experiment.epoch;
+  app.__test__.setResult(noEpoch);
+  app.__test__.render();
+  app.__test__.anim(0);
+  app.__test__.draw();
+  const ov = doc.querySelector('#epochOverlay');
+  assert.ok(ov.textContent.includes('Epoch: 01 Jan 2026 12:00:00.000'), 'default epoch shown: ' + ov.textContent);
+  assert.ok(ov.textContent.includes('(default epoch)'), 'default tagged: ' + ov.textContent);
+  assert.deepEqual(app.__test__.epochParts(0),
+    { text: 'Epoch: 01 Jan 2026 12:00:00.000', isDefault: true });
+  // ground track still paints with the default epoch
+  const calls = [];
+  const cv = add(doc.root, 'canvas', { id: 'groundTrack' });
+  cv.getContext = () => ({
+    fillStyle: null, strokeStyle: null, font: null, textAlign: null, lineWidth: null,
+    fillRect(x, y, w, h) { calls.push('bg'); },
+    beginPath() {}, moveTo(x, y) {}, lineTo(x, y) { calls.push('line'); },
+    stroke() { calls.push('stroke'); }, arc() {}, fill() {},
+    fillText(t) { calls.push('label:' + t); },
+  });
+  app.__test__.paint();
+  assert.ok(calls.includes('bg'), 'track paints without an experiment epoch');
+  cv.remove();
+  app.__test__.setResult(fix.result);
 });
