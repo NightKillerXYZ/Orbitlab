@@ -147,6 +147,7 @@ add(cap, 'span', { cls: 'caption-dot' });
 add(cap, 'span', { text: 'VENUS' });
 add(cap, 'b', { id: 'captionSpeed', text: '35.0 km/s' });
 const row = add(doc.root, 'div', { cls: 'telemetry-row' });
+add(doc.root, 'span', { id: 'speedMetric', text: '35.0 km/s' });
 const crumbs = add(doc.root, 'div', { cls: 'breadcrumbs' });
 add(crumbs, 'span', { text: 'My missions' });
 const crumbB = add(crumbs, 'b', { text: 'Venus in Motion' });
@@ -293,7 +294,7 @@ test('Results shows a Hohmann maneuver table with analytic estimates', () => {
   app.__test__.setResult(fix.result);
 });
 
-test('failure banner shows the extractor_unavailable message and explanation', () => {
+test('failure banner explains extractor_unavailable in plain words', () => {
   app.__test__.setResult(null);
   app.__test__.setError({
     stage: 'extract',
@@ -302,9 +303,10 @@ test('failure banner shows the extractor_unavailable message and explanation', (
     details: { explanation: 'The language model that reads your request is starting up or unreachable. Please try again in a minute.' },
   });
   const chat = app.liveBody('Chat');
-  assert.ok(chat.includes('Run failed at extract'), 'failure banner stage');
-  assert.ok(chat.includes('starting up or unreachable'), 'failure message shown');
-  assert.ok(chat.includes('Please try again in a minute'), 'explanation shown');
+  assert.ok(chat.includes('mission reader is unavailable'), 'plain-language banner');
+  assert.ok(chat.includes('try again in a minute'), 'retry hint kept');
+  assert.ok(chat.includes('spacecraft mass'), 'field hint kept');
+  assert.ok(!chat.includes('Run failed at extract'), 'no raw stage banner');
   assert.ok(!chat.includes('More information needed'), 'not the clarification banner');
   app.__test__.setError(null);
 });
@@ -718,3 +720,74 @@ test('speed dropdown exists once and survives repeated renders', () => {
   assert.equal(doc.querySelectorAll('#speedCustom').length, 1, 'one custom input after 3 renders');
   assert.equal(doc.querySelectorAll('#speedReadout').length, 1, 'one readout after 3 renders');
 });
+
+test('missing fields are translated to plain language with an ask', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({
+    stage: 'extract', code: 'needs_clarification',
+    message: 'Missing required fields: centralBody, dryMassKg, duration.',
+    details: { missing: ['centralBody', 'dryMassKg', 'duration'] },
+  });
+  const chat = app.liveBody('Chat');
+  assert.ok(chat.includes('To run this I still need:'), 'plain ask header');
+  assert.ok(chat.includes('which body it orbits'), 'centralBody translated');
+  assert.ok(chat.includes('the spacecraft mass'), 'dryMassKg translated');
+  assert.ok(chat.includes('how long to run it'), 'duration translated');
+  assert.ok(chat.includes('Add them to your message'), 'asks the user to add them');
+  assert.ok(!chat.includes('centralBody') || chat.includes('which body it orbits'), 'no raw field dump as the message');
+  assert.equal(app.__test__.missingText(['centralBody', 'dryMassKg', 'duration', 'orbit']),
+    'which body it orbits, the spacecraft mass, how long to run it, the orbit shape or size');
+  assert.equal(app.__test__.missingText(['mysteryField']), 'mysteryField', 'unknown fields pass through');
+  assert.equal(app.__test__.missingText(['centralBody', 'centralBody']), 'which body it orbits', 'deduped');
+  assert.equal(app.__test__.missingText([]), 'a few more mission details', 'empty fallback');
+  assert.equal(app.__test__.missingText(null), 'a few more mission details', 'null fallback');
+  app.__test__.setError(null);
+});
+
+test('verify failures say the AI answer did not match; validate shows its message', () => {
+  app.__test__.setResult(null);
+  app.__test__.setError({ stage: 'verify', code: 'interpreter_mismatch', message: 'Interpreter returned mismatched values: foo' });
+  let chat = app.liveBody('Chat');
+  assert.ok(chat.includes('did not match what you asked'), 'verify wording');
+  assert.ok(chat.includes('Run stopped'), 'run-stopped header');
+  app.__test__.setError({ stage: 'validate', code: 'validation_failed', message: 'Periapsis 50 km is below the 100 km minimum.' });
+  chat = app.liveBody('Chat');
+  assert.ok(chat.includes('physics check'), 'validate header');
+  assert.ok(chat.includes('Periapsis 50 km is below the 100 km minimum.'), 'validator message shown');
+  app.__test__.setError({ stage: 'simulate', code: 'gmat_run_error', message: 'GMAT blew up' });
+  chat = app.liveBody('Chat');
+  assert.ok(chat.includes('Run failed at simulate'), 'other stages keep the stage banner');
+  assert.ok(chat.includes('GMAT blew up'), 'other stages keep the message');
+  app.__test__.setError(null);
+});
+
+test('a failed run clears the previous run everywhere', async () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  assert.equal(doc.querySelectorAll('#runOrbit').length, 1, 'previous run drawn');
+  globalThis.OrbitLabAdapter = {
+    isMockMode: () => false,
+    runExperiment: () => Promise.resolve({ error: { stage: 'simulate', code: 'gmat_run_error', message: 'GMAT blew up' } }),
+  };
+  try {
+    app.__test__.run('doomed prompt');
+    for (let k = 0; k < 20; k++) await Promise.resolve();
+    assert.equal(app.__test__.getResult(), null, 'no result kept');
+    assert.equal(doc.querySelectorAll('#runOrbit').length, 0, 'old track removed');
+    const cells = (doc.querySelector('.telemetry-row').innerHTML.match(/<b>(.*?)<\/b>/g) || []).map((c) => c.replace(/<\/?b>/g, ''));
+    assert.ok(cells.length === 5 && cells.every((c) => c === 'n/a'), 'stat cards cleared, not stale: ' + cells.join(','));
+    assert.equal(doc.querySelector('#captionSpeed').textContent, 'n/a', 'speed cleared');
+    assert.equal(doc.querySelector('#speedMetric').innerHTML, 'n/a', 'metric cleared');
+    assert.equal(doc.querySelector('#simTime').textContent, 'n/a', 'clock cleared');
+    assert.equal(doc.querySelector('#epochOverlay').textContent, '', 'overlay cleared');
+    assert.equal(doc.querySelector('#runProvenance').style.display, 'none', 'provenance hidden');
+    const chat = app.liveBody('Chat');
+    assert.ok(chat.includes('Run failed at simulate'), 'assistant message for the failed run');
+    assert.ok(chat.includes('GMAT blew up'), 'failure message kept');
+    assert.ok(!chat.includes('Run complete'), 'no stale Run complete card');
+  } finally {
+    delete globalThis.OrbitLabAdapter;
+  }
+  app.__test__.setResult(fix.result);
+});
+
