@@ -10,6 +10,11 @@ No network, no GMAT: the recorded shape is replayed through a stub client.
 """
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 from orbitlab_backend.frontstep.prompt_builder import build_canonical_prompt
+from orbitlab_backend.clients.interpreter_client import MockInterpreterClient
+from orbitlab_backend.clients.explainer_client import MockExplainer
+from orbitlab_backend.orchestrator.pipeline import Pipeline
+import asyncio
+import json
 
 
 # Exact model-output shape that triggered the crash (only the maneuver entry
@@ -70,7 +75,7 @@ def test_malformed_deltav_renders_without_vector():
         assert "None" not in p
 
 
-def test_recorded_model_output_converts_end_to_end():
+def test_recorded_model_output_asks_for_burn_size():
     recorded = {
         "centralBody": "Earth", "dryMassKg": 500,
         "orbit": {"kind": "circularAltitudeKm", "value": 500, "unit": "km"},
@@ -80,9 +85,9 @@ def test_recorded_model_output_converts_end_to_end():
     ext = FrontStepExtractor(extractor_client=_StubClient(recorded))
     res = ext.process_sync(
         "500 kg satellite around Earth, 500 km altitude, burn at apoapsis to 800 km, 1 day")
-    assert res.status == "ok", res
-    assert res.prompt and "apoapsis" in res.prompt
-    assert "None" not in res.prompt
+    assert res.status == "needs_clarification", res
+    assert res.missing == ["deltaV"], res.missing
+    assert res.prompt is None
 
 
 def test_venus_sma_prompt_still_converts():
