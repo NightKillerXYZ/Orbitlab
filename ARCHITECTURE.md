@@ -302,9 +302,68 @@ The sections above are the original plan and are kept unchanged. What follows de
 ### Where phase 4 lives now
 
 - Backend code: `phase4_backend/orbitlab_backend/` (config, `clients/` interpreter/extractor/explainer, `frontstep/` extractor/conversions/prompt_builder/verify, `orchestrator/` pipeline/errors, `api/` FastAPI app/store/cleanup/adapter). Backend tests: `tests/` (run from inside `phase4_backend/`), route-level end-to-end suite: `tests/e2e/`, all-suites runner: `scripts/e2e_all.py`.
-- Reports: `phase4_backend/` (`phase4_report.md`, `phase4_gmat_report.md`, `phase4_gmat2_report.md`, `phase5_ui_report.md`, `phase5_main_ui_report.md`, `phase5_real_model_report.md`, `phase5_real_model_fix_report.md`, `phase6_e2e_report.md`, `RUNBOOK.md`, `deploy_notes.md`); review notes under `phase4_backend/review/`.
-- UI: `UIUX/orbitlab-live.html` (wired page) and `UIUX/OrbitlabUI Main/` (wired Main UI), served by the backend at `/` and `/main/` with the adapter at `/ui_adapter.js`.
+- Reports: `phase4_backend/` (task reports including `extractor_*`,
+  `explain_fallback_report.md`, `demo_mode_report.md`, `ui_real_results_report.md`,
+  `plots_report.md`, `view3d_report.md`, `ground_track_report.md`,
+  `details_tab_report.md`, `open_in_gmat_report.md`, `bundled_gmat_report.md`,
+  `realistic_cases_report.md` + generated `realistic_cases_results.md`,
+  `docs_report.md`, plus the earlier phase4/phase5/phase6 reports),
+  `RUNBOOK.md`, `deploy_notes.md`, `.env.example` (complete: every setting
+  the code reads, values empty); review notes under `phase4_backend/review/`.
+  Test fixtures live in `tests/fixtures/` (incl. a real anonymised run);
+  GMAT bundles, when downloaded, live in untracked `tools/gmat/`.
+- UI: `UIUX/OrbitlabUI Main/` (the wired Main UI, served at `/` by redirect and at `/main/`), static assets served from `UIUX/` with the adapter at `/ui_adapter.js`. Tabs: Chat, Understanding, Results, Graph, Physics, Details. Main UI extras: 2D/3D orbit views (vendored three.js), altitude/speed/sma/eccentricity plots with hover, maneuver table with analytic Hohmann estimates, Earth ground track, `/sample-result` fixture mode (`?fixture=1`), demo-mode and "Open in GMAT" header badges.
 
 ### Real pipeline stages
 
 `extract -> interpret -> verify -> validate -> compile -> simulate -> parse -> explain`, emitting `stage_started/completed/failed` events plus `model_warming_up` and `interpreter_name_overridden` over `GET /api/experiments/{id}` and `WS /ws/experiments/{id}`. Every failure carries a human-readable message and an `explanation`. In-memory job store and prompt cache are bounded; the interpreter client is OpenAI-compatible (`POST {base}/v1/chat/completions`) with one retry on timeout/502/503/504 only.
+
+### Status update (November 2026)
+
+Since §H was written the pipeline gained: a demo mode (`ORBITLAB_DEMO_MODE`,
+deterministic local extractor/interpreter, `mode: "demo"` on health and
+results, `DEMO MODE` UI badge); kept compiled scripts per run with
+`GET /api/experiments/{id}/script` and `hasScript`; an optional local
+"Open in GMAT" action (`ORBITLAB_ALLOW_OPEN_GMAT`, `openInGmat` health flag,
+127.0.0.1/::1 only); a bundled-GMAT fallback (`tools/gmat/**/bin/
+GmatConsole(.exe)`, explicit `GMAT_PATH` wins, INFO-logged); a scripted
+realistic-cases runner (`scripts/realistic_cases.py`); and a `details` UI
+tab (read-only experiment JSON + script viewer). The `errors.py` codes now
+include `extractor_unavailable` alongside the original list. None of this
+changes the guarantees below.
+
+### Safety and verification chain
+
+Three independent layers stand between the language models and GMAT. Each
+states what it guarantees — and what it does not.
+
+1. **verify** (`frontstep/verify.py`, deterministic): re-checks every number
+   the interpreter returned — central body, dry mass (rel 1e-9),
+   semi-major axis (abs 0.001 km), eccentricity/inclination/RAAN/
+   argument-of-periapsis/true-anomaly (rel 1e-9), integrator,
+   stop-condition type and value, explicit force-model fields, maneuver
+   count/target-radius/Δv — against the front step's own conversion, and
+   overwrites model-provided names with Python-owned ones (warning, never
+   failing on names). It guarantees the experiment matches the converted
+   request; it does *not* judge physical safety — anything that parses
+   goes through to validation.
+2. **validator** (`AstrodynamicValidator`, deterministic): enforces physics —
+   minimum periapsis altitude per body, eccentricity below 1, drag refused
+   where no atmosphere model exists (only Earth allows it), point-mass-only
+   bodies flagged, schema caps (365 d / 8760 h / 31536000 s / 365 periods),
+   coordinate frame matched to the body, maneuver checks (impulsive Δv >
+   15 km/s or exactly 0 warns; Hohmann target periapsis below the safe
+   radius, or a Hohmann from an unbound orbit, is an error), and a warning
+   when the step size exceeds the total duration. It guarantees no
+   unphysical or unsafe experiment reaches the compiler; it does *not*
+   check mission sense (a valid but pointless orbit passes).
+3. **compiler** (`GmatScriptCompiler`, deterministic templates only):
+   translates the validated AST into GMAT script with sanitised identifiers
+   and fixed file layouts. It guarantees the script is syntactically shaped
+   by code, never by model text (the model never sees script); it does *not*
+   guarantee the mission is sensible — that is the validator's job above,
+   and the human's job afterwards (see the research-use notice in the UI).
+
+On top of this chain: needs-clarification for missing fields instead of
+invented values; bounded in-memory job store and prompt cache; no secret
+ever logged, returned, or committed (names only).
