@@ -1,8 +1,8 @@
 """FastAPI app for OrbitLab backend."""
 from __future__ import annotations
-import asyncio, logging, time
+import asyncio, logging, time, subprocess
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -23,6 +23,43 @@ def _find_uiux_dir() -> Path | None:
 from orbitlab_backend.api.run_cleanup import get_run_root, cleanup_old_run_dirs
 
 logger=logging.getLogger("orbitlab.api")
+
+def _is_local_request(request) -> bool:
+    """True only for same-PC callers. Never trust client-supplied addresses."""
+    try:
+        client = getattr(request, "client", None)
+        host = getattr(client, "host", "") if client is not None else ""
+        return host in ("127.0.0.1", "::1")
+    except Exception:
+        return False
+
+def resolve_gmat_gui() -> Optional[str]:
+    """GUI path for "Open in GMAT". Explicit ORBITLAB_GMAT_GUI_PATH wins;
+    otherwise GMAT.exe next to GMAT_PATH, but only if that file exists."""
+    try:
+        s = get_settings()
+        explicit = getattr(s, "ORBITLAB_GMAT_GUI_PATH", None)
+        if isinstance(explicit, str) and explicit.strip():
+            return explicit.strip()
+        base = getattr(s, "GMAT_PATH", None)
+        if isinstance(base, str) and base.strip():
+            cand = str(Path(base).expanduser().parent / "GMAT.exe")
+            if Path(cand).is_file():
+                return cand
+    except Exception:
+        pass
+    return None
+
+def _open_gmat_feature_enabled() -> bool:
+    """The UI button appears only when the flag is on AND GMAT.exe resolves."""
+    try:
+        s = get_settings()
+        if not bool(getattr(s, "ORBITLAB_ALLOW_OPEN_GMAT", False)):
+            return False
+        gui = resolve_gmat_gui()
+        return bool(gui) and Path(gui).is_file()
+    except Exception:
+        return False
 
 class CreateExpRequest(BaseModel):
     text: str
@@ -45,10 +82,17 @@ def create_app() -> FastAPI:
         try:
             from orbitlab_backend.frontstep.demo import demo_enabled
             if demo_enabled():
-                return {"status":"ok","mode":"demo"}
+                out = {"status": "ok", "mode": "demo"}
+            else:
+                out = {"status": "ok"}
+        except Exception:
+            out = {"status": "ok"}
+        try:
+            if _open_gmat_feature_enabled():
+                out["openInGmat"] = True
         except Exception:
             pass
-        return {"status":"ok"}
+        return out
 
     @app.post("/api/experiments")
     async def create_experiment(req: CreateExpRequest, background_tasks: BackgroundTasks):
@@ -91,6 +135,32 @@ def create_app() -> FastAPI:
         if not _path.is_file():
             raise HTTPException(404, "script not found")
         return PlainTextResponse(_path.read_text(encoding="utf-8"), media_type="text/plain; charset=utf-8")
+
+    @app.post("/api/experiments/{jid}/open-in-gmat", include_in_schema=False)
+    async def open_in_gmat(jid: str, request: Request):
+        # Local-only convenience launcher. The id is validated against known
+        # runs and the script path comes from the run folder; the client can
+        # never supply a path or a command.
+        if not bool(getattr(settings, 'ORBITLAB_ALLOW_OPEN_GMAT', False)):
+            raise HTTPException(403, "opening in GMAT is disabled")
+        if not _is_local_request(request):
+            raise HTTPException(403, "opening in GMAT is allowed only from this PC")
+        if not isinstance(jid, str) or not jid or "/" in jid or "\\" in jid or ".." in jid:
+            raise HTTPException(404, "run not found")
+        job=store.get(jid)
+        if not job:
+            raise HTTPException(404, "run not found")
+        _path=get_run_root(getattr(settings, 'ORBITLAB_RUN_DIR', None)) / job.id / "experiment.script"
+        if not _path.is_file():
+            raise HTTPException(404, "script not found")
+        gui=resolve_gmat_gui()
+        if not gui or not Path(gui).is_file():
+            raise HTTPException(500, "GMAT.exe not found: set ORBITLAB_GMAT_GUI_PATH or install GMAT next to GMAT_PATH")
+        try:
+            subprocess.Popen([gui, "--run", str(_path)])
+        except Exception as e:
+            raise HTTPException(500, "could not start GMAT: %s" % str(e)[:200])
+        return {"status": "started"}
 
     @app.websocket("/ws/experiments/{jid}")
     async def ws_experiments(ws: WebSocket, jid: str):
