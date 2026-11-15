@@ -182,6 +182,46 @@ verifies the optional SHA-256, extracts into `tools/gmat/`, and prints the
 resolved console path. `tools/gmat/` is git-ignored (binaries are never
 committed); only `tools/gmat/README.md` is tracked.
 
+## Realistic cases
+
+`scripts/realistic_cases.py` sends 14 free-text prompts through the running
+backend exactly like the UI does (POST + poll) and writes
+`phase4_backend/realistic_cases_results.md` with a verdict per case
+(exit code non-zero only if a non-`info` case fails):
+
+```powershell
+$env:ORBITLAB_DEMO_MODE='true'
+$env:PYTHONPATH='phase4_backend'
+python -m uvicorn orbitlab_backend.api.app --port 8000
+python scripts/realistic_cases.py --mode demo
+```
+
+```bash
+export ORBITLAB_DEMO_MODE=true
+PYTHONPATH=phase4_backend python -m uvicorn orbitlab_backend.api.app --port 8000 &
+python scripts/realistic_cases.py --mode demo
+```
+
+Real-model mode (needs the model variables, same names as in `.env.example`,
+plus GMAT for the simulate stage; first request can take ~90 s cold):
+
+```powershell
+$env:ORBITLAB_MODEL_URL='<host-root>'; $env:ORBITLAB_MODEL_KEY='<key>'
+$env:ORBITLAB_DEMO_MODE=''; $env:PYTHONPATH='phase4_backend'
+python -m uvicorn orbitlab_backend.api.app --port 8000
+python scripts/realistic_cases.py --mode real --base-url http://127.0.0.1:8000 --timeout-s 600
+```
+
+```bash
+export ORBITLAB_MODEL_URL='<host-root>' ORBITLAB_MODEL_KEY='<key>'
+unset ORBITLAB_DEMO_MODE
+PYTHONPATH=phase4_backend python -m uvicorn orbitlab_backend.api.app --port 8000 &
+python scripts/realistic_cases.py --mode real --timeout-s 600
+```
+
+Useful flags: `--only 1,3,5` (subset of case ids), `--timeout-s 400`
+(per-case budget in seconds), `--out <file>`.
+
 ## 3D view and textures
 
 The "Orbital view" panel has a 2D/3D toggle. 3D renders the real trajectory
