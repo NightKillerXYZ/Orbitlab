@@ -500,3 +500,11 @@ test('epoch overlay shows frame plus advancing epoch; dataset names wired', () =
   assert.ok(String(ov.style.cssText).includes('bottom'), 'pinned to the bottom-left');
   app.__test__.setResult(fix.result);
 });
+
+test('render wires epoch and names for the 3D view', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  assert.equal(vis.dataset.epochValue, '01 Jan 2026 12:00:00.000', 'epoch for the 3D spin');
+  assert.equal(vis.dataset.spacecraftName, 'SC_Put');
+  assert.equal(vis.dataset.bodyName, 'Earth');
+});

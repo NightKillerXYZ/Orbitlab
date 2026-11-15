@@ -507,7 +507,7 @@ function renderRealRun(){
  runBodyR=info.radiusKm;runStats=trajectoryStats(pts,runBodyR);
  runFit=fitOrbit(pts,300,200,16);
  applyRunTitles(body);
- try{vis.dataset.spacecraftName=spacecraftName();vis.dataset.bodyName=body;}catch(e){}
+ try{vis.dataset.spacecraftName=spacecraftName();vis.dataset.bodyName=body;vis.dataset.epochValue=(((lastResult.experiment||{}).epoch||{}).value||'');}catch(e){}
  renderStatCards(body,info,els,runStats,aKm);
  animT=0;animPlaying=pts.length>0;curAlt=null;curSpeed=null;syncPlayBtn();
  if(!runFit){
