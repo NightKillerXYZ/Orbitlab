@@ -16,6 +16,38 @@ import time
 import urllib.error
 import urllib.request
 
+
+def _repo_paths():
+    """(repo root, phase4_backend), absolute, derived from this file."""
+    here = os.path.abspath(os.path.dirname(__file__))
+    root = os.path.abspath(os.path.join(here, os.pardir))
+    return root, os.path.join(root, "phase4_backend")
+
+
+def ensure_repo_on_path():
+    """Insert repo root + phase4_backend at the front of sys.path.
+
+    Makes ``python scripts/desktop_app.py`` work from any working directory
+    (uvicorn's thread otherwise cannot import orbitlab_backend's
+    phase3_ai_interpreter dependency). Idempotent, absolute paths only.
+    """
+    root, backend = _repo_paths()
+    # Insert backend first so the repo root ends up at position 0.
+    for entry in (backend, root):
+        try:
+            while entry in sys.path:
+                sys.path.remove(entry)
+        except Exception:
+            pass
+        try:
+            sys.path.insert(0, entry)
+        except Exception:
+            pass
+    return root, backend
+
+
+REPO_ROOT, BACKEND_DIR = ensure_repo_on_path()
+
 import uvicorn
 
 APP_MODULE = "orbitlab_backend.api.app:app"
@@ -86,9 +118,19 @@ def require_webview():
 class Backend:
     """A background uvicorn server plus its thread."""
 
-    def __init__(self, server, thread):
+    def __init__(self, server, thread, errors=None):
         self.server = server
         self.thread = thread
+        self._errors = errors if errors is not None else []
+
+    def last_error(self):
+        """Last server-thread failure line (class + message), else ""."""
+        try:
+            if self._errors:
+                return str(self._errors[-1])
+        except Exception:
+            pass
+        return ""
 
     def stop(self):
         """Ask the server loop to exit and wait for the thread (never raises)."""
@@ -109,10 +151,35 @@ def start_server(port):
     config = uvicorn.Config(APP_MODULE, host="127.0.0.1", port=port,
                             log_level="warning")
     server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True,
+    errors = []
+
+    def _run():
+        try:
+            server.run()
+        except BaseException as exc:  # noqa: BLE001 - record, then let the thread end
+            try:
+                errors.append("%s: %s" % (type(exc).__name__, exc))
+            except Exception:
+                pass
+
+    thread = threading.Thread(target=_run, daemon=True,
                               name="orbitlab-backend")
     thread.start()
-    return Backend(server, thread)
+    return Backend(server, thread, errors)
+
+
+def describe_wait_failure(base_url, timeout, detail):
+    """Timeout message; appends the server thread's last error line if any.
+
+    Only the exception class name and message are included (never values,
+    keys, tokens or headers).
+    """
+    msg = ("OrbitLab backend did not answer GET %s/api/health within %.0f s. "
+           "Check the server log above for the startup error."
+           % (base_url.rstrip("/"), timeout))
+    if detail:
+        msg += " Server thread failed: %s" % detail
+    return msg
 
 
 def apply_flags(args):
@@ -145,8 +212,10 @@ def main(argv=None):
     try:
         wait_for_health(base_url, HEALTH_TIMEOUT_S)
     except TimeoutError as exc:
+        detail = backend.last_error()
         backend.stop()
-        print(str(exc), file=sys.stderr)
+        print(describe_wait_failure(base_url, HEALTH_TIMEOUT_S, detail),
+              file=sys.stderr)
         return 1
     print("Backend is up. Opening the OrbitLab window ...")
     try:
