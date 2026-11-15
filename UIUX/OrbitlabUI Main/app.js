@@ -359,6 +359,7 @@ function liveBody(tab){
       else if(errCode==='extractor_unavailable'){h+='<div class="chat-result"><strong>The mission reader is unavailable right now.</strong> '+escapeHtml('I could not read your mission description, so nothing ran. Please try again in a minute \u2014 and make sure your message says which body it orbits, the spacecraft mass, and how long to run it.')+'</div>';}
       else if(errStage==='verify'||errCode==='interpreter_mismatch'){h+='<div class="chat-result"><strong>Run stopped:</strong> '+escapeHtml("the AI's answer was checked and did not match what you asked, so the run was stopped.")+'</div>';}
       else if(errStage==='validate'){h+='<div class="chat-result"><strong>Run stopped by the physics check.</strong> '+escapeHtml(lastError.message||'The run failed validation.')+'</div>';}
+      else if(errCode==='internal_error'){h+='<div class="chat-result"><strong>Something went wrong.</strong> '+escapeHtml(lastError.message||'Please try again or rephrase the request.')+'</div>';}
       else{const ex=errExplanation(lastError);h+='<div class="chat-result"><strong>Run failed at '+escapeHtml(errStage||'unknown')+'</strong> '+escapeHtml(lastError.message||'The run did not finish.')+(ex?'<div class="result-note">'+escapeHtml(ex)+'</div>':'<div class="result-note">No explanation was returned for this failure.</div>');}
     }
     else if(runActive){h+='<div class="result-note">Contacting the backend and streaming stage events.</div>';}
