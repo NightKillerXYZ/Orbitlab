@@ -134,3 +134,46 @@ def test_apply_flags_demo(monkeypatch):
         mod.os.environ.pop("ORBITLAB_DEMO_MODE", None)
     mod.apply_flags(types.SimpleNamespace(demo=False))
     assert "ORBITLAB_DEMO_MODE" not in mod.os.environ
+
+def test_repo_path_setup_puts_both_folders_first():
+    import os
+    mod = _load()
+    repo = os.path.normcase(os.path.abspath(pathlib.Path(__file__).resolve().parent.parent))
+    backend = os.path.normcase(os.path.abspath(str(pathlib.Path(__file__).resolve().parent.parent / "phase4_backend")))
+    assert os.path.normcase(mod.sys.path[0]) == repo
+    assert os.path.normcase(mod.sys.path[1]) == backend
+    assert mod.sys.path.count(mod.sys.path[0]) == 1
+    assert mod.REPO_ROOT and mod.BACKEND_DIR
+
+
+def test_ps1_sets_repo_root_and_backend_on_pythonpath():
+    text = (pathlib.Path(__file__).resolve().parent.parent / "scripts" / "start_desktop.ps1").read_text(encoding="utf-8")
+    assert "Join-Path $repoRoot 'phase4_backend'" in text
+    assert "@($repoRoot" in text
+    assert "PYTHONPATH" in text
+
+
+def test_thread_death_message_includes_exception_class():
+    mod = _load()
+    err = "ModuleNotFoundError: No module named 'phase3_ai_interpreter'"
+    assert mod.Backend(None, None, [err]).last_error() == err
+    assert mod.Backend(None, None).last_error() == ""
+    msg = mod.describe_wait_failure("http://127.0.0.1:9", 30, err)
+    assert "ModuleNotFoundError" in msg and "No module named" in msg
+    assert "/api/health" in msg
+    plain = mod.describe_wait_failure("http://127.0.0.1:9", 30, "")
+    assert "Server thread failed" not in plain
+
+
+def test_imports_work_from_unrelated_cwd(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    _load()
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    scripts_dir = str(pathlib.Path(__file__).resolve().parent.parent / "scripts")
+    code = ("import sys; sys.path.insert(0, %r); import desktop_app; "
+            "import phase3_ai_interpreter, orbitlab_backend; print('IMPORTS_OK')" % scripts_dir)
+    proc = subprocess.run([sys.executable, "-c", code], cwd=str(tmp_path),
+                          capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert "IMPORTS_OK" in proc.stdout
