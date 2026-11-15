@@ -45,7 +45,11 @@ CLARIFY = [
 ]
 
 
-@pytest.fixture(scope="module")
+# Function scope (not module): the suite-wide autouse env guard in
+# tests/conftest.py scrubs ORBITLAB_DEMO_MODE before every test, so a
+# module-scoped fixture would lose its demo setting after the first test's
+# setup. Rebuilding the TestClient per test is cheap next to the pipelines.
+@pytest.fixture(scope="function")
 def demo_client():
     os.environ["ORBITLAB_DEMO_MODE"] = "true"
     cfg.reset_settings()
