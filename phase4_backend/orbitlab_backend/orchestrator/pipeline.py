@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio, time, hashlib, logging, pathlib
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
-from orbitlab_backend.config import get_settings
+from orbitlab_backend.config import get_settings, resolve_gmat_console_path
 from orbitlab_backend.frontstep.extractor import FrontStepExtractor
 from orbitlab_backend.frontstep.verify import verify_experiment, normalize_maneuver_ids, apply_frontstep_names
 from orbitlab_backend.orchestrator.errors import *
@@ -218,7 +218,10 @@ class Pipeline:
         trajectory_data=None
         try:
             settings=get_settings()
-            gmat_path=settings.GMAT_PATH
+            _explicit_gmat = getattr(settings, "GMAT_PATH", None)
+            gmat_path=resolve_gmat_console_path(_explicit_gmat)
+            if gmat_path and not (isinstance(_explicit_gmat, str) and _explicit_gmat.strip()):
+                logger.info("using bundled GMAT console at %s", gmat_path)
             try:
                 _secs2=float(settings.ORBITLAB_GMAT_SECS_PER_SIM_DAY)
                 _max2=float(settings.ORBITLAB_GMAT_MAX_TIMEOUT_S)

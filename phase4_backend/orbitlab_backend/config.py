@@ -5,8 +5,12 @@ a clear message naming the variable, never printing values.
 """
 from __future__ import annotations
 
+import logging
 import os
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
+
+logger = logging.getLogger("orbitlab.config")
 
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -119,3 +123,87 @@ def get_settings() -> Settings:
 def reset_settings():
     global _settings
     _settings = None
+
+
+def _default_gmat_search_roots() -> List[Path]:
+    """Repo root (from this file) plus CWD, deduplicated. No env read here."""
+    roots: List[Path] = []
+    try:
+        roots.append(Path(__file__).resolve().parents[2])
+    except Exception:
+        pass
+    try:
+        roots.append(Path.cwd())
+    except Exception:
+        pass
+    out: List[Path] = []
+    for r in roots:
+        try:
+            key = str(r.resolve())
+        except Exception:
+            continue
+        if key not in [str(x) for x in out]:
+            out.append(r)
+    return out
+
+
+def find_bundled_gmat_console(search_roots=None) -> Optional[str]:
+    """Find tools/gmat/**/bin/GmatConsole(.exe) under the given roots.
+
+    Returns the path as a string, or None. Never touches the network.
+    """
+    try:
+        roots = list(search_roots) if search_roots is not None else _default_gmat_search_roots()
+    except Exception:
+        return None
+    for root in roots:
+        try:
+            base = Path(root) / "tools" / "gmat"
+        except Exception:
+            continue
+        try:
+            if not base.is_dir():
+                continue
+        except Exception:
+            continue
+        for name in ("GmatConsole.exe", "GmatConsole"):
+            try:
+                for p in base.rglob(name):
+                    try:
+                        if p.is_file() and p.parent.name.lower() == "bin":
+                            return str(p)
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+    return None
+
+
+def resolve_gmat_console_path(explicit=None, search_roots=None) -> Optional[str]:
+    """Explicit GMAT_PATH always wins; else the bundled folder; else None."""
+    try:
+        if isinstance(explicit, str) and explicit.strip():
+            return explicit.strip()
+    except Exception:
+        pass
+    return find_bundled_gmat_console(search_roots)
+
+
+def resolve_gmat_gui_path(gui_explicit=None, gmat_explicit=None, search_roots=None) -> Optional[str]:
+    """Explicit ORBITLAB_GMAT_GUI_PATH wins; else GMAT.exe next to the
+    resolved console, but only if that file exists."""
+    try:
+        if isinstance(gui_explicit, str) and gui_explicit.strip():
+            return gui_explicit.strip()
+    except Exception:
+        pass
+    base = resolve_gmat_console_path(gmat_explicit, search_roots)
+    if not base:
+        return None
+    try:
+        cand = Path(base).expanduser().parent / "GMAT.exe"
+        if cand.is_file():
+            return str(cand)
+    except Exception:
+        pass
+    return None

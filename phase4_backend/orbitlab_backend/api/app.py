@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from orbitlab_backend.config import get_settings
+from orbitlab_backend.config import get_settings, resolve_gmat_gui_path
 from orbitlab_backend.orchestrator.pipeline import Pipeline
 from orbitlab_backend.orchestrator.errors import NeedsClarification, PipelineError
 from orbitlab_backend.api.store import store
@@ -34,21 +34,14 @@ def _is_local_request(request) -> bool:
         return False
 
 def resolve_gmat_gui() -> Optional[str]:
-    """GUI path for "Open in GMAT". Explicit ORBITLAB_GMAT_GUI_PATH wins;
-    otherwise GMAT.exe next to GMAT_PATH, but only if that file exists."""
+    """GUI path for "Open in GMAT": explicit setting wins, else GMAT.exe next
+    to the resolved console (bundled folder included), if that file exists."""
     try:
         s = get_settings()
-        explicit = getattr(s, "ORBITLAB_GMAT_GUI_PATH", None)
-        if isinstance(explicit, str) and explicit.strip():
-            return explicit.strip()
-        base = getattr(s, "GMAT_PATH", None)
-        if isinstance(base, str) and base.strip():
-            cand = str(Path(base).expanduser().parent / "GMAT.exe")
-            if Path(cand).is_file():
-                return cand
+        return resolve_gmat_gui_path(getattr(s, "ORBITLAB_GMAT_GUI_PATH", None),
+                                     getattr(s, "GMAT_PATH", None))
     except Exception:
-        pass
-    return None
+        return None
 
 def _open_gmat_feature_enabled() -> bool:
     """The UI button appears only when the flag is on AND GMAT.exe resolves."""
