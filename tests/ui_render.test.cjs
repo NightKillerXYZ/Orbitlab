@@ -162,6 +162,11 @@ add(doc.root, 'div', { id: 'timelineFill' });
 add(doc.root, 'span', { id: 'timelineKnob' });
 add(doc.root, 'button', { id: 'playBtn', text: '▶' });
 add(doc.root, 'span', { id: 'runText', text: 'PAUSED' });
+const speedSel = add(doc.root, 'select', { id: 'speedSelect' });
+speedSel.value = '0.5';
+const speedCustom = add(doc.root, 'input', { id: 'speedCustom' });
+speedCustom.value = '0.5'; speedCustom.hidden = true;
+add(doc.root, 'span', { id: 'speedReadout' });
 add(doc.root, 'button', { id: 'exportBtn' });
 add(doc.root, 'button', { id: 'resultsExport' });
 const gdate = add(doc.root, 'time', { id: 'globalDate' });
@@ -470,17 +475,30 @@ test('openInGmat posts only the job id and reports the outcome', async () => {
   app.__test__.setResult(fix.result);
 });
 
-test('replay constants reveal about 200 samples per second at 1x', () => {
+test('replay pacing is run-relative: whole run in 60 s at 1x', () => {
   assert.equal(app.REPLAY_TICK_MS, 100, '100ms update interval');
-  assert.equal(app.REPLAY_SAMPLES_PER_SEC, 200, '200 samples/sec at 1x');
+  assert.equal(app.REPLAY_FULL_RUN_SECONDS_AT_1X, 60, '60-second full run at 1x');
+  assert.deepEqual(app.SPEED_PRESETS, [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]);
+  assert.equal(app.DEFAULT_SPEED, 0.5, 'default is 0.5x');
   const pts = fix.result.trajectory.points;
   const span = pts[pts.length - 1].elapsed_secs - pts[0].elapsed_secs;
   assert.equal(span, 86400, 'fixture spans one day');
-  const perTick = app.__test__.replay(span, pts.length, 1);
-  const samplesPerTick = (perTick / span) * (pts.length - 1);
-  assert.ok(Math.abs(samplesPerTick - 20) < 1e-9, '20 samples per 100ms tick: ' + samplesPerTick);
-  assert.ok(Math.abs(app.__test__.replay(span, pts.length, 2) - 2 * perTick) < 1e-9, 'scales with speed');
-  assert.equal(app.__test__.replay(0, pts.length, 1), 0, 'zero span advances nothing');
+  // per-tick progress = span * speed / 600 (600 ticks per full run)
+  assert.equal(app.__test__.replay(600, 1), 1, '1 s of a 600 s run per tick at 1x');
+  assert.equal(app.__test__.replay(86400, 0.5), 72, '0.5x of a day-long run');
+  assert.equal(app.__test__.replay(86400, 20), 2880, '20x of a day-long run');
+  assert.equal(app.__test__.replay(0, 1), 0, 'zero span advances nothing');
+  assert.equal(app.__test__.replay(100, 0), 0, 'zero speed advances nothing');
+  assert.equal(app.__test__.replay(100, -1), 0, 'negative speed advances nothing');
+  assert.equal(app.clampSpeed('0.2'), 0.2);
+  assert.equal(app.clampSpeed('100'), 100);
+  assert.equal(app.clampSpeed('0.01'), 0.01);
+  assert.equal(app.clampSpeed(0), null);
+  assert.equal(app.clampSpeed(-3), null);
+  assert.equal(app.clampSpeed('101'), null);
+  assert.equal(app.clampSpeed('fast'), null);
+  assert.equal(app.clampSpeed(NaN), null);
+  assert.equal(app.clampSpeed(undefined), null);
 });
 
 test('epoch overlay shows frame plus advancing epoch; dataset names wired', () => {
@@ -614,4 +632,89 @@ test('missing epoch uses the schema default everywhere', () => {
   assert.ok(calls.includes('bg'), 'track paints without an experiment epoch');
   cv.remove();
   app.__test__.setResult(fix.result);
+});
+
+test('speed presets advance proportionally; mid-replay change does not jump', () => {
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  for (const s of [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]) {
+    assert.ok(app.__test__.applySpeed(s), 'preset applies: ' + s);
+    assert.equal(app.__test__.speed(), s, 'current speed ' + s);
+    assert.ok(Math.abs(app.__test__.replay(600, s) - s) < 1e-9, 'per-tick progress at ' + s + 'x');
+  }
+  app.__test__.anim(43200);
+  app.__test__.draw();
+  const before = doc.querySelector('#simTime').textContent;
+  assert.equal(before, 'T+12:00:00');
+  assert.ok(app.__test__.applySpeed(0.05), 'slow down mid-replay');
+  app.__test__.draw();
+  assert.equal(doc.querySelector('#simTime').textContent, before, 'position unchanged by speed change');
+  assert.equal(app.__test__.speed(), 0.05);
+});
+
+test('custom speed accepts valid values and reverts invalid ones', () => {
+  assert.ok(app.__test__.applySpeed(2.5));
+  assert.equal(app.__test__.speed(), 2.5);
+  assert.equal(doc.querySelector('#speedSelect').value, 'custom', 'Custom selected');
+  for (const bad of [0, -3, 101, 'fast', NaN, undefined, '']) {
+    assert.equal(app.__test__.applySpeed(bad), false, 'rejected: ' + String(bad));
+    assert.equal(app.__test__.speed(), 2.5, 'reverted after: ' + String(bad));
+  }
+  assert.ok(app.__test__.applySpeed(0.01), 'min custom');
+  assert.equal(app.__test__.speed(), 0.01);
+  assert.ok(app.__test__.applySpeed(100), 'max custom');
+  assert.equal(app.__test__.speed(), 100);
+  assert.ok(app.__test__.applySpeed(0.5), 'back to default');
+});
+
+test('readout formats simulated time per second across units', () => {
+  assert.equal(app.formatSimRate(90, 1), '= 1.5 s of simulation per second');
+  assert.equal(app.formatSimRate(30, 1), '= 0.5 s of simulation per second');
+  assert.equal(app.formatSimRate(3600, 1), '= 1.0 min of simulation per second');
+  assert.equal(app.formatSimRate(86400, 0.5), '= 12 min of simulation per second');
+  assert.equal(app.formatSimRate(172800, 1), '= 48 min of simulation per second');
+  assert.equal(app.formatSimRate(86400 * 2, 5), '= 4.0 h of simulation per second');
+  assert.equal(app.formatSimRate(86400 * 20, 20), '= 6.7 d of simulation per second');
+  assert.equal(app.formatSimRate(0, 1), '', 'unknown duration shows nothing');
+  assert.equal(app.formatSimRate(86400, 0), '', 'zero speed shows nothing');
+  assert.equal(app.formatSimRate(NaN, 1), '', 'bad span shows nothing');
+});
+
+test('speed choice persists in localStorage; throwing storage never breaks', () => {
+  const kept = [];
+  global.localStorage = {
+    getItem: (k) => (k === 'orbitlab.speed' ? '2' : null),
+    setItem: (k, v) => kept.push([k, v]),
+  };
+  try {
+    assert.equal(app.loadStoredSpeed(), 2, 'stored value loads');
+    assert.ok(app.__test__.applySpeed(5), 'applies with storage present');
+    assert.deepEqual(kept[kept.length - 1], ['orbitlab.speed', '5'], 'choice persisted');
+  } finally {
+    delete global.localStorage;
+  }
+  assert.equal(app.loadStoredSpeed(), null, 'absent storage means default');
+  global.localStorage = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } };
+  try {
+    assert.equal(app.loadStoredSpeed(), null, 'throwing getItem falls back');
+    assert.ok(app.__test__.applySpeed(5), 'throwing setItem does not break apply');
+    assert.equal(app.__test__.speed(), 5);
+  } finally {
+    delete global.localStorage;
+  }
+});
+
+test('speed dropdown exists once and survives repeated renders', () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'UIUX', 'OrbitlabUI Main', 'index.html'), 'utf-8');
+  for (const v of ['0.05', '0.1', '0.2', '0.5', '1', '2', '5', '10', '20', 'custom']) {
+    assert.ok(html.includes('value="' + v + '"'), 'option ' + v + ' in index.html');
+  }
+  app.__test__.setResult(fix.result);
+  app.__test__.render();
+  app.__test__.render();
+  app.__test__.render();
+  assert.equal(doc.querySelectorAll('#speedSelect').length, 1, 'one dropdown after 3 renders');
+  assert.equal(doc.querySelectorAll('#speedCustom').length, 1, 'one custom input after 3 renders');
+  assert.equal(doc.querySelectorAll('#speedReadout').length, 1, 'one readout after 3 renders');
 });
