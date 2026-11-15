@@ -126,7 +126,7 @@ function is3D(){try{const v=document.querySelector('#orbitVisual');return !!(v&&
 function metaFromResult(res){try{if(!res||typeof res!=='object')return {origin:'sample',elapsedSecs:null,jobId:null};if(res.mock)return {origin:'sample',elapsedSecs:null,jobId:null};if(res.fromCache)return {origin:'cache',elapsedSecs:(isFinite(+res.elapsedSeconds)?+res.elapsedSeconds:null),jobId:(res.jobId||null)};return {origin:'live',elapsedSecs:(isFinite(+res.elapsedSeconds)?+res.elapsedSeconds:null),jobId:(res.jobId||null)};}catch(e){return {origin:'sample',elapsedSecs:null,jobId:null};}}
 function provenanceText(){try{const m=lastRunMeta||{};if(m.origin==='mock'||m.origin==='sample')return 'Sample data (not a run)';if(m.origin==='cache')return 'Result from cache (same input as an earlier run)';if(m.origin==='live')return 'Live GMAT run'+((m.elapsedSecs==null)?'':' - '+Number(m.elapsedSecs).toFixed(1)+' s');return 'Sample data (not a run)';}catch(e){return 'Sample data (not a run)';}}
 function ensureProvenanceCaption(){try{let el=null;try{el=document.querySelector('#runProvenance');if(!el||!el.getAttribute||el.getAttribute('id')!=='runProvenance')el=null;}catch(e){el=null;}if(!el){el=document.createElement('div');el.id='runProvenance';el.style.cssText='font:400 10px sans-serif;color:#8fa6c8;margin:6px 2px 0;text-align:left;';}const vis=visEl();if(vis){const vp=vis.parentElement||vis.parentNode;const ep=el.parentElement||el.parentNode;if(vp&&ep!==vp){try{if(vis.after)vis.after(el);else vp.appendChild(el);}catch(e){try{vp.appendChild(el);}catch(ee){}}}}return el;}catch(e){return null;}}
-function updateProvenanceCaption(){try{const el=ensureProvenanceCaption();if(!el)return;el.textContent=provenanceText();}catch(e){}}
+function updateProvenanceCaption(){try{const el=ensureProvenanceCaption();if(!el)return;el.textContent=provenanceText();el.style.display='';}catch(e){}}
 /* Ground track (Graph tab, Earth runs only). Canvas is drawn after the tab
    HTML lands in the panel; without telemetry the tab keeps its message. */
 function paintGroundTrack(){
@@ -318,6 +318,8 @@ function chartSVG(title,unit,times,vals,color){
    +'<polyline points="'+line.trim()+'" fill="none" stroke="'+color+'" stroke-width="1.5"/></svg>';
  }catch(e){return '<div class="result-note">No data.</div>';}
 }
+/* Plain-language names for fields the user must supply (chat failures). */
+function humanMissingList(missing){try{var names={'centralBody':'which body it orbits','dryMassKg':'the spacecraft mass','duration':'how long to run it','orbit':'the orbit shape or size'};var list=(Array.isArray(missing)?missing:[]).map(function(m){var k=String(m==null?'':m);return names[k]||k;});var seen=[];list.forEach(function(x){if(seen.indexOf(x)<0)seen.push(x);});return seen.length?seen.join(', '):'a few more mission details';}catch(e){return 'a few more mission details';}}
 function liveBody(tab){
   if(!lastResult&&!lastError&&!runActive)return null;
   if(tab==='Details'){
@@ -352,8 +354,12 @@ function liveBody(tab){
     let h=stageCard();
     if(lastResult){const els=expEls();const sp=meanSpeed(trajPts());const span=teleSpan(trajPts());h+='<div class="chat-result"><strong>Run complete</strong> '+escapeHtml(((lastResult.experiment&&lastResult.experiment.centralBody)||'Orbit')+' orbit'+(els.semiMajorAxisKm!=null?', a '+fmt1(els.semiMajorAxisKm)+' km':'')+(els.eccentricity!=null?', e '+els.eccentricity:''))+'.<div class="result-chips"><span>'+(sp===null?'n/a':fmt1(sp)+' km/s')+'</span><span>'+(span===null?'n/a':Math.round(span)+' s telemetry')+'</span></div></div>';}
     else if(lastError){
-      if(isClarErr(lastError)){const m=(lastError.details&&lastError.details.missing)||[];h+='<div class="chat-result"><strong>More information needed</strong> '+escapeHtml('This request needs: '+m.join(', ')+'. Add the details and send again.')+'</div>';}
-      else{const ex=errExplanation(lastError);h+='<div class="chat-result"><strong>Run failed at '+escapeHtml(lastError.stage||'unknown')+'</strong> '+escapeHtml(lastError.message||'The run did not finish.')+(ex?'<div class="result-note">'+escapeHtml(ex)+'</div>':'<div class="result-note">No explanation was returned for this failure.</div>');}
+      const errCode=lastError.code||'',errStage=lastError.stage||'';
+      if(isClarErr(lastError)){const m=(lastError.details&&lastError.details.missing)||[];h+='<div class="chat-result"><strong>To run this I still need:</strong> '+escapeHtml(humanMissingList(m))+'. Add them to your message and send it again.</div>';}
+      else if(errCode==='extractor_unavailable'){h+='<div class="chat-result"><strong>The mission reader is unavailable right now.</strong> '+escapeHtml('I could not read your mission description, so nothing ran. Please try again in a minute \u2014 and make sure your message says which body it orbits, the spacecraft mass, and how long to run it.')+'</div>';}
+      else if(errStage==='verify'||errCode==='interpreter_mismatch'){h+='<div class="chat-result"><strong>Run stopped:</strong> '+escapeHtml("the AI's answer was checked and did not match what you asked, so the run was stopped.")+'</div>';}
+      else if(errStage==='validate'){h+='<div class="chat-result"><strong>Run stopped by the physics check.</strong> '+escapeHtml(lastError.message||'The run failed validation.')+'</div>';}
+      else{const ex=errExplanation(lastError);h+='<div class="chat-result"><strong>Run failed at '+escapeHtml(errStage||'unknown')+'</strong> '+escapeHtml(lastError.message||'The run did not finish.')+(ex?'<div class="result-note">'+escapeHtml(ex)+'</div>':'<div class="result-note">No explanation was returned for this failure.</div>');}
     }
     else if(runActive){h+='<div class="result-note">Contacting the backend and streaming stage events.</div>';}
     return h;
@@ -521,6 +527,18 @@ function renderStatCards(body,info,els,stats,aKm){
   row.innerHTML='<div><small>ORBITAL PERIOD</small><b>'+escapeHtml(periodText(aKm,info.muKm3S2))+'</b></div><div><small>PERIAPSIS ALT</small><b>'+escapeHtml(stats.minAlt==null?'n/a':fmtKm(stats.minAlt,1)+' km')+'</b></div><div><small>APOAPSIS ALT</small><b>'+escapeHtml(stats.maxAlt==null?'n/a':fmtKm(stats.maxAlt,1)+' km')+'</b></div><div><small>ECCENTRICITY</small><b>'+escapeHtml(ecc)+'</b></div><div><small>INCLINATION</small><b>'+escapeHtml(inc)+'</b></div>';
  }catch(e){}
 }
+/* Clear every trace of a previous run after a failure: 3D view, stat
+   cards, live numbers, epoch overlay text and the provenance caption. Tabs
+   render from lastResult/lastError, so they follow automatically. */
+function clearRunDisplay(){
+ try{clearRunDrawing();}catch(e){}
+ try{const row=document.querySelector('.telemetry-row');if(row){row.style.gridTemplateColumns='repeat(5,1fr)';row.innerHTML='<div><small>ORBITAL PERIOD</small><b>n/a</b></div><div><small>PERIAPSIS ALT</small><b>n/a</b></div><div><small>APOAPSIS ALT</small><b>n/a</b></div><div><small>ECCENTRICITY</small><b>n/a</b></div><div><small>INCLINATION</small><b>n/a</b></div>';}}catch(e){}
+ try{const cap=document.querySelector('#captionSpeed');if(cap)cap.textContent='n/a';}catch(e){}
+ try{const st=document.querySelector('#simTime');if(st)st.textContent='n/a';}catch(e){}
+ try{const sm=document.querySelector('#speedMetric');if(sm)sm.innerHTML='n/a';}catch(e){}
+ try{const ov=document.querySelector('#epochOverlay');if(ov)ov.textContent='';}catch(e){}
+ try{const pc=document.querySelector('#runProvenance');if(pc)pc.style.display='none';}catch(e){}
+}
 function renderRealRun(){
  const vis=visEl();if(!vis||!lastResult)return;
  clearRunDrawing();
@@ -612,8 +630,6 @@ function runScenario(prompt){
   if(runActive)return;
   const text=String(prompt==null?'':prompt).trim();
   if(!text){showToast('Please describe a mission first');const pi=document.querySelector('#promptInput');if(pi)pi.focus();return;}
-  const prevResult=lastResult;
-  const prevJobId=lastJobId,prevScript=lastScript;
   lastResult=null;lastError=null;runEvents=[];runActive=true;runFinished=false;runSlow=false;
   lastJobId=null;lastScript=null;
   runFit=null;runStats=null;animT=0;animPlaying=false;curAlt=null;curSpeed=null;syncPlayBtn();clearRunDrawing();
@@ -623,8 +639,8 @@ function runScenario(prompt){
   const adapter=globalThis.OrbitLabAdapter;
   const finish=ok=>{runFinished=true;runActive=false;clearTimeout(runTimer);setBusy(false);setLiveStatusSafe(ok?'SIMULATION COMPLETE':'RUN FAILED');updateDemoBadge(!!(lastResult&&lastResult.mode==='demo'));if(ok&&lastResult)renderRealRun();renderTab(activeTab);updateTelemetry();refreshExportState();if(ok)completeObjective();};
   adapter.runExperiment(text,ev=>{runEvents.push(ev);if(activeTab==='Chat')renderTab('Chat');})
-    .then(out=>{if(out&&out.id)lastJobId=out.id;if(out&&out.error){lastError=out.error;if(prevResult){lastResult=prevResult;lastJobId=prevJobId;lastScript=prevScript;renderRealRun();}showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
-    .catch(()=>{const base=(adapter&&adapter.getApiBase)?adapter.getApiBase():'the configured address';lastError={stage:'unknown',code:'cannot_reach',message:'Cannot reach the server at '+base+' - is the backend running?'};showToast('Cannot reach the server');finish(false);});
+    .then(out=>{if(out&&out.id)lastJobId=out.id;if(out&&out.error){lastError=out.error;lastJobId=null;lastScript=null;try{clearRunDisplay();}catch(e){}showToast('Run failed: '+(out.error.message||'unknown error'));}else if(out&&out.result){lastResult=out.result;showToast('Run complete - Results updated');}finish(!!(out&&out.result));})
+    .catch(()=>{const base=(adapter&&adapter.getApiBase)?adapter.getApiBase():'the configured address';lastError={stage:'unknown',code:'cannot_reach',message:'Cannot reach the server at '+base+' - is the backend running?'};showToast('Cannot reach the server');try{clearRunDisplay();}catch(e){}finish(false);});
 }
 document.querySelector('#chatForm').addEventListener('submit',e=>{e.preventDefault();const prompt=promptInput.value.trim();if(!prompt){runScenario('');return;}runScenario(prompt);promptInput.value=''});
 document.querySelectorAll('.suggestion').forEach(btn=>btn.addEventListener('click',()=>runScenario(btn.dataset.prompt)));
@@ -678,4 +694,4 @@ renderTab('Chat');renderTime();renderGlobalDate();showAppPage('home');
 try{if(!useMock()&&typeof fetch!=='undefined'){fetch('/api/health').then(r=>r.json()).then(h=>{updateDemoBadge(!!(h&&h.mode==='demo'));openGmatOn=!!(h&&h.openInGmat);}).catch(()=>{});}}catch(e){}
 setInterval(renderGlobalDate,60000);
 /* Node test hook (browser ignores this: no `module` global). */
-try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,REPLAY_TICK_MS:REPLAY_TICK_MS,REPLAY_FULL_RUN_SECONDS_AT_1X:REPLAY_FULL_RUN_SECONDS_AT_1X,replayAdvance:replayAdvance,SPEED_PRESETS:SPEED_PRESETS,DEFAULT_SPEED:DEFAULT_SPEED,clampSpeed:clampSpeed,applySpeed:applySpeed,loadStoredSpeed:loadStoredSpeed,formatSimRate:formatSimRate,updateSpeedReadout:updateSpeedReadout,formatGmatEpoch:formatGmatEpoch,frameName:frameName,epochTextAt:epochTextAt,spacecraftName:spacecraftName,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack,epochParts:epochParts,provText:provenanceText,prov:updateProvenanceCaption,meta:function(m){lastRunMeta=m;},metaFrom:metaFromResult,hide:hideView3D,show:showView3D,epoch:function(tt){updateEpochOverlay(tt);},frame:frameName,epochText:epochTextAt,fmtEpoch:formatGmatEpoch,craftName:spacecraftName,replay:replayAdvance,speed:function(){return speed;},applySpeed:applySpeed}};}}catch(e){}
+try{if(typeof module!=='undefined'&&module.exports){module.exports={BODY_TABLE: BODY_TABLE,bodyInfo:bodyInfo,numOrNull:numOrNull,pointRadiusKm:pointRadiusKm,pointSpeedKms:pointSpeedKms,pointAltKm:pointAltKm,keplerPeriodSecs:keplerPeriodSecs,smaForDisplay:smaForDisplay,periodText:periodText,fmtKm:fmtKm,fmtSecs:fmtSecs,fitOrbit:fitOrbit,trajectoryStats:trajectoryStats,axisTickT:axisTickT,chartSVG:chartSVG,stopText:stopText,manText:manText,forceText:forceText,apoapsisEccentricity:apoapsisEccentricity,telemetryInclinationDeg:telemetryInclinationDeg,escapeHtml:escapeHtml,liveBody:liveBody,updateDemoBadge:updateDemoBadge,copyToClipboard:copyToClipboard,handleCopyClick:handleCopyClick,loadScript:loadScript,REPLAY_TICK_MS:REPLAY_TICK_MS,REPLAY_FULL_RUN_SECONDS_AT_1X:REPLAY_FULL_RUN_SECONDS_AT_1X,replayAdvance:replayAdvance,SPEED_PRESETS:SPEED_PRESETS,DEFAULT_SPEED:DEFAULT_SPEED,clampSpeed:clampSpeed,applySpeed:applySpeed,loadStoredSpeed:loadStoredSpeed,formatSimRate:formatSimRate,updateSpeedReadout:updateSpeedReadout,formatGmatEpoch:formatGmatEpoch,frameName:frameName,epochTextAt:epochTextAt,spacecraftName:spacecraftName,paintGroundTrack:paintGroundTrack,openInGmat:openInGmat,__test__:{setResult:function(r){lastResult=r;},setError:function(e){lastError=e;},setJob:function(j){lastJobId=j;},setOpenGmat:function(v){openGmatOn=!!v;},setScript:function(j,t){lastScript={jobId:j,text:t};},getResult:function(){return lastResult;},render:renderRealRun,draw:drawCraft,clear:clearRunDrawing,update:updateTelemetry,anim:function(t){animT=t;},demo:updateDemoBadge,paint:paintGroundTrack,epochParts:epochParts,provText:provenanceText,prov:updateProvenanceCaption,meta:function(m){lastRunMeta=m;},missingText:humanMissingList,run:function(p){runScenario(p);},metaFrom:metaFromResult,hide:hideView3D,show:showView3D,epoch:function(tt){updateEpochOverlay(tt);},frame:frameName,epochText:epochTextAt,fmtEpoch:formatGmatEpoch,craftName:spacecraftName,replay:replayAdvance,speed:function(){return speed;},applySpeed:applySpeed}};}}catch(e){}
