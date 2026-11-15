@@ -177,6 +177,9 @@ def test_api_carries_code_and_explanation(monkeypatch):
         raise httpx.ReadTimeout("cold model")
 
     _patch(monkeypatch, handler)
+    # Belt and braces alongside the suite conftest guard: demo mode must be
+    # off or the unreadable prompt short-circuits to needs_clarification.
+    monkeypatch.delenv("ORBITLAB_DEMO_MODE", raising=False)
     monkeypatch.setenv("EXTRACTOR_BASE_URL", "http://fake/extractor")
     monkeypatch.setenv("EXTRACTOR_API_KEY", "k")
     monkeypatch.setenv("EXTRACTOR_MODEL", "m")

@@ -121,9 +121,16 @@ def test_backend_stop_hook_never_raises():
 
 def test_apply_flags_demo(monkeypatch):
     mod = _load()
+    # NOTE: apply_flags() writes os.environ directly (untracked by monkeypatch),
+    # so the SUT-set value is removed explicitly in a finally: a second
+    # monkeypatch.delenv here would record "true" and resurrect it at teardown,
+    # leaking ORBITLAB_DEMO_MODE into later tests (see phase4_backend/
+    # test_leak_report.md).
     monkeypatch.delenv("ORBITLAB_DEMO_MODE", raising=False)
-    mod.apply_flags(types.SimpleNamespace(demo=True))
-    assert mod.os.environ["ORBITLAB_DEMO_MODE"] == "true"
-    monkeypatch.delenv("ORBITLAB_DEMO_MODE", raising=False)
+    try:
+        mod.apply_flags(types.SimpleNamespace(demo=True))
+        assert mod.os.environ["ORBITLAB_DEMO_MODE"] == "true"
+    finally:
+        mod.os.environ.pop("ORBITLAB_DEMO_MODE", None)
     mod.apply_flags(types.SimpleNamespace(demo=False))
     assert "ORBITLAB_DEMO_MODE" not in mod.os.environ
