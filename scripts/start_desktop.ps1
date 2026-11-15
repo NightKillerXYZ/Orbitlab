@@ -19,7 +19,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$env:PYTHONPATH = Join-Path $repoRoot 'phase4_backend'
+$phase4 = Join-Path $repoRoot 'phase4_backend'
+$roots = @($repoRoot, $phase4) + @($env:PYTHONPATH -split ';' |
+    Where-Object { $_ -and $_ -ne $repoRoot -and $_ -ne $phase4 })
+$env:PYTHONPATH = ($roots -join ';')
 
 if (-not $env:GMAT_PATH) {
     $console = Get-ChildItem -Path (Join-Path $repoRoot 'tools/gmat') -Recurse -File -ErrorAction SilentlyContinue |
