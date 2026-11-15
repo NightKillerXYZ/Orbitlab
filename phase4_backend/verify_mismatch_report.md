@@ -1,13 +1,16 @@
-# Verify-stage 400 vs 400000 unit mismatch (`scripts/repro_verify_mismatch.py`)
+# Both Extract crash and Verify Mismatch Report
 
-Investigate-only task: no pipeline, model, dataset, or schema code was changed.
-Probe script lives at `scripts/repro_verify_mismatch.py`; it sends four
+Investigate-then-fix task: `scripts/repro_verify_mismatch.py` sends four
 prompts through the real extractor (`FrontStepExtractor.process`, async, the
 same call the pipeline makes) and then the real HTTP interpreter
 (`interpret_prompt`), printing both outputs side by side. Endpoint credentials
 come from the environment only and are never printed (presence check only).
 
-## Result: mismatch reproduced on 1 of 4 prompts
+## Part 1 — Verify-stage 400 vs 400000 unit mismatch (investigation only)
+
+No pipeline, model, dataset, or schema code was changed for this part.
+
+### Result: mismatch reproduced on 1 of 4 prompts
 
 Prompt: **"500 kg satellite around Earth, circular 400 km, 2 days,
 sun-synchronous"**
@@ -35,6 +38,7 @@ The other three prompts did **not** mismatch:
   800 km, 1 day"*: the extractor itself raised
   `TypeError: cannot unpack non-iterable NoneType object` — an extract-stage
   failure, so no interpreter output exists and no verify comparison happens.
+  (This crash is Part 2 of this report.)
 
 So the 400-vs-400000 site is: **extractor emits `400.0` (km altitude, not a
 semi-major axis) into the canonical prompt; the interpreter returns
@@ -46,37 +50,99 @@ interpreter amplified it by 1000. Both observations above are single-run
 results (temperature 0); reruns may vary in wording but the recorded numbers
 stand as observed.
 
-## Side observations (not changed, recorded for follow-up)
+### Side observations (not changed, recorded for follow-up)
 
 - With no configured endpoint (`FrontStepExtractor()` default client) the
   deterministic fallback cannot parse any of the four prompts
   (`missing: ['duration', 'orbit']`); only the real endpoint path was used
   for the numbers above.
-- The apoapsis-burn prompt crashes extraction with a bare `TypeError`
-  (surfacing as a generic extraction failure, never reaching verify).
 - First probe runs predate the final script: an early version called the
   sync extractor inside the async loop and only proved the endpoint was
   reachable; all numbers in this report come from the final async
   `process()` + `interpret_prompt()` path, identical to the pipeline's.
 
-## Verification (item 4 follow-up + item 5)
+## Part 2 — Extract-stage crash: `TypeError: cannot unpack non-iterable NoneType object`
 
-- The crash is fixed at its root in `prompt_builder.py`: burns with
-  `deltaV: None` (or malformed vectors) are described without an invented
-  vector instead of being unpacked. Pre-existing vector-present output is
-  byte-identical (existing `test_prompt_builder.py` vector assertions pass
-  unchanged).
+### Trigger
+
+Prompt: **"500 kg satellite around Earth, 500 km altitude, burn at apoapsis
+to 800 km, 1 day"** (real extractor, key from the environment only).
+
+### Traceback (absolute path prefixes trimmed to the repo root)
+
+```
+Traceback (most recent call last):
+  File "scripts/repro_verify_mismatch.py", line 15, in main
+    res = await ex.process(...)
+  File "phase4_backend/orbitlab_backend/frontstep/extractor.py", line 216, in process
+    res=self.deterministic_convert(normalize_extracted(extracted), user_text)
+  File "phase4_backend/orbitlab_backend/frontstep/extractor.py", line 202, in deterministic_convert
+    prompt=build_canonical_prompt(normalized)
+  File "phase4_backend/orbitlab_backend/frontstep/prompt_builder.py", line 102, in build_canonical_prompt
+    v,n,b = m.get("deltaV",[0,0,0])
+TypeError: cannot unpack non-iterable NoneType object
+```
+
+The live model returned a maneuver the extractor normalized to:
+
+```json
+{"type": "impulsive_burn", "trigger": "apoapsis", "targetRadiusKm": 800,
+ "elapsedSecs": null, "deltaVKmS": null}
+```
+
+### Root cause
+
+Neither a function wrongly returning `None` nor a malformed model output:
+the extractor output is a **legitimate shape** — an apoapsis burn specified
+by target radius with no explicit delta-V vector. The normalizer records
+that faithfully as `deltaV: None`, and `verify.py` explicitly treats `None`
+as "do not check the vector", so `None` is meaningful pipeline state, not
+an error. The bug is the consumer: `prompt_builder.py` unpacked
+`m.get("deltaV", [0, 0, 0])` unconditionally, and the `[0, 0, 0]` default
+only covers a *missing* key, never an explicit `None`.
+
+### Fix (no exception-swallowing; no invented physics)
+
+In `build_canonical_prompt`, an ImpulsiveBurn with a missing, `None`, or
+malformed `deltaV` is now described *without* a vector
+(`At the next apoapsis, apply the LocalVNB burn.`) instead of being
+unpacked. Real 3-vectors render exactly as before, so all pre-existing
+vector output is byte-identical. A `None` vector stays `None` downstream,
+preserving the verify stage's skip-the-check semantics.
+
+### The other prompts, checked for the same crash
+
+- Venus semi-major-axis prompt: no maneuvers at all, unaffected path;
+  covered by a regression test (`status == "ok"`).
+- Elapsed-time burns and malformed vectors (short list, string, dict):
+  covered by regression tests — all render without a vector, never crash.
+
+## Part 3 — Safety net for unexpected stage failures (item 5)
+
+`api/app.py::run_job` tracks the last stage seen on the event callback; any
+exception escaping `pipeline.run` (i.e. anything that is not already a typed
+`PipelineError`) becomes
+`{"code": "internal_error", "stage": <last seen stage or "unknown">,
+"message": <plain sentence>}` — "Something went wrong while reading your
+request (stage: extract). Please try rephrasing." for extract, and
+"Something went wrong while running this step (stage: X). Please try again
+or rephrase the request." otherwise. The full traceback goes to the server
+log only via `logger.exception`; no Python internals, keys, or endpoint
+details ever reach the user payload. The desktop UI chat shows the message
+verbatim for `internal_error` (no "Run failed at" prefix, since the message
+is already complete).
+
+## Part 4 — Verification and counts
+
 - New regression tests (`tests/test_maneuver_no_deltav.py`, 5 tests): the
   exact recorded maneuver shape through the async-equivalent sync path ends
   `status == "ok"` with an apoapsis sentence and no `"None"` text; elapsed
   burns without vectors, malformed vectors, and the unaffected Venus
   semi-major-axis case are covered.
-- Safety net (`api/app.py::run_job`): any unexpected exception in any stage
-  becomes `{"code": "internal_error", "stage": <last seen stage>|"unknown",
-  "message": <plain sentence>}`; the traceback goes to the server log only
-  via `logger.exception`. New `tests/test_internal_error.py` forces a raw
-  `RuntimeError` in each of the 8 stages plus the no-event case and asserts
-  the typed shape and the absence of raw text.
+- New safety-net tests (`tests/test_internal_error.py`, 9 tests): a raw
+  `RuntimeError` is forced in each of the 8 stages plus the no-event case;
+  each asserts the typed shape, the plain message, and the absence of raw
+  text/tracebacks.
 - Updated one pre-existing assertion that locked in the old raw-message
   contract (`test_review_fixes.py::test_background_task_failure_marks_job_failed`
   now expects `internal_error` without the raw message).
