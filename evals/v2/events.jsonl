@@ -1,0 +1,6 @@
+{"prompt": "500 kg satellite, Earth 400 km circular, 2 days, report eclipse intervals", "expectedBehavior": "run", "expectedFields": ["events"]}
+{"prompt": "Earth 500 km orbit, 1 day, ground-station contact with station at 40N 74W, 10 degree mask", "expectedBehavior": "run", "expectedFields": ["events", "events.station"]}
+{"prompt": "Mars orbiter, 5 days, report eclipses", "expectedBehavior": "run", "expectedFields": ["events"]}
+{"prompt": "Earth orbit with ground-station contact but no station given", "expectedBehavior": "ask", "expectedFields": ["events"]}
+{"prompt": "Contact with station at latitude 95 degrees", "expectedBehavior": "refuse", "expectedFields": ["events"]}
+{"prompt": "GEO satellite contact schedule for 1 day", "expectedBehavior": "run", "expectedFields": ["events", "initialOrbit"]}

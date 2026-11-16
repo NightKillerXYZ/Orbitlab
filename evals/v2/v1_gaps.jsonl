@@ -1,0 +1,6 @@
+{"prompt": "500 kg satellite around Earth, sun-synchronous circular orbit at 400 km altitude, propagate for 2 days", "expectedBehavior": "ask", "expectedFields": ["centralBody", "dryMassKg", "orbit"]}
+{"prompt": "500 kg satellite around Earth, 500 km altitude, burn at apoapsis to 800 km, 1 day", "expectedBehavior": "ask", "expectedFields": ["maneuvers"]}
+{"prompt": "Earth 400 km circular orbit for 2 days", "expectedBehavior": "ask", "expectedFields": ["dryMassKg"]}
+{"prompt": "500 kg satellite, Earth 400 km circular orbit, inclination 28.5 degrees, 2 hours", "expectedBehavior": "run", "expectedFields": ["centralBody", "dryMassKg", "orbit", "duration"]}
+{"prompt": "Earth orbit for 2 days", "expectedBehavior": "ask", "expectedFields": ["dryMassKg", "orbit"]}
+{"prompt": "400 km circular", "expectedBehavior": "ask", "expectedFields": ["centralBody", "dryMassKg", "duration"]}

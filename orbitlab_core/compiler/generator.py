@@ -11,6 +11,7 @@ Strict forward-slash path normalization is enforced on all output paths.
 
 from __future__ import annotations
 
+import logging
 import math
 from pathlib import Path
 from typing import List, Optional
@@ -28,6 +29,7 @@ from orbitlab_core.compiler.templates import (
 from orbitlab_core.ast.validation import (
     compute_orbital_properties_from_cartesian,
     get_body_constants,
+    normalize_point_masses,
 )
 from orbitlab_core.constants import (
     BODY_POTENTIAL_FILES,
@@ -41,6 +43,7 @@ class GmatScriptCompiler:
 
     def __init__(self, default_report_filename: str = "telemetry.txt"):
         self.default_report_filename = default_report_filename
+        self._logger = logging.getLogger("orbitlab.compiler")
 
     def compile_to_string(
         self,
@@ -132,7 +135,15 @@ class GmatScriptCompiler:
         lines.append(f"Create ForceModel {fm_name};")
         lines.append("")
         lines.append(f"{fm_name}.CentralBody = {gmat_body};")
-        point_masses = [body for body in fm.pointMasses if body != gmat_body]
+        # Normalize at compile time too: the central body is never its own
+        # perturber. The pipeline already applies per-body defaults at
+        # normalize time; here explicit lists are kept and only the central
+        # body is stripped (logged, not silent).
+        point_masses, _pm_notes = normalize_point_masses(
+            central_body, list(fm.pointMasses), user_specified=True
+        )
+        for _note in _pm_notes:
+            self._logger.info("compile %s: %s", experiment.experimentName, _note)
 
         if central_body in POINT_MASS_ONLY_BODIES:
             # Point-mass-only central body (Sun/Mercury/Jupiter): GMAT ships no

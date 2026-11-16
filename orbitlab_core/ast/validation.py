@@ -22,11 +22,50 @@ from orbitlab_core.constants import (
     BODY_ALLOWS_DRAG,
     BODY_SOI_RADIUS_KM,
     CENTRAL_BODY_PROPERTIES,
+    DEFAULT_POINT_MASSES_BY_BODY,
     POINT_MASS_ONLY_BODIES,
     MIN_OTHER_BODY_PERIAPSIS_ALTITUDE_KM,
     MIN_PERIAPSIS_ALTITUDE_KM,
     MIN_PERIAPSIS_ALTITUDE_KM_BY_BODY,
 )
+
+
+def normalize_point_masses(
+    central_body: str,
+    point_masses: List[str] | None,
+    user_specified: bool,
+) -> Tuple[List[str], List[str]]:
+    """Apply per-body point-mass defaults and drop the central body.
+
+    - When the user did NOT specify perturbers (`user_specified` False),
+      Earth/Moon/Mars runs get DEFAULT_POINT_MASSES_BY_BODY; other bodies
+      keep the list they carry.
+    - Explicit user-specified lists are kept as-is.
+    - Either way the central body (by GMAT name: Luna for the Moon) is never
+      listed as its own perturber; it is removed (deduped) and a note is
+      returned for the run warnings / server log.
+    """
+    notes: List[str] = []
+    masses = list(point_masses) if point_masses else []
+    if not user_specified and central_body in DEFAULT_POINT_MASSES_BY_BODY:
+        default = list(DEFAULT_POINT_MASSES_BY_BODY[central_body])
+        if masses != default:
+            notes.append(
+                f"pointMasses default applied for central body '{central_body}': "
+                f"{default} (user did not specify perturbers)."
+            )
+        masses = default
+    try:
+        gmat_body = CENTRAL_BODY_PROPERTIES[central_body][2]
+    except KeyError:
+        return masses, notes
+    cleaned = list(dict.fromkeys(m for m in masses if m != gmat_body))
+    if len(cleaned) != len(masses):
+        notes.append(
+            f"central body '{gmat_body}' removed from pointMasses "
+            f"(a body cannot perturb itself)."
+        )
+    return cleaned, notes
 
 
 @dataclass

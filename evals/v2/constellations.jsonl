@@ -1,0 +1,5 @@
+{"prompt": "Walker constellation 6 planes x 11 satellites at 550 km, 53 deg inclination", "expectedBehavior": "run", "expectedFields": ["constellation", "spacecraft"]}
+{"prompt": "3-plane polar constellation, 8 satellites per plane, 800 km", "expectedBehavior": "run", "expectedFields": ["constellation", "spacecraft"]}
+{"prompt": "Walker constellation with phasing for 24 satellites", "expectedBehavior": "run", "expectedFields": ["constellation"]}
+{"prompt": "Constellation with two spacecraft sharing a name", "expectedBehavior": "refuse", "expectedFields": ["spacecraft"]}
+{"prompt": "Constellation of 100000 satellites", "expectedBehavior": "refuse", "expectedFields": ["constellation"]}

@@ -1,0 +1,5 @@
+{"prompt": "Earth 400 km circular, 2 days, export ephemeris as CCSDS OEM", "expectedBehavior": "run", "expectedFields": ["outputs"]}
+{"prompt": "Mars orbit, 5 days, SPICE SPK export at 60 second steps", "expectedBehavior": "run", "expectedFields": ["outputs"]}
+{"prompt": "Moon orbit, 6 hours, STK ephemeris export", "expectedBehavior": "run", "expectedFields": ["outputs"]}
+{"prompt": "Export ephemeris in a format that does not exist", "expectedBehavior": "refuse", "expectedFields": ["outputs"]}
+{"prompt": "Earth orbit export with negative step size", "expectedBehavior": "refuse", "expectedFields": ["outputs"]}

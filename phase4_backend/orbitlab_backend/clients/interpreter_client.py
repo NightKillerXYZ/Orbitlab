@@ -17,6 +17,25 @@ class InterpreterUnavailableError(InterpreterClientError):
     pass
 class InterpreterOutputTruncatedError(InterpreterClientError):
     pass
+
+_GUIDED_SCHEMA: Optional[dict] = None
+
+def guided_experiment_json_schema() -> dict:
+    """JSON schema for the interpreter's experiment output, generated from the
+    live pydantic model so constrained decoding can never drift from the
+    validator. Cached after first build."""
+    global _GUIDED_SCHEMA
+    if _GUIDED_SCHEMA is None:
+        from orbitlab_core.ast.models import OrbitLabExperiment
+        _GUIDED_SCHEMA = OrbitLabExperiment.model_json_schema()
+    return _GUIDED_SCHEMA
+
+def guided_json_enabled() -> bool:
+    """True only when ORBITLAB_GUIDED_JSON is set (default false)."""
+    try:
+        return bool(get_settings().ORBITLAB_GUIDED_JSON)
+    except Exception:
+        return False
 class InterpreterClient:
     def interpret(self, raw_text: str) -> InterpretationResult:
         raise NotImplementedError
@@ -93,6 +112,21 @@ class HttpInterpreterClient(IExperimentInterpreter):
         url=self.model_url.rstrip("/")+"/v1/chat/completions"
         headers={"Authorization": f"Bearer {self.model_key}","Content-Type": "application/json"}
         payload={"model": self.model_name,"messages": [{"role":"system","content": INTERPRETER_SYSTEM_PROMPT},{"role":"user","content": prompt}],"temperature":0,"max_tokens": self.max_tokens}
+        # Schema-guided (constrained) decoding, off by default. When enabled
+        # the request carries the experiment JSON schema via the standard
+        # OpenAI-compatible response_format mechanism (same mechanism the
+        # extractor's EXTRACTOR_JSON_MODE=json_schema already uses against
+        # these vLLM endpoints). When disabled the payload above is
+        # byte-identical to previous behavior.
+        if guided_json_enabled():
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "orbitlab_experiment",
+                    "strict": True,
+                    "schema": guided_experiment_json_schema(),
+                },
+            }
         async def single_attempt():
             async with httpx.AsyncClient(timeout=self.timeout_s) as client:
                 task=asyncio.create_task(client.post(url, json=payload, headers=headers))

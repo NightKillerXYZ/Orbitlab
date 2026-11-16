@@ -1,0 +1,6 @@
+{"prompt": "500 kg satellite, Earth 400 km circular, 2 days, gravity 8x8 with MSISE90 drag", "expectedBehavior": "run", "expectedFields": ["forceModel.gravityDegree", "forceModel.gravityOrder", "forceModel.atmosphericDrag"]}
+{"prompt": "Earth 400 km circular, 2 days, HarrisPriester drag model", "expectedBehavior": "run", "expectedFields": ["forceModel.atmosphericDrag"]}
+{"prompt": "Mars orbiter with Luna and Sun as third bodies, 5 days", "expectedBehavior": "run", "expectedFields": ["forceModel.pointMasses"]}
+{"prompt": "Moon orbiter, 100 km, 6 hours, Earth and Sun perturbers", "expectedBehavior": "run", "expectedFields": ["forceModel.pointMasses"]}
+{"prompt": "Earth orbit with Jupiter only as perturber", "expectedBehavior": "ask", "expectedFields": ["forceModel"]}
+{"prompt": "Mars orbiter with atmospheric drag enabled", "expectedBehavior": "refuse", "expectedFields": ["centralBody", "forceModel"]}

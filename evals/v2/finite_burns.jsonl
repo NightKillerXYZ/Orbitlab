@@ -1,0 +1,6 @@
+{"prompt": "1500 kg spacecraft, Earth GTO, 200 N thruster, finite burn of 1200 s at perigee", "expectedBehavior": "run", "expectedFields": ["hardware", "maneuvers"]}
+{"prompt": "Finite burn at apoapsis with 50 kg fuel, isp 320 s, 1 N thruster", "expectedBehavior": "run", "expectedFields": ["hardware", "maneuvers"]}
+{"prompt": "Earth to Mars transfer with finite burns", "expectedBehavior": "run", "expectedFields": ["hardware", "maneuvers"]}
+{"prompt": "Finite burn but no tank or thruster specified", "expectedBehavior": "ask", "expectedFields": ["hardware"]}
+{"prompt": "Burn needing 500 m/s with only 1 kg of fuel", "expectedBehavior": "refuse", "expectedFields": ["hardware", "maneuvers"]}
+{"prompt": "Thruster referencing a tank that does not exist", "expectedBehavior": "refuse", "expectedFields": ["hardware"]}

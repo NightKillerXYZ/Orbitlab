@@ -1,0 +1,5 @@
+{"prompt": "Earth circular orbits, altitudes 400 to 800 km in 5 steps, 2 days each", "expectedBehavior": "run", "expectedFields": ["sweep"]}
+{"prompt": "Sweep inclination 0 to 90 degrees in 4 steps, Earth 500 km, 1 day", "expectedBehavior": "run", "expectedFields": ["sweep"]}
+{"prompt": "Sweep altitude 400 to 4000 km in 50 steps", "expectedBehavior": "refuse", "expectedFields": ["sweep"]}
+{"prompt": "Sweep over spacecraft name", "expectedBehavior": "refuse", "expectedFields": ["sweep"]}
+{"prompt": "Sweep eccentricity 0 to 0.5, 6 steps, Mars 300 km periapsis", "expectedBehavior": "run", "expectedFields": ["sweep"]}

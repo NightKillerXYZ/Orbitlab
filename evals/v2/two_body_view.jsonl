@@ -1,0 +1,5 @@
+{"prompt": "Earth to Mars Hohmann transfer, show the two-body transfer view", "expectedBehavior": "run", "expectedFields": ["maneuvers"]}
+{"prompt": "GTO to GEO transfer with transfer arc view", "expectedBehavior": "run", "expectedFields": ["maneuvers"]}
+{"prompt": "Earth to Moon transfer, heliocentric-style two-body view", "expectedBehavior": "run", "expectedFields": ["maneuvers"]}
+{"prompt": "Show the transfer view for an orbit with no maneuvers", "expectedBehavior": "ask", "expectedFields": []}
+{"prompt": "Transfer view for a refused run", "expectedBehavior": "refuse", "expectedFields": []}

@@ -1,0 +1,5 @@
+{"prompt": "Earth LEO to Moon transfer targeting lunar flyby altitude 100 km", "expectedBehavior": "run", "expectedFields": ["target"]}
+{"prompt": "GTO to GEO circularization targeting zero eccentricity at 42164 km", "expectedBehavior": "run", "expectedFields": ["target"]}
+{"prompt": "Target a 500 km final altitude starting from 400 km circular", "expectedBehavior": "run", "expectedFields": ["target"]}
+{"prompt": "Target an orbit with no goal specified", "expectedBehavior": "ask", "expectedFields": ["target"]}
+{"prompt": "Target with 100000 iterations", "expectedBehavior": "refuse", "expectedFields": ["target"]}

@@ -1,0 +1,6 @@
+{"prompt": "800 kg probe around Saturn, ring-plane orbit at 100000 km radius, 5 days", "expectedBehavior": "run", "expectedFields": ["centralBody", "initialOrbit", "propagation"]}
+{"prompt": "400 kg spacecraft around Uranus, 30000 km circular orbit, 10 days", "expectedBehavior": "run", "expectedFields": ["centralBody", "initialOrbit", "propagation"]}
+{"prompt": "1000 kg probe around Neptune, 60000 km circular orbit, 12 days", "expectedBehavior": "run", "expectedFields": ["centralBody", "initialOrbit", "propagation"]}
+{"prompt": "Saturn orbiter with atmospheric drag on, 3 days", "expectedBehavior": "refuse", "expectedFields": ["centralBody", "forceModel"]}
+{"prompt": "500 kg around Saturn, altitude 50000 km, for some time", "expectedBehavior": "ask", "expectedFields": ["duration"]}
+{"prompt": "Neptune orbiter at 20000 km altitude, 2 days", "expectedBehavior": "run", "expectedFields": ["centralBody", "initialOrbit"]}

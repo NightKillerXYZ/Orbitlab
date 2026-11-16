@@ -1,0 +1,6 @@
+{"prompt": "500 kg satellite around Earth, 400 km circular orbit, 2 days. Then: what if the altitude was 500 km instead?", "expectedBehavior": "run", "expectedFields": ["session.parentRunId", "session.revisedFields", "initialOrbit"]}
+{"prompt": "Earth 400 km circular, 2 hours. Compare that with a 600 km orbit over the same duration.", "expectedBehavior": "run", "expectedFields": ["session.parentRunId", "initialOrbit", "propagation"]}
+{"prompt": "Mars 300 km periapsis, eccentricity 0.2, 3 days. What if eccentricity was 0.4?", "expectedBehavior": "run", "expectedFields": ["session.parentRunId", "session.revisedFields", "initialOrbit"]}
+{"prompt": "Make it faster", "expectedBehavior": "ask", "expectedFields": ["session.parentRunId"]}
+{"prompt": "Run the same but around the Moon", "expectedBehavior": "run", "expectedFields": ["session.parentRunId", "session.revisedFields", "centralBody"]}
+{"prompt": "Delete the spacecraft", "expectedBehavior": "refuse", "expectedFields": []}

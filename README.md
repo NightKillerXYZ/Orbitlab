@@ -169,19 +169,25 @@ history live in `phase4_backend/*_report.md`; runbooks in
   parse, explain; every failure carries a stage, a machine-readable code,
   and a human-readable explanation.
 
-## Known limitations
+## Known limitations (each from a real test or run)
 
-- In demo mode a bare "burn at apoapsis" with no target and no delta-v is
-  dropped (no validator-valid maneuver exists for it); "400 km circular"
-  without the word "orbit" or "altitude" is not read as an orbit.
+- Burns defined by a target altitude are not supported: a burn with no
+  delta-V vector stops at extract and asks for the burn size
+  (`tests/test_maneuver_no_deltav.py`).
+- Missing mass or duration is asked for, never invented (`needs_clarification`;
+  `tests/test_pipeline2.py`, UI "missing fields" test).
+- Sun-synchronous altitude handling is unreliable: "500 kg satellite around
+  Earth, circular 400 km, 2 days, sun-synchronous" does not produce a run
+  (`scripts/realistic_cases.py` case 13; verify-mismatch report).
+- Durations are capped by the schema: 365 days / 8760 hours / 31536000 seconds
+  / 365 orbit periods (`schemas/experiment.schema.json`, `tests/test_long_runs.py`).
+- OrbitLab is a research and education tool. Not for flight operations.
 - The ground track is approximate (spherical Earth, no precession, nutation,
   or polar motion — up to ~0.2° error).
 - Hohmann rows show analytic delta-v estimates for an impulsive coplanar
-  transfer, not values measured from the simulation (telemetry carries no
-  executed delta-v fields, so there is nothing to label "from simulation").
+  transfer, not values measured from the simulation.
 - No browser was available here: interactive visuals were asserted with
-  stub-DOM Node tests, not pixels; see the per-task reports for what was
-  and was not visually verified.
+  stub-DOM Node tests, not pixels.
 
 ## Project layout
 
@@ -250,7 +256,15 @@ script and results before relying on them. Not for flight operations.
 
 ## Roadmap
 
-- v2: lift the 365-day cap, validation policy table, clarification flow, more
-  maneuver types, multi-turn.
-- v3–v4: show the interpreter's JSON before the run with confirm or edit and
-  re-validation after every edit.
+One-page version lives in `docs/ROADMAP.md`; the full plan is `docs/V2_SPEC.md`.
+
+- v1 (done): deterministic pipeline to real GMAT, 7 bodies, Hohmann + impulsive
+  burns, demo mode, Main UI, burn-size clarification, per-body perturber
+  defaults, guided-JSON trial.
+- v2a (next): what-if/compare multi-turn, Saturn/Uranus/Neptune, richer force
+  models, frames/states/time scales, eclipse and contact events, CCSDS/SPICE/STK
+  export, sweeps, fuel and delta-V budget.
+- v2b (heavy): tank/thruster/finite burns, Target corrector, mission templates,
+  Walker constellations, two-body transfer view.
+- v3+: control flow, Optimize/CSALT. Out of scope: orbit determination, flight
+  operations.

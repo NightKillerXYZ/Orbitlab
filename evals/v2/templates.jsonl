@@ -1,0 +1,8 @@
+{"prompt": "Earth to Moon transfer for a 1000 kg spacecraft", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "GTO to GEO transfer, 2000 kg communications satellite", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "Earth to Mars Hohmann transfer, 2026 window", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "Sun-synchronous orbit at 600 km for an 800 kg Earth imager", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "Molniya orbit for northern coverage, 1500 kg spacecraft", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "Geostationary slot at 19.2 East for a 3000 kg satellite", "expectedBehavior": "run", "expectedFields": ["template"]}
+{"prompt": "GTO to GEO transfer without a spacecraft mass", "expectedBehavior": "ask", "expectedFields": ["template"]}
+{"prompt": "Transfer to an orbit beyond the schema duration cap", "expectedBehavior": "refuse", "expectedFields": ["template"]}

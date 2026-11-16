@@ -74,6 +74,18 @@ POINT_MASS_ONLY_BODIES = {
     body for body, cfg in BODIES.items() if cfg["pointMassOnly"]
 }
 
+# Default third-body point-mass perturbers applied when the user did NOT
+# specify perturbers (front-step `forces` is None). The schema-level default
+# (ForceModelConfig.pointMasses ["Luna", "Sun"]) is body-agnostic and is the
+# source of Moon runs listing Luna and Mars runs missing Earth; these
+# per-body defaults replace it at normalize time. Bodies not listed here keep
+# whatever list they carry.
+DEFAULT_POINT_MASSES_BY_BODY = {
+    "Earth": ["Luna", "Sun"],
+    "Moon": ["Earth", "Sun"],
+    "Mars": ["Sun"],
+}
+
 # Optional GMAT gravity-field potential-file name per body.
 BODY_POTENTIAL_FILES = {body: cfg["potentialFile"] for body, cfg in BODIES.items()}
 

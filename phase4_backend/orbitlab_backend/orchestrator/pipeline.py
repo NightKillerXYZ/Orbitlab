@@ -137,6 +137,29 @@ class Pipeline:
                     explanation=failure_explanation("verify", f"Interpreter mismatch: {mismatches}")
                 raise InterpreterMismatch(mismatches, details={"mismatches": mismatches, "explanation": explanation})
             experiment_json=normalize_maneuver_ids(experiment_json)
+            # Normalize time: per-body point-mass defaults + central-body strip.
+            # The user specifies perturbers only via front-step `forces`; when
+            # absent the interpreter's body-agnostic Luna/Sun list is replaced
+            # for Earth/Moon/Mars. Explicit lists are kept minus central body.
+            try:
+                from orbitlab_core.ast.validation import normalize_point_masses as _npm
+                _sent_forces = sent_data.get("forces") if isinstance(sent_data, dict) else None
+                _user_pm = (
+                    isinstance(_sent_forces, dict) and isinstance(_sent_forces.get("pointMasses"), list)
+                )
+                _fm = experiment_json.get("forceModel") if isinstance(experiment_json, dict) else None
+                if isinstance(_fm, dict):
+                    _cleaned, _notes = _npm(
+                        experiment_json.get("centralBody"), _fm.get("pointMasses"), _user_pm
+                    )
+                    _fm["pointMasses"] = _cleaned
+                    for _n in _notes:
+                        warnings_all.append(f"force_model_normalized: {_n}")
+                        await emit(PipelineEvent("force_model_normalized","verify",0,_n,None))
+            except PipelineError:
+                raise
+            except Exception as _npe:
+                logger.warning(f"force-model normalize skipped: {_npe}")
             dur=time.perf_counter()-t0
             await emit(PipelineEvent("stage_completed","verify",dur,"Verification passed", {"warnings":warnings_all} if warnings_all else None))
         except PipelineError:

@@ -1,0 +1,5 @@
+{"prompt": "500 kg satellite, Earth 400 km circular in ICRF frame, 2 days", "expectedBehavior": "run", "expectedFields": ["initialOrbit.coordinateSystem"]}
+{"prompt": "Earth orbit from Cartesian state r=[7000,0,0] km v=[0,7.5,0] km/s, 2 hours", "expectedBehavior": "run", "expectedFields": ["initialOrbit"]}
+{"prompt": "Mars orbit with equinoctial elements, 3 days", "expectedBehavior": "run", "expectedFields": ["initialOrbit"]}
+{"prompt": "Earth 400 km circular, epoch in TDB scale, 2 days", "expectedBehavior": "run", "expectedFields": ["epoch"]}
+{"prompt": "Earth orbit in a frame that does not exist", "expectedBehavior": "refuse", "expectedFields": ["initialOrbit"]}
