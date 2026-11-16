@@ -14,6 +14,21 @@ from orbitlab_core.ast.models import OrbitLabExperiment
 from orbitlab_core.ast.validation import AstrodynamicValidator
 from orbitlab_core.compiler.generator import GmatScriptCompiler
 logger=logging.getLogger("orbitlab.pipeline")
+SCHEMA_FRIENDLY = ("The AI's answer didn't fit the mission format, so the run was stopped. "
+                   "Please rephrase and try again.")
+BURN_SIZE_ASK = ("To run this I still need: the burn size (delta-V in m/s and direction). "
+                 "Burns defined by a target altitude aren't supported yet.")
+def _clarification_explanation(missing):
+    """Plain-language ask with singular/plural grammar. Never leaks raw lists."""
+    try:
+        items = list(missing or [])
+    except TypeError:
+        items = []
+    if items == ["deltaV"]:
+        return BURN_SIZE_ASK + " Add it to your message and send it again."
+    verb = "Add it" if len(items) == 1 else "Add them"
+    return ("This request needs more details before it can run: missing %s. %s and send again."
+            % (items, verb))
 @dataclass
 class PipelineEvent:
     type: str
@@ -70,7 +85,7 @@ class Pipeline:
             dur=time.perf_counter()-t0
             if ex_res.status=="needs_clarification":
                 await emit(PipelineEvent("stage_failed","extract",dur,f"Missing {ex_res.missing}",{"missing":ex_res.missing}))
-                raise NeedsClarification(ex_res.missing, details={"explanation": "This request needs more details before it can run: missing %s. Add them and send again." % (ex_res.missing,)})
+                raise NeedsClarification(ex_res.missing, details={"explanation": _clarification_explanation(ex_res.missing)})
             await emit(PipelineEvent("stage_completed","extract",dur,"Extraction completed"))
             sent_data=ex_res.data; prompt=ex_res.prompt
         except ExtractorUnavailable as e:
@@ -177,12 +192,11 @@ class Pipeline:
                 experiment_obj=OrbitLabExperiment.model_validate(experiment_json)
             except Exception as e:
                 dur=time.perf_counter()-t0
-                await emit(PipelineEvent("stage_failed","validate",dur,f"Schema error: {e}"))
-                try:
-                    schema_expl=await self.explainer.explain(experiment_json, "validate", "Schema error: %s" % (e,), warnings_all)
-                except Exception:
-                    schema_expl=None
-                raise SchemaError(str(e), details={"raw": str(e), "explanation": schema_expl or ("The returned experiment is not valid JSON against the schema (%s). The interpreter output could not be used." % (str(e)[:200],))})
+                # Full pydantic text goes to the server log only; the user
+                # sees the friendly typed message (no field paths/URLs).
+                logger.warning("validate schema failed: %s: %s", type(e).__name__, str(e)[:2000])
+                await emit(PipelineEvent("stage_failed","validate",dur,"Schema error: mission format mismatch"))
+                raise SchemaError(str(e), details={"raw": str(e), "explanation": SCHEMA_FRIENDLY})
             res=AstrodynamicValidator.validate(experiment_obj)
             warnings_all=list(warnings_all)+list(res.warnings)
             try:
